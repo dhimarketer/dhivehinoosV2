@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://dhivehinoos.net/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -36,7 +36,13 @@ api.interceptors.response.use(
 export const articlesAPI = {
   getPublished: () => api.get('/articles/published/'),
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),
-  getAll: () => api.get('/articles/admin/'),
+  getAll: (params = '') => {
+    const baseUrl = '/articles/admin/';
+    const separator = params.includes('?') ? '&' : '?';
+    const timestamp = `t=${Date.now()}`;
+    const fullParams = params ? `${params}${separator}${timestamp}` : `?${timestamp}`;
+    return api.get(`${baseUrl}${fullParams}`);
+  }, // Add cache-busting timestamp
   create: (data) => {
     // If data is FormData, don't set Content-Type header
     if (data instanceof FormData) {
@@ -64,7 +70,7 @@ export const articlesAPI = {
 
 export const commentsAPI = {
   getByArticle: (slug) => api.get(`/comments/article/${slug}/`),
-  getAll: () => api.get('/comments/admin/'),
+  getAll: () => api.get(`/comments/admin/?t=${Date.now()}`), // Add cache-busting timestamp
   create: (data) => api.post('/comments/create/', data),
   approve: (id) => api.patch(`/comments/admin/${id}/`, { is_approved: true }),
   reject: (id) => api.delete(`/comments/admin/${id}/`),
@@ -110,7 +116,7 @@ export const votesAPI = {
 
 export const contactAPI = {
   create: (data) => api.post('/contact/create/', data),
-  getAll: () => api.get('/contact/admin/'),
+  getAll: () => api.get(`/contact/admin/?t=${Date.now()}`), // Add cache-busting timestamp
   markAsRead: (id) => api.patch(`/contact/admin/${id}/`, { is_read: true }),
 };
 

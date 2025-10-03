@@ -44,6 +44,7 @@ import {
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { articlesAPI, commentsAPI, contactAPI } from '../../services/api';
+import api from '../../services/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -73,13 +74,47 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [articlesRes, commentsRes, contactRes] = await Promise.all([
-        articlesAPI.getAll ? articlesAPI.getAll() : { data: { results: [] } },
+      // Fetch all articles from admin API with pagination
+      const fetchAllArticles = async () => {
+        try {
+          console.log('Fetching all articles from admin API...');
+          let allArticles = [];
+          let page = 1;
+          let hasNext = true;
+          
+          while (hasNext && page <= 10) { // Safety limit
+            try {
+              const response = await api.get(`/articles/admin/?page=${page}&page_size=100&t=${Date.now()}`);
+              console.log(`Admin API response (page ${page}):`, response.data);
+              
+              if (response.data.results) {
+                allArticles = [...allArticles, ...response.data.results];
+                hasNext = response.data.next !== null;
+                page++;
+              } else {
+                hasNext = false;
+              }
+            } catch (pageError) {
+              console.warn(`Error fetching page ${page}, stopping pagination:`, pageError.message);
+              hasNext = false;
+            }
+          }
+          
+          console.log(`Final result: ${allArticles.length} articles fetched`);
+          return allArticles;
+        } catch (error) {
+          console.error('Error fetching articles from admin API:', error);
+          return [];
+        }
+      };
+
+      const [articles, commentsRes, contactRes] = await Promise.all([
+        fetchAllArticles(),
         commentsAPI.getAll ? commentsAPI.getAll() : { data: { results: [] } },
         contactAPI.getAll(),
       ]);
       
-      setArticles(articlesRes.data.results || articlesRes.data || []);
+      setArticles(articles);
       setComments(commentsRes.data.results || commentsRes.data || []);
       setContactMessages(contactRes.data.results || contactRes.data || []);
       

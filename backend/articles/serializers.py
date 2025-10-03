@@ -78,12 +78,14 @@ class ArticleIngestSerializer(serializers.ModelSerializer):
         # Remove image_url from validated_data as it's not a model field
         image_url = validated_data.pop('image_url', None)
         
-        # Create the article
-        article = Article.objects.create(**validated_data)
+        # Create the article with published status for n8n
+        article = Article.objects.create(
+            **validated_data,
+            status='published'  # Set articles from n8n as published
+        )
         
-        # Handle image download if image_url is provided
+        # Store image_url in the article instance for the view to use
         if image_url:
-            # This will be handled in the view
-            article.image_url = image_url
+            article._image_url = image_url
         
         return article

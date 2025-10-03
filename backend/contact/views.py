@@ -2,10 +2,13 @@ from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .models import ContactMessage
 from .serializers import ContactMessageSerializer, ContactMessageCreateSerializer
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ContactMessageViewSet(ModelViewSet):
     """Admin viewset for managing contact messages"""
     queryset = ContactMessage.objects.all()
@@ -22,6 +25,7 @@ class ContactMessageViewSet(ModelViewSet):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
+@csrf_exempt
 def create_contact_message(request):
     """Public API for creating contact messages"""
     serializer = ContactMessageCreateSerializer(data=request.data)

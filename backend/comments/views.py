@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from articles.models import Article
 from .models import Comment, Vote
 from .serializers import (
@@ -12,6 +14,7 @@ from .serializers import (
 )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CommentViewSet(ModelViewSet):
     """Admin viewset for managing comments"""
     queryset = Comment.objects.all()
@@ -39,6 +42,7 @@ class ArticleCommentsListView(ListAPIView):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
+@csrf_exempt
 def create_comment(request):
     """Public API for creating comments"""
     serializer = CommentCreateSerializer(data=request.data, context={'request': request})
@@ -53,6 +57,7 @@ def create_comment(request):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
+@csrf_exempt
 def create_vote(request):
     """Public API for creating votes"""
     serializer = VoteCreateSerializer(data=request.data, context={'request': request})

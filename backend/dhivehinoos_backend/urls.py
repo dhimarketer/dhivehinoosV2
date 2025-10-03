@@ -44,7 +44,7 @@ def favicon_view(request):
 urlpatterns = [
     path('', api_info, name='api-info'),
     path('favicon.ico', favicon_view, name='favicon'),
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls),  # Disabled to prevent conflict with React admin dashboard
     path('api/v1/articles/', include('articles.urls')),
     path('api/v1/comments/', include('comments.urls')),
     # path('api/v1/ads/', include('ads.urls')),  # Temporarily disabled for deployment
