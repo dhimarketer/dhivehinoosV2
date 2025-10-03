@@ -75,34 +75,38 @@ export const votesAPI = {
   getStatus: (articleId) => api.get(`/comments/vote-status/${articleId}/`),
 };
 
-export const adsAPI = {
-  getActive: () => api.get('/ads/active/'),
-  getAll: () => api.get('/ads/admin/'),
-  getPlacements: () => api.get('/ads/placements/'),
-  create: (data) => {
-    // If data is FormData, don't set Content-Type header
-    if (data instanceof FormData) {
-      return api.post('/ads/admin/', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.post('/ads/admin/', data);
-  },
-  update: (id, data) => {
-    // If data is FormData, don't set Content-Type header
-    if (data instanceof FormData) {
-      return api.put(`/ads/admin/${id}/`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.put(`/ads/admin/${id}/`, data);
-  },
-  delete: (id) => api.delete(`/ads/admin/${id}/`),
-};
+// Ads API temporarily disabled for deployment
+// export const adsAPI = {
+//   getActive: (params = {}) => {
+//     const queryString = new URLSearchParams(params).toString();
+//     return api.get(`/ads/active/${queryString ? '?' + queryString : ''}`);
+//   },
+//   getAll: () => api.get('/ads/admin/'),
+//   getPlacements: () => api.get('/ads/placements/'),
+//   create: (data) => {
+//     // If data is FormData, don't set Content-Type header
+//     if (data instanceof FormData) {
+//       return api.post('/ads/admin/', data, {
+//         headers: {
+//           'Content-Type': 'multipart/form-data',
+//         },
+//       });
+//     }
+//     return api.post('/ads/admin/', data);
+//   },
+//   update: (id, data) => {
+//     // If data is FormData, don't set Content-Type header
+//     if (data instanceof FormData) {
+//       return api.put(`/ads/admin/${id}/`, data, {
+//         headers: {
+//           'Content-Type': 'multipart/form-data',
+//         },
+//       });
+//     }
+//     return api.put(`/ads/admin/${id}/`, data);
+//   },
+//   delete: (id) => api.delete(`/ads/admin/${id}/`),
+// };
 
 export const contactAPI = {
   create: (data) => api.post('/contact/create/', data),

@@ -16,6 +16,7 @@ class AdSerializer(serializers.ModelSerializer):
         queryset=AdPlacement.objects.all(),
         write_only=True,
         required=False,
+        allow_null=True,
         source='placement'
     )
     

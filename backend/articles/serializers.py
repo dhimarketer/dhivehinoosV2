@@ -16,16 +16,21 @@ class ArticleSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug', 'created_at', 'updated_at']
     
     def get_image_url(self, obj):
-        """Return the full image URL"""
-        if obj.image:
-            return obj.image
-        elif obj.image_file:
+        """Return the full image URL with fallback handling"""
+        # Prioritize image_file over image URL for reliability
+        if obj.image_file:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.image_file.url)
             else:
                 # Fallback for when no request context is available
                 return f"http://localhost:8000{obj.image_file.url}"
+        elif obj.image:
+            # Only return external image URL if it's not a placeholder
+            if not obj.image.startswith('https://via.placeholder.com'):
+                return obj.image
+            # If it's a placeholder, return None to trigger fallback
+            return None
         return None
 
 
@@ -43,16 +48,21 @@ class ArticleListSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug', 'created_at']
     
     def get_image_url(self, obj):
-        """Return the full image URL"""
-        if obj.image:
-            return obj.image
-        elif obj.image_file:
+        """Return the full image URL with fallback handling"""
+        # Prioritize image_file over image URL for reliability
+        if obj.image_file:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.image_file.url)
             else:
                 # Fallback for when no request context is available
                 return f"http://localhost:8000{obj.image_file.url}"
+        elif obj.image:
+            # Only return external image URL if it's not a placeholder
+            if not obj.image.startswith('https://via.placeholder.com'):
+                return obj.image
+            # If it's a placeholder, return None to trigger fallback
+            return None
         return None
 
 

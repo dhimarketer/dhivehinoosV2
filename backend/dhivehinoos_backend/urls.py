@@ -30,7 +30,7 @@ def api_info(request):
             'admin': '/admin/',
             'articles': '/api/v1/articles/',
             'comments': '/api/v1/comments/',
-            'ads': '/api/v1/ads/',
+            # 'ads': '/api/v1/ads/',  # Temporarily disabled for deployment
             'contact': '/api/v1/contact/',
         },
         'frontend': 'http://localhost:5173',
@@ -47,7 +47,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/articles/', include('articles.urls')),
     path('api/v1/comments/', include('comments.urls')),
-    path('api/v1/ads/', include('ads.urls')),
+    # path('api/v1/ads/', include('ads.urls')),  # Temporarily disabled for deployment
     path('api/v1/contact/', include('contact.urls')),
 ]
 

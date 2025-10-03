@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Image,
@@ -10,10 +10,30 @@ import {
   Card,
   CardBody,
   CardHeader,
+  Skeleton,
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 
 const StoryCard = ({ article, variant = 'default' }) => {
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  
+  // Enhanced image error handling
+  const handleImageError = (e) => {
+    setImageLoading(false);
+    setImageError(true);
+    console.log('Image failed to load:', article.image_url);
+    
+    // Use a more reliable fallback image
+    const fallbackImages = {
+      featured: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=300&fit=crop&crop=center",
+      default: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=350&h=200&fit=crop&crop=center",
+      compact: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=120&h=100&fit=crop&crop=center"
+    };
+    
+    e.target.src = fallbackImages[variant] || fallbackImages.default;
+  };
+  
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const textColor = useColorModeValue('gray.600', 'gray.300');
@@ -79,22 +99,38 @@ const StoryCard = ({ article, variant = 'default' }) => {
         </CardHeader>
         <CardBody flex="1" display="flex" flexDirection="column">
           {article.image_url && (
-            <Image
-              src={article.image_url}
-              alt={article.title}
-              borderRadius="md"
-              objectFit="cover"
-              h="300px"
-              w="100%"
-              mb={3}
-              className="news-card-image"
-              fallbackSrc="https://via.placeholder.com/800x300/cccccc/666666?text=Featured+Article"
-              onLoad={() => console.log('Featured article image loaded:', article.image_url)}
-              onError={(e) => {
-                console.log('Featured article image failed to load:', article.image_url);
-                e.target.src = "https://via.placeholder.com/800x300/cccccc/666666?text=Featured+Article";
-              }}
-            />
+            <Box position="relative" mb={3}>
+              {imageLoading && (
+                <Skeleton
+                  h="300px"
+                  w="100%"
+                  borderRadius="md"
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  zIndex={1}
+                />
+              )}
+              <Image
+                src={article.image_url}
+                alt={article.title}
+                borderRadius="md"
+                objectFit="cover"
+                h="300px"
+                w="100%"
+                className="news-card-image"
+                fallbackSrc="https://via.placeholder.com/800x300/cccccc/666666?text=Featured+Article"
+                onLoad={() => {
+                  setImageLoading(false);
+                  console.log('Featured article image loaded:', article.image_url);
+                }}
+                onError={handleImageError}
+                style={{ 
+                  opacity: imageLoading ? 0 : 1,
+                  transition: 'opacity 0.3s ease-in-out'
+                }}
+              />
+            </Box>
           )}
           <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
             <Text>{formatDate(article.created_at)}</Text>
@@ -140,9 +176,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
           flexShrink={0}
           className="news-card-image"
           fallbackSrc="https://via.placeholder.com/120x100/cccccc/666666?text=News"
-          onError={(e) => {
-            e.target.src = "https://via.placeholder.com/120x100/cccccc/666666?text=News";
-          }}
+          onError={handleImageError}
         />
         <Box p={4} flex="1" display="flex" flexDirection="column" justifyContent="space-between">
           <Heading
@@ -196,22 +230,38 @@ const StoryCard = ({ article, variant = 'default' }) => {
       </CardHeader>
       <CardBody flex="1" display="flex" flexDirection="column">
         {article.image_url && (
-          <Image
-            src={article.image_url}
-            alt={article.title}
-            borderRadius="md"
-            objectFit="cover"
-            h="200px"
-            w="100%"
-            mb={3}
-            className="news-card-image"
-            fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
-            onLoad={() => console.log('Article image loaded:', article.image_url)}
-            onError={(e) => {
-              console.log('Article image failed to load:', article.image_url);
-              e.target.src = "https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image";
-            }}
-          />
+          <Box position="relative" mb={3}>
+            {imageLoading && (
+              <Skeleton
+                h="200px"
+                w="100%"
+                borderRadius="md"
+                position="absolute"
+                top={0}
+                left={0}
+                zIndex={1}
+              />
+            )}
+            <Image
+              src={article.image_url}
+              alt={article.title}
+              borderRadius="md"
+              objectFit="cover"
+              h="200px"
+              w="100%"
+              className="news-card-image"
+              fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
+              onLoad={() => {
+                setImageLoading(false);
+                console.log('Article image loaded:', article.image_url);
+              }}
+              onError={handleImageError}
+              style={{ 
+                opacity: imageLoading ? 0 : 1,
+                transition: 'opacity 0.3s ease-in-out'
+              }}
+            />
+          </Box>
         )}
         <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
           <Text fontWeight="medium">Read More</Text>

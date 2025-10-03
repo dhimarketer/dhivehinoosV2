@@ -18,29 +18,27 @@ import {
   HStack,
   SimpleGrid,
   Divider,
+  Skeleton,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { articlesAPI, adsAPI } from '../services/api';
+import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
 
 const HomePage = () => {
   const [articles, setArticles] = useState([]);
-  const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [articlesResponse, adsResponse] = await Promise.all([
-          articlesAPI.getPublished(),
-          adsAPI.getActive(),
-        ]);
+        const articlesResponse = await articlesAPI.getPublished();
         console.log('Articles response:', articlesResponse.data);
-        console.log('Ads response:', adsResponse.data);
         setArticles(articlesResponse.data.results || articlesResponse.data);
-        setAds(adsResponse.data.results || adsResponse.data);
+        
+        // Preload images for better first-visit experience
+        preloadImages(articlesResponse.data.results || articlesResponse.data);
       } catch (err) {
         setError('Failed to load articles');
         console.error('Error fetching data:', err);
@@ -52,37 +50,27 @@ const HomePage = () => {
     fetchData();
   }, []);
 
-  const renderAd = (ad, index) => (
-    <Card key={ad.id} className="ad-container" h="450px" w="300px" mx="auto" display="flex" flexDirection="column" overflow="hidden">
-        <CardHeader>
-          <Heading size="sm" mb={2} noOfLines={2}>{ad.title}</Heading>
-        </CardHeader>
-        <CardBody flex="1" display="flex" flexDirection="column">
-          <ChakraImage
-            src={ad.image_url}
-            alt={ad.title}
-            borderRadius="md"
-            objectFit="cover"
-            h="200px"
-            w="100%"
-            mb={3}
-            onClick={ad.destination_url ? () => window.open(ad.destination_url, '_blank') : undefined}
-            cursor={ad.destination_url ? "pointer" : "default"}
-            fallbackSrc="https://via.placeholder.com/300x200/cccccc/666666?text=Ad+Image"
-            onLoad={() => console.log('Ad image loaded:', ad.image_url)}
-            onError={(e) => {
-              console.log('Ad image failed to load:', ad.image_url);
-              e.target.src = "https://via.placeholder.com/300x200/cccccc/666666?text=Ad+Image";
-            }}
-          />
-          {ad.destination_url && (
-            <Text fontSize="sm" color="gray.600" mt="auto">
-              Click to visit: {ad.destination_url}
-            </Text>
-          )}
-        </CardBody>
-    </Card>
-  );
+  // Preload images to improve first-visit experience
+  const preloadImages = (articles) => {
+    const imageUrls = [];
+    
+    // Collect article image URLs
+    articles.forEach(article => {
+      if (article.image_url) {
+        imageUrls.push(article.image_url);
+      }
+    });
+    
+    // Preload images
+    imageUrls.forEach(url => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => console.log('Preloaded image:', url);
+      img.onerror = () => console.log('Failed to preload image:', url);
+    });
+  };
+
+  // Ad rendering functionality temporarily disabled for deployment
 
   if (loading) {
     return (
@@ -139,13 +127,6 @@ const HomePage = () => {
       </Box>
 
       <Container maxW="container.xl" py={8}>
-        {/* Top Banner Ad */}
-        {ads.length > 0 && (
-          <Box mb={8} textAlign="center">
-            {renderAd(ads[0], 0)}
-          </Box>
-        )}
-
         {/* Featured Article Section */}
         {articles.length > 0 && (
           <Box mb={12}>
@@ -167,15 +148,7 @@ const HomePage = () => {
           {/* Responsive Grid Layout */}
           <Grid templateColumns="repeat(auto-fill, 350px)" gap={6} justifyItems="center">
             {articles.slice(1).map((article, index) => (
-              <React.Fragment key={article.id}>
-                <StoryCard article={article} variant="default" />
-                {/* Show ad after every 4th article */}
-                {index > 0 && (index + 1) % 4 === 0 && ads.length > 1 && (
-                  <Box w="100%" maxW="400px">
-                    {renderAd(ads[1] || ads[0], index)}
-                  </Box>
-                )}
-              </React.Fragment>
+              <StoryCard key={article.id} article={article} variant="default" />
             ))}
           </Grid>
         </Box>

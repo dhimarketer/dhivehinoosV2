@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-10-03T09:19:07.111993",
+  "total_suites": 3,
+  "passed_suites": 2,
+  "success_rate": 66.66666666666666,
+  "results": [
+    {
+      "name": "Image Display Tests",
+      "file": "test_image_display.py",
+      "success": true,
+      "stdout": "==================================================\nIMAGE DISPLAY TEST SUITE\n==================================================\nTesting image URL accessibility...\n\u2705 All image URLs are accessible\n\nTesting image file URL accessibility...\n\u2705 All image files are accessible\n\nTesting image data consistency...\n\u274c Found 8 consistency issues:\n  - Article 'Published Article for Filter Test': No image data available\n  - Article 'Test Publish/Unpublish Article': No image data available\n  - Article 'API Test Article': No image data available\n  - Article 'Cultural Heritage Preservation Project Launched': No image data available\n  - Article 'Technology Innovation in Maldivian Education': No image data available\n  - Article 'Environmental Conservation Efforts Gain Momentum': No image data available\n  - Article 'Economic Growth Shows Positive Trends': No image data available\n  - Article 'Breaking: Major Political Development in Maldives': No image data available\n\n==================================================\nRESULTS: 2/3 tests passed\n==================================================\n",
+      "stderr": "",
+      "returncode": 0
+    },
+    {
+      "name": "Layout Consistency Tests",
+      "file": "test_layout_consistency.py",
+      "success": false,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/home/mine/Documents/codingProjects/dhivehinoosV2/test_layout_consistency.py\", line 9, in <module>\n    from selenium import webdriver\nModuleNotFoundError: No module named 'selenium'\n",
+      "returncode": 1
+    },
+    {
+      "name": "Comment Approval Tests",
+      "file": "test_comment_approval.py",
+      "success": true,
+      "stdout": "==================================================\nCOMMENT APPROVAL TEST SUITE\n==================================================\nTesting comment creation...\n\u2705 Comment creation successful\n\nTesting comment retrieval...\n\u2705 Retrieved 1 comments\n\nTesting comment approval workflow...\n\u2705 Comment approval workflow successful\n\nTesting comment rejection...\n\u2705 Comment rejection successful\n\nTesting comment display on frontend...\n\u2139\ufe0f No articles with comments found\n\n==================================================\nRESULTS: 5/5 tests passed\n==================================================\n",
+      "stderr": "",
+      "returncode": 0
+    }
+  ]
+}

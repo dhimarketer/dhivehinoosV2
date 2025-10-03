@@ -13,11 +13,30 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class CommentCreateSerializer(serializers.ModelSerializer):
+    article_slug = serializers.CharField(write_only=True, required=False)
+    article = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    
     class Meta:
         model = Comment
-        fields = ['article', 'author_name', 'content']
+        fields = ['article', 'article_slug', 'author_name', 'content']
+    
+    def validate(self, data):
+        # Ensure either article or article_slug is provided
+        if not data.get('article') and not data.get('article_slug'):
+            raise serializers.ValidationError('Either article or article_slug must be provided')
+        return data
     
     def create(self, validated_data):
+        # Handle article_slug if provided
+        article_slug = validated_data.pop('article_slug', None)
+        if article_slug:
+            from articles.models import Article
+            try:
+                article = Article.objects.get(slug=article_slug, status='published')
+                validated_data['article'] = article
+            except Article.DoesNotExist:
+                raise serializers.ValidationError({'article_slug': 'Article not found or not published'})
+        
         # Get IP address from request
         request = self.context.get('request')
         ip_address = self.get_client_ip(request)

@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'articles',
     'comments',
-    'ads',
+    # 'ads',  # Temporarily disabled for deployment
     'contact',
 ]
 
