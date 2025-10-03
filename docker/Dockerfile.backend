@@ -28,14 +28,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # Create necessary directories and set permissions
-RUN mkdir -p /app/database /app/media/articles /app/media/ads /app/static /app/logs \
+RUN mkdir -p /app/database /app/static /app/logs \
     && chown -R django:django /app
 
-# Switch to non-root user
-USER django
-
-# Collect static files
+# Collect static files as root (will switch to django user later)
 RUN python manage.py collectstatic --noinput
+
+# Create startup script to ensure media directory permissions
+RUN echo '#!/bin/bash\n\
+# Create media directories and fix ownership\n\
+mkdir -p /app/media/articles /app/media/ads\n\
+chown -R django:django /app/media\n\
+chmod -R 777 /app/media\n\
+# Switch to django user and start Django server\n\
+exec su -s /bin/bash django -c "cd /app && python manage.py runserver 0.0.0.0:8000"' > /app/start.sh && chmod +x /app/start.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
@@ -45,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # Run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["/app/start.sh"]

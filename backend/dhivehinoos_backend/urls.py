@@ -18,8 +18,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.generic import RedirectView
+from django.views.static import serve
+import os
 
 def api_info(request):
     """Simple API info endpoint for the root URL"""
@@ -51,7 +53,14 @@ urlpatterns = [
     path('api/v1/contact/', include('contact.urls')),
 ]
 
-# Serve media files in development
+# Serve media files in development and production
+# Always serve media files to ensure images are accessible
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    # Production: Use Django's serve view for media files
+    urlpatterns += [
+        path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
+        path('static/<path:path>', serve, {'document_root': settings.STATIC_ROOT}),
+    ]
