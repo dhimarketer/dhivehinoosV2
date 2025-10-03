@@ -1,0 +1,231 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Link styles */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Image styles */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Times of Addu inspired styles */
+.news-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.news-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.news-card-image {
+  transition: transform 0.3s ease;
+}
+
+.news-card:hover .news-card-image {
+  transform: scale(1.05);
+}
+
+.news-title {
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1a202c;
+  transition: color 0.2s ease;
+}
+
+.news-title:hover {
+  color: #3182ce;
+}
+
+.news-meta {
+  font-size: 0.875rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.news-stats {
+  font-size: 0.875rem;
+  color: #a0aec0;
+}
+
+/* Featured article styles */
+.featured-article {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.featured-article .news-title {
+  color: white;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.featured-article .news-title:hover {
+  color: #e2e8f0;
+}
+
+/* Compact article styles */
+.compact-article {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.compact-article:hover {
+  border-color: #3182ce;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.15);
+}
+
+/* Header styles */
+.site-header {
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.site-title {
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: #2d3748;
+}
+
+/* Section dividers */
+.section-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+  margin: 2rem 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .news-card {
+    margin-bottom: 1rem;
+  }
+  
+  .featured-article .news-title {
+    font-size: 1.5rem;
+  }
+  
+  .site-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Ad styles */
+.ad-container {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.ad-container:hover {
+  transform: scale(1.02);
+}
+
+/* Grid layout improvements */
+.news-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+}
+
+/* Ensure consistent card heights */
+.news-card.default-card {
+  height: 400px;
+}
+
+.news-card.featured-card {
+  height: 450px;
+}
+
+.news-card.compact-card {
+  height: 120px;
+}
+
+/* Image loading states */
+.news-card-image {
+  background-color: #f7fafc;
+  background-image: linear-gradient(45deg, #f7fafc 25%, transparent 25%), 
+                    linear-gradient(-45deg, #f7fafc 25%, transparent 25%), 
+                    linear-gradient(45deg, transparent 75%, #f7fafc 75%), 
+                    linear-gradient(-45deg, transparent 75%, #f7fafc 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
