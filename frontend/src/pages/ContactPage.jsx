@@ -55,7 +55,23 @@ const ContactPage = () => {
     <>
       <Helmet>
         <title>Contact Us - Dhivehinoos.net</title>
-        <meta name="description" content="Get in touch with Dhivehinoos.net" />
+        <meta name="description" content="Get in touch with Dhivehinoos.net. Contact us for questions about our AI-generated fictional content for research purposes." />
+        <meta name="keywords" content="contact, Dhivehinoos, AI content, research, fictional stories" />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Dhivehinoos.net" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://dhivehinoos.net/contact" />
+        <meta property="og:title" content="Contact Us - Dhivehinoos.net" />
+        <meta property="og:description" content="Get in touch with Dhivehinoos.net. Contact us for questions about our AI-generated fictional content for research purposes." />
+        <meta property="og:site_name" content="Dhivehinoos.net" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary" />
+        <meta property="twitter:url" content="https://dhivehinoos.net/contact" />
+        <meta property="twitter:title" content="Contact Us - Dhivehinoos.net" />
+        <meta property="twitter:description" content="Get in touch with Dhivehinoos.net. Contact us for questions about our AI-generated fictional content for research purposes." />
       </Helmet>
 
       <Container maxW="container.md" py={8}>
@@ -69,6 +85,27 @@ const ContactPage = () => {
                 <Text color="gray.600">
                   We'd love to hear from you. Send us a message and we'll respond as soon as possible.
                 </Text>
+              </Box>
+
+              {/* About Section with Disclaimer */}
+              <Box>
+                <Heading size="lg" mb={4} color="blue.600">
+                  About Dhivehinoos.net
+                </Heading>
+                <Card bg="yellow.50" borderColor="yellow.200" borderWidth="1px">
+                  <CardBody>
+                    <Text fontSize="md" color="gray.700" lineHeight="1.6">
+                      <strong>Important Disclaimer:</strong> This website is <strong>NOT a news site</strong> and does not provide factual news reporting. 
+                      All content published on Dhivehinoos.net consists of <strong>AI-generated fictional material created for research purposes only</strong>. 
+                      The articles, stories, and content are generated using artificial intelligence and are intended solely for academic research, 
+                      entertainment, and educational purposes.
+                    </Text>
+                    <Text fontSize="md" color="gray.700" mt={3} lineHeight="1.6">
+                      This disclaimer is provided to comply with government registration guidelines and to ensure transparency about the nature of our content. 
+                      Readers should not rely on any information from this site as factual news or current events reporting.
+                    </Text>
+                  </CardBody>
+                </Card>
               </Box>
 
               {submitStatus === 'success' && (

@@ -45,6 +45,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { articlesAPI, commentsAPI, contactAPI } from '../../services/api';
 import api from '../../services/api';
+import FormattedText from '../../components/FormattedText';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -452,9 +453,14 @@ const AdminDashboard = () => {
                 <Text fontSize="sm" color="gray.600" mb={2}>
                   Created: {new Date(article.created_at).toLocaleDateString()}
                 </Text>
-                <Text fontSize="sm" noOfLines={4} mb={3} flex="1">
-                  {article.content}
-                </Text>
+                <FormattedText 
+                  content={article.content} 
+                  preview={true} 
+                  maxLength={120}
+                  fontSize="sm"
+                  mb={3}
+                  flex="1"
+                />
                 <Button 
                   size="sm" 
                   colorScheme="blue" 
@@ -603,6 +609,13 @@ const AdminDashboard = () => {
                 onClick={() => setActiveTab('contact')}
               >
                 Messages ({contactMessages.length})
+              </Button>
+              <Button
+                colorScheme="purple"
+                onClick={() => navigate('/admin/settings')}
+                leftIcon={<span>⚙️</span>}
+              >
+                Settings
               </Button>
             </HStack>
           </Box>

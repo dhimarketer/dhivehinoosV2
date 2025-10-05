@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.generic import RedirectView
 from django.views.static import serve
+from settings_app import views as settings_views
 import os
 
 def api_info(request):
@@ -34,6 +35,7 @@ def api_info(request):
             'comments': '/api/v1/comments/',
             # 'ads': '/api/v1/ads/',  # Temporarily disabled for deployment
             'contact': '/api/v1/contact/',
+            'settings': '/api/v1/settings/',
         },
         'frontend': 'http://localhost:5173',
         'documentation': 'See PROJECT_PLAN.md for API documentation'
@@ -46,11 +48,14 @@ def favicon_view(request):
 urlpatterns = [
     path('', api_info, name='api-info'),
     path('favicon.ico', favicon_view, name='favicon'),
+    path('sitemap.xml', settings_views.sitemap_view, name='sitemap'),
+    path('robots.txt', settings_views.robots_txt_view, name='robots-txt'),
     # path('admin/', admin.site.urls),  # Disabled to prevent conflict with React admin dashboard
     path('api/v1/articles/', include('articles.urls')),
     path('api/v1/comments/', include('comments.urls')),
     # path('api/v1/ads/', include('ads.urls')),  # Temporarily disabled for deployment
     path('api/v1/contact/', include('contact.urls')),
+    path('api/v1/settings/', include('settings_app.urls')),
 ]
 
 # Serve media files in development and production

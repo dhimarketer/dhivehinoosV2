@@ -13,6 +13,7 @@ import {
   Skeleton,
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
+import FormattedText from './FormattedText';
 
 const StoryCard = ({ article, variant = 'default' }) => {
   const [imageLoading, setImageLoading] = useState(true);
@@ -91,9 +92,22 @@ const StoryCard = ({ article, variant = 'default' }) => {
               <Heading size="lg" mb={2} noOfLines={2} className="news-title">
                 {article.title}
               </Heading>
-              <Badge colorScheme="blue" variant="solid">
-                Featured
-              </Badge>
+              <Flex gap={2} mb={2}>
+                <Badge colorScheme="blue" variant="solid">
+                  Featured
+                </Badge>
+                {article.category && (
+                  <Badge 
+                    colorScheme="gray" 
+                    variant="subtle"
+                    bg={`${article.category.color}20`}
+                    color={article.category.color}
+                    borderColor={article.category.color}
+                  >
+                    {article.category.icon} {article.category.name}
+                  </Badge>
+                )}
+              </Flex>
             </Box>
           </Flex>
         </CardHeader>
@@ -132,6 +146,16 @@ const StoryCard = ({ article, variant = 'default' }) => {
               />
             </Box>
           )}
+          {/* Content Preview */}
+          <FormattedText 
+            content={article.content} 
+            preview={true} 
+            maxLength={100}
+            fontSize="sm"
+            color="gray.600"
+            mb={3}
+            noOfLines={3}
+          />
           <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
             <Text>{formatDate(article.created_at)}</Text>
             <Flex gap={4}>
@@ -224,6 +248,20 @@ const StoryCard = ({ article, variant = 'default' }) => {
         <Heading size="sm" mb={2} noOfLines={2} className="news-title">
           {article.title}
         </Heading>
+        <Flex gap={2} mb={2}>
+          {article.category && (
+            <Badge 
+              colorScheme="gray" 
+              variant="subtle"
+              bg={`${article.category.color}20`}
+              color={article.category.color}
+              borderColor={article.category.color}
+              size="sm"
+            >
+              {article.category.icon} {article.category.name}
+            </Badge>
+          )}
+        </Flex>
         <Text fontSize="sm" color="gray.600">
           {formatDate(article.created_at)}
         </Text>
@@ -263,6 +301,16 @@ const StoryCard = ({ article, variant = 'default' }) => {
             />
           </Box>
         )}
+        {/* Content Preview */}
+        <FormattedText 
+          content={article.content} 
+          preview={true} 
+          maxLength={80}
+          fontSize="sm"
+          color="gray.600"
+          mb={3}
+          noOfLines={2}
+        />
         <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
           <Text fontWeight="medium">Read More</Text>
           <Flex gap={3}>

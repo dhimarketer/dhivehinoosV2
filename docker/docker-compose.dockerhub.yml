@@ -2,7 +2,7 @@ version: '3'
 
 services:
   dhivehinoos_backend:
-    image: dhivehinoos/backend:latest
+    image: dhimarketer/backend:latest
     container_name: dhivehinoos_backend
     restart: unless-stopped
     ports:
@@ -32,7 +32,7 @@ services:
       start_period: 40s
 
   dhivehinoos_frontend:
-    image: dhivehinoos/frontend:latest
+    image: dhimarketer/frontend:latest
     container_name: dhivehinoos_frontend
     restart: unless-stopped
     ports:

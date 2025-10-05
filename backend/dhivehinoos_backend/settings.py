@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'comments',
     # 'ads',  # Temporarily disabled for deployment
     'contact',
+    'settings_app',
 ]
 
 MIDDLEWARE = [

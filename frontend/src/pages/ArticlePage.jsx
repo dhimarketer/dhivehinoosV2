@@ -20,6 +20,7 @@ import {
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { articlesAPI, commentsAPI, votesAPI } from '../services/api';
+import FormattedText from '../components/FormattedText';
 
 const ArticlePage = () => {
   const { slug } = useParams();
@@ -149,11 +150,58 @@ const ArticlePage = () => {
     <>
       <Helmet>
         <title>{article.title} - Dhivehinoos.net</title>
-        <meta name="description" content={article.title} />
-        <meta property="og:title" content={article.title} />
-        <meta property="og:description" content={article.title} />
-        <meta property="og:image" content={article.image_url} />
+        <meta name="description" content={`${article.title} - AI-generated fictional content for research purposes`} />
+        <meta name="keywords" content="Maldives, AI content, fictional stories, research, academic, entertainment" />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Dhivehinoos.net" />
+        
+        {/* Open Graph / Facebook */}
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={`https://dhivehinoos.net/article/${article.slug}`} />
+        <meta property="og:title" content={article.title} />
+        <meta property="og:description" content={`${article.title} - AI-generated fictional content for research purposes`} />
+        <meta property="og:image" content={article.image_url || 'https://dhivehinoos.net/static/favicon.svg'} />
+        <meta property="og:site_name" content="Dhivehinoos.net" />
+        <meta property="article:published_time" content={article.created_at} />
+        <meta property="article:modified_time" content={article.updated_at} />
+        <meta property="article:author" content="Dhivehinoos.net" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={`https://dhivehinoos.net/article/${article.slug}`} />
+        <meta property="twitter:title" content={article.title} />
+        <meta property="twitter:description" content={`${article.title} - AI-generated fictional content for research purposes`} />
+        <meta property="twitter:image" content={article.image_url || 'https://dhivehinoos.net/static/favicon.svg'} />
+        
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": article.title,
+            "description": `${article.title} - AI-generated fictional content for research purposes`,
+            "image": article.image_url || 'https://dhivehinoos.net/static/favicon.svg',
+            "author": {
+              "@type": "Organization",
+              "name": "Dhivehinoos.net"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "Dhivehinoos.net",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://dhivehinoos.net/static/favicon.svg"
+              }
+            },
+            "datePublished": article.created_at,
+            "dateModified": article.updated_at,
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `https://dhivehinoos.net/article/${article.slug}`
+            },
+            "url": `https://dhivehinoos.net/article/${article.slug}`
+          })}
+        </script>
       </Helmet>
 
       <Container maxW="container.lg" py={8}>
@@ -207,14 +255,7 @@ const ArticlePage = () => {
               </HStack>
 
               {/* Article Content */}
-              <Box
-                dangerouslySetInnerHTML={{ __html: article.content }}
-                sx={{
-                  '& p': { mb: 4 },
-                  '& h1, & h2, & h3': { mb: 3, mt: 6 },
-                  '& img': { maxW: '100%', h: 'auto' },
-                }}
-              />
+              <FormattedText content={article.content} />
               
               {/* Back to Home Link */}
               <Box mt={8} textAlign="center">

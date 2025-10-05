@@ -34,7 +34,10 @@ api.interceptors.response.use(
 );
 
 export const articlesAPI = {
-  getPublished: () => api.get('/articles/published/'),
+  getPublished: (category = null) => {
+    const params = category ? `?category=${category}` : '';
+    return api.get(`/articles/published/${params}`);
+  },
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),
   getAll: (params = '') => {
     const baseUrl = '/articles/admin/';
@@ -66,6 +69,12 @@ export const articlesAPI = {
     return api.put(`/articles/admin/${id}/`, data);
   },
   delete: (id) => api.delete(`/articles/admin/${id}/`),
+};
+
+export const categoriesAPI = {
+  getAll: () => api.get('/articles/categories/'),
+  getBySlug: (slug) => api.get(`/articles/categories/${slug}/`),
+  categorizeText: (text, limit = 3) => api.post('/articles/categorize/', { text, limit }),
 };
 
 export const commentsAPI = {
@@ -124,6 +133,12 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login/', credentials),
   logout: () => api.post('/auth/logout/'),
   getCurrentUser: () => api.get('/auth/user/'),
+};
+
+export const settingsAPI = {
+  get: () => api.get('/settings/admin/'),
+  update: (data) => api.put('/settings/admin/', data),
+  getPublic: () => api.get('/settings/public/'),
 };
 
 export default api;

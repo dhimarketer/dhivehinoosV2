@@ -12,8 +12,8 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import Article
-from .serializers import ArticleSerializer, ArticleListSerializer, ArticleIngestSerializer
+from .models import Article, Category
+from .serializers import ArticleSerializer, ArticleListSerializer, ArticleIngestSerializer, CategorySerializer
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -36,6 +36,14 @@ class PublishedArticleListView(ListAPIView):
     queryset = Article.objects.filter(status='published')
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        """Filter articles by category if specified"""
+        queryset = Article.objects.filter(status='published').select_related('category')
+        category_slug = self.request.query_params.get('category', None)
+        if category_slug:
+            queryset = queryset.filter(category__slug=category_slug)
+        return queryset
     
     def get_serializer_context(self):
         """Pass request context to serializer for absolute URL generation"""
@@ -158,5 +166,53 @@ def ingest_article(request):
         print(f"Unexpected error in ingest_article: {str(e)}")
         return Response(
             {'error': 'Internal server error', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+class CategoryListView(ListAPIView):
+    """Public API for listing active categories"""
+    queryset = Category.objects.filter(is_active=True)
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class CategoryDetailView(RetrieveAPIView):
+    """Public API for retrieving a category"""
+    queryset = Category.objects.filter(is_active=True)
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'slug'
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def categorize_text(request):
+    """API endpoint to get category suggestions for text"""
+    text = request.data.get('text', '')
+    limit = request.data.get('limit', 3)
+    
+    if not text:
+        return Response(
+            {'error': 'Text is required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        from .categorization_service import get_category_suggestions
+        suggestions = get_category_suggestions(text, limit)
+        
+        result = []
+        for category, score in suggestions:
+            result.append({
+                'category': CategorySerializer(category).data,
+                'confidence_score': round(score, 2)
+            })
+        
+        return Response({'suggestions': result})
+    except Exception as e:
+        return Response(
+            {'error': 'Categorization failed', 'details': str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

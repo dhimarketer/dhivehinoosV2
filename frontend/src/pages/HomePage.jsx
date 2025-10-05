@@ -21,19 +21,23 @@ import {
   Skeleton,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
+import CategoryNavigation from '../components/CategoryNavigation';
 
 const HomePage = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchParams] = useSearchParams();
+  const selectedCategory = searchParams.get('category');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const articlesResponse = await articlesAPI.getPublished();
+        setLoading(true);
+        const articlesResponse = await articlesAPI.getPublished(selectedCategory);
         console.log('Articles response:', articlesResponse.data);
         setArticles(articlesResponse.data.results || articlesResponse.data);
         
@@ -48,7 +52,7 @@ const HomePage = () => {
     };
 
     fetchData();
-  }, []);
+  }, [selectedCategory]);
 
   // Preload images to improve first-visit experience
   const preloadImages = (articles) => {
@@ -97,11 +101,40 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>Dhivehinoos.net - Maldivian News</title>
-        <meta name="description" content="Latest news and articles from the Maldives" />
-        <meta property="og:title" content="Dhivehinoos.net - Maldivian News" />
-        <meta property="og:description" content="Latest news and articles from the Maldives" />
+        <title>Dhivehinoos.net - AI-Generated Fictional Content for Research</title>
+        <meta name="description" content="AI-generated fictional content for research purposes. Not a news site - all content is fictional material created for academic research and entertainment." />
+        <meta name="keywords" content="Maldives, AI content, fictional stories, research, academic, entertainment" />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Dhivehinoos.net" />
+        
+        {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://dhivehinoos.net/" />
+        <meta property="og:title" content="Dhivehinoos.net - AI-Generated Fictional Content" />
+        <meta property="og:description" content="AI-generated fictional content for research purposes. Not a news site - all content is fictional material created for academic research and entertainment." />
+        <meta property="og:site_name" content="Dhivehinoos.net" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://dhivehinoos.net/" />
+        <meta property="twitter:title" content="Dhivehinoos.net - AI-Generated Fictional Content" />
+        <meta property="twitter:description" content="AI-generated fictional content for research purposes. Not a news site - all content is fictional material created for academic research and entertainment." />
+        
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Dhivehinoos.net",
+            "description": "AI-generated fictional content for research purposes",
+            "url": "https://dhivehinoos.net/",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://dhivehinoos.net/?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          })}
+        </script>
       </Helmet>
 
       {/* Navigation Header */}
@@ -127,11 +160,14 @@ const HomePage = () => {
       </Box>
 
       <Container maxW="container.xl" py={8}>
+        {/* Category Navigation */}
+        <CategoryNavigation selectedCategory={selectedCategory} />
+
         {/* Featured Article Section */}
         {articles.length > 0 && (
           <Box mb={12}>
             <Heading size="lg" mb={6} color="gray.800" textAlign="center">
-              Latest News
+              {selectedCategory ? `Latest ${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} News` : 'Latest News'}
             </Heading>
             <StoryCard article={articles[0]} variant="featured" />
           </Box>
