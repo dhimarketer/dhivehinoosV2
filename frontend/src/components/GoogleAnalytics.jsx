@@ -5,12 +5,6 @@ const GoogleAnalytics = ({ trackingId }) => {
   useEffect(() => {
     if (!trackingId) return;
 
-    // Load Google Analytics script
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${trackingId}`;
-    document.head.appendChild(script);
-
     // Initialize gtag
     window.dataLayer = window.dataLayer || [];
     function gtag() {
@@ -18,17 +12,30 @@ const GoogleAnalytics = ({ trackingId }) => {
     }
     window.gtag = gtag;
     gtag('js', new Date());
+    
+    // Configure GA4 with proper settings
     gtag('config', trackingId, {
       page_title: document.title,
       page_location: window.location.href,
+      send_page_view: true,
+      anonymize_ip: true,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
     });
 
+    // Track page view on route changes
+    const handleRouteChange = () => {
+      gtag('config', trackingId, {
+        page_title: document.title,
+        page_location: window.location.href,
+      });
+    };
+
+    // Listen for route changes (for SPA)
+    window.addEventListener('popstate', handleRouteChange);
+    
     return () => {
-      // Cleanup: remove script when component unmounts
-      const existingScript = document.querySelector(`script[src*="${trackingId}"]`);
-      if (existingScript) {
-        existingScript.remove();
-      }
+      window.removeEventListener('popstate', handleRouteChange);
     };
   }, [trackingId]);
 
@@ -48,6 +55,10 @@ const GoogleAnalytics = ({ trackingId }) => {
           gtag('config', '${trackingId}', {
             page_title: document.title,
             page_location: window.location.href,
+            send_page_view: true,
+            anonymize_ip: true,
+            allow_google_signals: false,
+            allow_ad_personalization_signals: false,
           });
         `}
       </script>

@@ -270,11 +270,15 @@ const SettingsPage = () => {
                   <Input
                     value={settings.google_analytics_id || ''}
                     onChange={(e) => handleChange('google_analytics_id', e.target.value)}
-                    placeholder="G-XXXXXXXXXX"
+                    placeholder="G-MLXXKKVFXQ"
                   />
                   <Text fontSize="sm" color="gray.600" mt={2}>
-                    Enter your Google Analytics 4 tracking ID (e.g., G-XXXXXXXXXX). 
+                    Enter your Google Analytics 4 tracking ID (e.g., G-MLXXKKVFXQ). 
+                    This should be your Measurement ID from Google Analytics 4.
                     Leave empty to disable analytics tracking.
+                  </Text>
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    Format: G- followed by 8-10 alphanumeric characters
                   </Text>
                 </FormControl>
               </VStack>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
 import { HelmetProvider } from 'react-helmet-async';
 import theme from './theme';
@@ -11,26 +11,33 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import SettingsPage from './pages/admin/SettingsPage';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import { useSiteSettings } from './hooks/useSiteSettings';
+import { trackPageView } from './utils/analytics';
 
 function AppContent() {
   const { settings } = useSiteSettings();
+  const location = useLocation();
+
+  // Track page views on route changes
+  useEffect(() => {
+    if (settings.google_analytics_id) {
+      trackPageView(location.pathname, document.title);
+    }
+  }, [location, settings.google_analytics_id]);
 
   return (
     <>
       <GoogleAnalytics trackingId={settings.google_analytics_id} />
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/article/:slug" element={<ArticlePage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
-          <Route path="/admin/*" element={<AdminDashboard />} />
-        </Routes>
-      </Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/article/:slug" element={<ArticlePage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/settings" element={<SettingsPage />} />
+        <Route path="/admin/*" element={<AdminDashboard />} />
+      </Routes>
     </>
   );
 }
@@ -39,7 +46,9 @@ function App() {
   return (
     <ChakraProvider theme={theme}>
       <HelmetProvider>
-        <AppContent />
+        <Router>
+          <AppContent />
+        </Router>
       </HelmetProvider>
     </ChakraProvider>
   );
