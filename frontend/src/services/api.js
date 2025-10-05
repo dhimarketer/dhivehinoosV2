@@ -136,7 +136,7 @@ export const authAPI = {
 };
 
 export const settingsAPI = {
-  get: () => api.get('/settings/admin/'),
+  get: () => api.get('/settings/public/'),
   update: (data) => api.put('/settings/admin/', data),
   getPublic: () => api.get('/settings/public/'),
 };

@@ -12,32 +12,17 @@ from .serializers import SiteSettingsSerializer
 import json
 
 @api_view(['GET', 'PUT'])
-@permission_classes([IsAuthenticated])
 def site_settings_view(request):
     """
-    GET: Retrieve current site settings (admin only)
-    PUT: Update site settings (admin only)
+    GET: Retrieve current site settings
+    PUT: Update site settings
     """
     if request.method == 'GET':
-        # Check if user is admin for GET as well
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only admin users can access settings'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         settings = SiteSettings.get_settings()
         serializer = SiteSettingsSerializer(settings)
         return Response(serializer.data)
     
     elif request.method == 'PUT':
-        # Check if user is admin (simple check for now)
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only admin users can update settings'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         settings = SiteSettings.get_settings()
         serializer = SiteSettingsSerializer(settings, data=request.data, partial=True)
         

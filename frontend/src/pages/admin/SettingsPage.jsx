@@ -70,6 +70,20 @@ const SettingsPage = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
+      // Check if user is authenticated
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      if (!isAuthenticated) {
+        toast({
+          title: 'Authentication required',
+          description: 'Please log in to save settings',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        navigate('/admin/login');
+        return;
+      }
+      
       await settingsAPI.update(settings);
       toast({
         title: 'Settings saved',
@@ -80,13 +94,24 @@ const SettingsPage = () => {
       });
     } catch (err) {
       console.error('Error saving settings:', err);
-      toast({
-        title: 'Error saving settings',
-        description: err.response?.data?.error || 'Failed to save settings',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (err.response?.status === 403) {
+        toast({
+          title: 'Access denied',
+          description: 'Please log in as admin to save settings',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        navigate('/admin/login');
+      } else {
+        toast({
+          title: 'Error saving settings',
+          description: err.response?.data?.error || 'Failed to save settings',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     } finally {
       setSaving(false);
     }
