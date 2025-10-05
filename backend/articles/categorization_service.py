@@ -206,3 +206,4 @@ def get_category_suggestions(text: str, limit: int = 3) -> List[Tuple[Category, 
     Useful for admin interfaces or API endpoints
     """
     return categorization_service.get_category_suggestions(text, limit)
+

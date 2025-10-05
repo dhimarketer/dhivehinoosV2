@@ -4,16 +4,24 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.db import models
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from .models import Article, Category
 from .serializers import ArticleSerializer, ArticleListSerializer, ArticleIngestSerializer, CategorySerializer
+
+
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -22,13 +30,41 @@ class ArticleViewSet(ModelViewSet):
     queryset = Article.objects.all()
     serializer_class = ArticleSerializer
     permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
         queryset = Article.objects.all()
+        
+        # Status filter
         status_filter = self.request.query_params.get('status', None)
         if status_filter:
             queryset = queryset.filter(status=status_filter)
+        
+        # Search filter
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search_query) |
+                models.Q(content__icontains=search_query) |
+                models.Q(category__name__icontains=search_query)
+            )
+        
         return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """Custom destroy method with logging"""
+        instance = self.get_object()
+        article_id = instance.id
+        article_title = instance.title
+        
+        print(f"🗑️  Deleting article: ID={article_id}, Title='{article_title}'")
+        
+        # Perform the actual deletion
+        self.perform_destroy(instance)
+        
+        print(f"✅ Article deleted successfully: ID={article_id}")
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PublishedArticleListView(ListAPIView):

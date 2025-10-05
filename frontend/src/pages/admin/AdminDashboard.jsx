@@ -40,6 +40,10 @@ import {
   Td,
   useToast,
   Image as ChakraImage,
+  Checkbox,
+  CheckboxGroup,
+  Stack,
+  Divider,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -57,7 +61,19 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [articleFilter, setArticleFilter] = useState('all'); // 'all', 'published', 'draft'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
+  const [selectedArticles, setSelectedArticles] = useState([]);
+  const [bulkAction, setBulkAction] = useState('');
   const [editingArticle, setEditingArticle] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 20,
+    totalPages: 1,
+    totalCount: 0,
+    hasNext: false,
+    hasPrevious: false
+  });
   const [articleForm, setArticleForm] = useState({
     title: '',
     content: '',
@@ -69,53 +85,50 @@ const AdminDashboard = () => {
   const { isOpen: isArticleModalOpen, onOpen: onArticleModalOpen, onClose: onArticleModalClose } = useDisclosure();
 
   useEffect(() => {
-    fetchData();
+    fetchData(1, 20); // Start with page 1, page size 20
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (page = pagination.currentPage, pageSize = pagination.pageSize) => {
     setLoading(true);
     try {
-      // Fetch all articles from admin API with pagination
-      const fetchAllArticles = async () => {
-        try {
-          console.log('Fetching all articles from admin API...');
-          let allArticles = [];
-          let page = 1;
-          let hasNext = true;
-          
-          while (hasNext && page <= 10) { // Safety limit
-            try {
-              const response = await api.get(`/articles/admin/?page=${page}&page_size=100&t=${Date.now()}`);
-              console.log(`Admin API response (page ${page}):`, response.data);
-              
-              if (response.data.results) {
-                allArticles = [...allArticles, ...response.data.results];
-                hasNext = response.data.next !== null;
-                page++;
-              } else {
-                hasNext = false;
-              }
-            } catch (pageError) {
-              console.warn(`Error fetching page ${page}, stopping pagination:`, pageError.message);
-              hasNext = false;
-            }
-          }
-          
-          console.log(`Final result: ${allArticles.length} articles fetched`);
-          return allArticles;
-        } catch (error) {
-          console.error('Error fetching articles from admin API:', error);
-          return [];
-        }
-      };
-
-      const [articles, commentsRes, contactRes] = await Promise.all([
-        fetchAllArticles(),
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        page_size: pageSize.toString(),
+        t: Date.now().toString()
+      });
+      
+      // Add status filter if not 'all'
+      if (articleFilter !== 'all') {
+        params.append('status', articleFilter);
+      }
+      
+      // Add search query if provided
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+      
+      console.log('Fetching articles with params:', params.toString());
+      
+      const [articlesRes, commentsRes, contactRes] = await Promise.all([
+        api.get(`/articles/admin/?${params.toString()}`),
         commentsAPI.getAll ? commentsAPI.getAll() : { data: { results: [] } },
         contactAPI.getAll(),
       ]);
       
-      setArticles(articles);
+      console.log('Articles API response:', articlesRes.data);
+      
+      // Update articles and pagination info
+      setArticles(articlesRes.data.results || []);
+      setPagination({
+        currentPage: articlesRes.data.current_page || page,
+        pageSize: articlesRes.data.page_size || pageSize,
+        totalPages: articlesRes.data.total_pages || 1,
+        totalCount: articlesRes.data.count || 0,
+        hasNext: articlesRes.data.next !== null,
+        hasPrevious: articlesRes.data.previous !== null
+      });
+      
       setComments(commentsRes.data.results || commentsRes.data || []);
       setContactMessages(contactRes.data.results || contactRes.data || []);
       
@@ -152,16 +165,29 @@ const AdminDashboard = () => {
     navigate('/admin/login');
   };
 
-  // Filter functions
+  // Filter functions - now handled by backend API
   const getFilteredArticles = () => {
-    switch (articleFilter) {
-      case 'published':
-        return articles.filter(article => article.status === 'published');
-      case 'draft':
-        return articles.filter(article => article.status === 'draft');
-      default:
-        return articles;
-    }
+    return articles; // Backend handles filtering
+  };
+
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    fetchData(newPage, pagination.pageSize);
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    fetchData(1, newPageSize);
+  };
+
+  // Filter and search handlers that trigger API refresh
+  const handleFilterChange = (newFilter) => {
+    setArticleFilter(newFilter);
+    fetchData(1, pagination.pageSize);
+  };
+
+  const handleSearchChange = (newQuery) => {
+    setSearchQuery(newQuery);
+    fetchData(1, pagination.pageSize);
   };
 
   // Ad filtering functionality temporarily disabled for deployment
@@ -252,7 +278,19 @@ const AdminDashboard = () => {
   const handleToggleArticleStatus = async (article) => {
     try {
       const newStatus = article.status === 'published' ? 'draft' : 'published';
-      await articlesAPI.update(article.id, { ...article, status: newStatus });
+      // Only send the fields that are allowed to be updated
+      const updateData = {
+        title: article.title,
+        content: article.content,
+        status: newStatus
+      };
+      
+      // Only include image if it exists and is not null
+      if (article.image) {
+        updateData.image = article.image;
+      }
+      
+      await articlesAPI.update(article.id, updateData);
       
       toast({
         title: `Article ${newStatus === 'published' ? 'published' : 'unpublished'}`,
@@ -275,20 +313,156 @@ const AdminDashboard = () => {
   const handleDeleteArticle = async (id) => {
     if (window.confirm('Are you sure you want to delete this article?')) {
       try {
-        await articlesAPI.delete(id);
-        await fetchData();
+        console.log('Deleting article with ID:', id);
+        const response = await articlesAPI.delete(id);
+        console.log('Delete response:', response);
+        
+        // Remove the article from local state immediately for better UX
+        setArticles(prevArticles => prevArticles.filter(article => article.id !== id));
+        
         toast({
           title: 'Article deleted',
           status: 'success',
           duration: 2000,
         });
+        
+        // Refresh data to ensure consistency
+        await fetchData();
       } catch (error) {
+        console.error('Error deleting article:', error);
         toast({
           title: 'Error deleting article',
+          description: error.response?.data?.detail || 'Failed to delete article',
           status: 'error',
           duration: 3000,
         });
       }
+    }
+  };
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    const filteredArticles = getFilteredArticles();
+    if (selectedArticles.length === filteredArticles.length) {
+      setSelectedArticles([]);
+    } else {
+      setSelectedArticles(filteredArticles.map(article => article.id));
+    }
+  };
+
+  const handleSelectArticle = (articleId) => {
+    setSelectedArticles(prev => 
+      prev.includes(articleId) 
+        ? prev.filter(id => id !== articleId)
+        : [...prev, articleId]
+    );
+  };
+
+  const handleBulkAction = async () => {
+    if (selectedArticles.length === 0) {
+      toast({
+        title: 'No articles selected',
+        description: 'Please select articles to perform bulk actions',
+        status: 'warning',
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (!bulkAction) {
+      toast({
+        title: 'No action selected',
+        description: 'Please select a bulk action to perform',
+        status: 'warning',
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const selectedArticlesData = articles.filter(article => selectedArticles.includes(article.id));
+      
+      if (bulkAction === 'publish') {
+        for (const article of selectedArticlesData) {
+          if (article.status !== 'published') {
+            const updateData = {
+              title: article.title,
+              content: article.content,
+              status: 'published'
+            };
+            if (article.image) {
+              updateData.image = article.image;
+            }
+            await articlesAPI.update(article.id, updateData);
+          }
+        }
+        toast({
+          title: 'Articles published',
+          description: `${selectedArticles.length} articles have been published`,
+          status: 'success',
+          duration: 3000,
+        });
+      } else if (bulkAction === 'unpublish') {
+        for (const article of selectedArticlesData) {
+          if (article.status !== 'draft') {
+            const updateData = {
+              title: article.title,
+              content: article.content,
+              status: 'draft'
+            };
+            if (article.image) {
+              updateData.image = article.image;
+            }
+            await articlesAPI.update(article.id, updateData);
+          }
+        }
+        toast({
+          title: 'Articles unpublished',
+          description: `${selectedArticles.length} articles have been unpublished`,
+          status: 'success',
+          duration: 3000,
+        });
+      } else if (bulkAction === 'delete') {
+        if (window.confirm(`Are you sure you want to delete ${selectedArticles.length} articles? This action cannot be undone.`)) {
+          console.log('Bulk deleting articles:', selectedArticles);
+          
+          // Delete articles one by one
+          for (const articleId of selectedArticles) {
+            try {
+              await articlesAPI.delete(articleId);
+              console.log('Successfully deleted article:', articleId);
+            } catch (error) {
+              console.error('Error deleting article:', articleId, error);
+            }
+          }
+          
+          // Remove deleted articles from local state immediately
+          setArticles(prevArticles => 
+            prevArticles.filter(article => !selectedArticles.includes(article.id))
+          );
+          
+          toast({
+            title: 'Articles deleted',
+            description: `${selectedArticles.length} articles have been deleted`,
+            status: 'success',
+            duration: 3000,
+          });
+        } else {
+          return;
+        }
+      }
+
+      setSelectedArticles([]);
+      setBulkAction('');
+      await fetchData();
+    } catch (error) {
+      console.error('Error performing bulk action:', error);
+      toast({
+        title: 'Error performing bulk action',
+        description: error.response?.data?.detail || 'Failed to perform bulk action',
+        status: 'error',
+        duration: 3000,
+      });
     }
   };
 
@@ -340,54 +514,169 @@ const AdminDashboard = () => {
     <Box>
       <Flex justify="space-between" align="center" mb={6}>
         <Heading size="lg">Article Management</Heading>
-        <Button colorScheme="blue" onClick={handleCreateArticle}>
-          Create New Article
-        </Button>
-      </Flex>
-      
-      {/* Article Filter */}
-      <Box mb={6}>
-        <HStack spacing={4} align="center">
-          <Text fontWeight="semibold">Filter:</Text>
-          <Button
-            size="sm"
-            colorScheme={articleFilter === 'all' ? 'blue' : 'gray'}
-            variant={articleFilter === 'all' ? 'solid' : 'outline'}
-            onClick={() => setArticleFilter('all')}
-            leftIcon={<span>📋</span>}
-          >
-            All ({articles.length})
-          </Button>
-          <Button
-            size="sm"
-            colorScheme={articleFilter === 'published' ? 'green' : 'gray'}
-            variant={articleFilter === 'published' ? 'solid' : 'outline'}
-            onClick={() => setArticleFilter('published')}
-            leftIcon={<span>📰</span>}
-          >
-            Published ({articles.filter(a => a.status === 'published').length})
-          </Button>
-          <Button
-            size="sm"
-            colorScheme={articleFilter === 'draft' ? 'yellow' : 'gray'}
-            variant={articleFilter === 'draft' ? 'solid' : 'outline'}
-            onClick={() => setArticleFilter('draft')}
-            leftIcon={<span>📝</span>}
-          >
-            Draft ({articles.filter(a => a.status === 'draft').length})
-          </Button>
-          {articleFilter !== 'all' && (
+        <HStack spacing={4}>
+          {/* View Mode Toggle */}
+          <HStack spacing={2}>
+            <Text fontSize="sm" fontWeight="medium">View:</Text>
             <Button
               size="sm"
-              variant="ghost"
-              colorScheme="gray"
-              onClick={() => setArticleFilter('all')}
+              colorScheme={viewMode === 'cards' ? 'blue' : 'gray'}
+              variant={viewMode === 'cards' ? 'solid' : 'outline'}
+              onClick={() => setViewMode('cards')}
+              leftIcon={<span>📋</span>}
             >
-              Clear Filter
+              Cards
             </Button>
-          )}
+            <Button
+              size="sm"
+              colorScheme={viewMode === 'list' ? 'blue' : 'gray'}
+              variant={viewMode === 'list' ? 'solid' : 'outline'}
+              onClick={() => setViewMode('list')}
+              leftIcon={<span>📝</span>}
+            >
+              List
+            </Button>
+          </HStack>
+          <Button colorScheme="blue" onClick={handleCreateArticle}>
+            Create New Article
+          </Button>
         </HStack>
+      </Flex>
+      
+      {/* Article Filter and Search */}
+      <Box mb={6}>
+        <VStack spacing={4} align="stretch">
+          {/* Filter Buttons */}
+          <HStack spacing={4} align="center">
+            <Text fontWeight="semibold">Filter:</Text>
+            <Button
+              size="sm"
+              colorScheme={articleFilter === 'all' ? 'blue' : 'gray'}
+              variant={articleFilter === 'all' ? 'solid' : 'outline'}
+              onClick={() => handleFilterChange('all')}
+              leftIcon={<span>📋</span>}
+            >
+              All ({pagination.totalCount})
+            </Button>
+            <Button
+              size="sm"
+              colorScheme={articleFilter === 'published' ? 'green' : 'gray'}
+              variant={articleFilter === 'published' ? 'solid' : 'outline'}
+              onClick={() => handleFilterChange('published')}
+              leftIcon={<span>📰</span>}
+            >
+              Published
+            </Button>
+            <Button
+              size="sm"
+              colorScheme={articleFilter === 'draft' ? 'yellow' : 'gray'}
+              variant={articleFilter === 'draft' ? 'solid' : 'outline'}
+              onClick={() => handleFilterChange('draft')}
+              leftIcon={<span>📝</span>}
+            >
+              Draft
+            </Button>
+            {articleFilter !== 'all' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                colorScheme="gray"
+                onClick={() => handleFilterChange('all')}
+              >
+                Clear Filter
+              </Button>
+            )}
+          </HStack>
+          
+          {/* Search Box */}
+          <HStack spacing={4} align="center">
+            <Text fontWeight="semibold" minW="60px">Search:</Text>
+            <Input
+              placeholder="Search articles by title, content, or category..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              size="md"
+              maxW="400px"
+            />
+            {searchQuery && (
+              <Button
+                size="sm"
+                variant="ghost"
+                colorScheme="gray"
+                onClick={() => handleSearchChange('')}
+              >
+                Clear Search
+              </Button>
+            )}
+            {searchQuery && (
+              <Text fontSize="sm" color="gray.600">
+                {pagination.totalCount} result{pagination.totalCount !== 1 ? 's' : ''} found
+              </Text>
+            )}
+          </HStack>
+        </VStack>
       </Box>
+
+      {/* Bulk Operations Controls */}
+      {viewMode === 'list' && getFilteredArticles().length > 0 && (
+        <Box mb={6} p={4} bg="gray.50" borderRadius="md">
+          <Flex justify="space-between" align="center">
+            <HStack spacing={4}>
+              <Checkbox
+                isChecked={selectedArticles.length === getFilteredArticles().length && getFilteredArticles().length > 0}
+                isIndeterminate={selectedArticles.length > 0 && selectedArticles.length < getFilteredArticles().length}
+                onChange={handleSelectAll}
+              >
+                <Text fontSize="sm" fontWeight="medium">
+                  Select All ({selectedArticles.length}/{getFilteredArticles().length})
+                </Text>
+              </Checkbox>
+              {selectedArticles.length > 0 && (
+                <>
+                  <Divider orientation="vertical" height="20px" />
+                  <Text fontSize="sm" color="blue.600" fontWeight="medium">
+                    {selectedArticles.length} selected
+                  </Text>
+                </>
+              )}
+            </HStack>
+            
+            {selectedArticles.length > 0 && (
+              <HStack spacing={3}>
+                <Select
+                  placeholder="Bulk Actions"
+                  value={bulkAction}
+                  onChange={(e) => setBulkAction(e.target.value)}
+                  size="sm"
+                  width="150px"
+                >
+                  <option value="publish">📰 Publish</option>
+                  <option value="unpublish">📝 Unpublish</option>
+                  <option value="delete">🗑️ Delete</option>
+                </Select>
+                <Button
+                  size="sm"
+                  colorScheme="blue"
+                  onClick={handleBulkAction}
+                  isDisabled={!bulkAction}
+                >
+                  Apply
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedArticles([]);
+                    setBulkAction('');
+                  }}
+                >
+                  Clear
+                </Button>
+              </HStack>
+            )}
+          </Flex>
+        </Box>
+      )}
       
       {loading ? (
         <Box textAlign="center" py={8}>
@@ -396,12 +685,25 @@ const AdminDashboard = () => {
       ) : getFilteredArticles().length === 0 ? (
         <Box textAlign="center" py={8}>
           <Text fontSize="lg" color="gray.500">
-            {articleFilter === 'all' ? 'No articles found' : 
-             articleFilter === 'published' ? 'No published articles found' : 
-             'No draft articles found'}
+            {searchQuery ? 
+              `No articles found matching "${searchQuery}"` :
+              articleFilter === 'all' ? 'No articles found' : 
+              articleFilter === 'published' ? 'No published articles found' : 
+              'No draft articles found'}
           </Text>
+          {searchQuery && (
+            <Button
+              size="sm"
+              variant="outline"
+              colorScheme="blue"
+              onClick={() => handleSearchChange('')}
+              mt={2}
+            >
+              Clear Search
+            </Button>
+          )}
         </Box>
-      ) : (
+      ) : viewMode === 'cards' ? (
         <Grid templateColumns="repeat(auto-fill, 350px)" gap={6}>
           {getFilteredArticles().map((article) => (
             <Card key={article.id} h="500px" w="350px" display="flex" flexDirection="column" overflow="hidden">
@@ -475,6 +777,172 @@ const AdminDashboard = () => {
             </Card>
           ))}
         </Grid>
+      ) : (
+        // List View
+        <Box>
+          <Table variant="simple" size="sm">
+            <Thead>
+              <Tr>
+                <Th width="50px">
+                  <Checkbox
+                    isChecked={selectedArticles.length === getFilteredArticles().length && getFilteredArticles().length > 0}
+                    isIndeterminate={selectedArticles.length > 0 && selectedArticles.length < getFilteredArticles().length}
+                    onChange={handleSelectAll}
+                  />
+                </Th>
+                <Th>Title</Th>
+                <Th>Status</Th>
+                <Th>Created</Th>
+                <Th>Updated</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {getFilteredArticles().map((article) => (
+                <Tr key={article.id} _hover={{ bg: 'gray.50' }}>
+                  <Td>
+                    <Checkbox
+                      isChecked={selectedArticles.includes(article.id)}
+                      onChange={() => handleSelectArticle(article.id)}
+                    />
+                  </Td>
+                  <Td>
+                    <Box>
+                      <Text fontWeight="medium" fontSize="sm" noOfLines={1}>
+                        {article.title}
+                      </Text>
+                      {article.image_url && (
+                        <ChakraImage
+                          src={article.image_url}
+                          alt={article.title}
+                          borderRadius="sm"
+                          objectFit="cover"
+                          h="40px"
+                          w="60px"
+                          mt={1}
+                          fallbackSrc="https://via.placeholder.com/60x40/cccccc/666666?text=No+Image"
+                        />
+                      )}
+                    </Box>
+                  </Td>
+                  <Td>
+                    <Badge colorScheme={article.status === 'published' ? 'green' : 'yellow'} variant="solid" size="sm">
+                      {article.status === 'published' ? '📰 Published' : '📝 Draft'}
+                    </Badge>
+                  </Td>
+                  <Td fontSize="sm" color="gray.600">
+                    {new Date(article.created_at).toLocaleDateString()}
+                  </Td>
+                  <Td fontSize="sm" color="gray.600">
+                    {new Date(article.updated_at).toLocaleDateString()}
+                  </Td>
+                  <Td>
+                    <HStack spacing={1}>
+                      <IconButton
+                        size="xs"
+                        icon="✏️"
+                        aria-label="Edit article"
+                        onClick={() => handleEditArticle(article)}
+                      />
+                      <IconButton
+                        size="xs"
+                        icon={article.status === 'published' ? '👁️‍🗨️' : '👁️'}
+                        aria-label={article.status === 'published' ? 'Unpublish article' : 'Publish article'}
+                        colorScheme={article.status === 'published' ? 'orange' : 'green'}
+                        onClick={() => handleToggleArticleStatus(article)}
+                      />
+                      <IconButton
+                        size="xs"
+                        icon="🗑️"
+                        aria-label="Delete article"
+                        colorScheme="red"
+                        onClick={() => handleDeleteArticle(article.id)}
+                      />
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </Box>
+      )}
+      
+      {/* Pagination Controls */}
+      {getFilteredArticles().length > 0 && (
+        <Box mt={8} p={4} bg="gray.50" borderRadius="md">
+          <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
+            {/* Page Size Selector */}
+            <HStack spacing={3}>
+              <Text fontSize="sm" fontWeight="medium">Show:</Text>
+              <Select
+                size="sm"
+                width="80px"
+                value={pagination.pageSize}
+                onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </Select>
+              <Text fontSize="sm" color="gray.600">per page</Text>
+            </HStack>
+            
+            {/* Pagination Info */}
+            <Text fontSize="sm" color="gray.600">
+              Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
+              {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of{' '}
+              {pagination.totalCount} articles
+            </Text>
+            
+            {/* Pagination Buttons */}
+            <HStack spacing={2}>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={!pagination.hasPrevious}
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+              >
+                Previous
+              </Button>
+              
+              {/* Page Numbers */}
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum;
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (pagination.currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                  pageNum = pagination.totalPages - 4 + i;
+                } else {
+                  pageNum = pagination.currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    size="sm"
+                    variant={pageNum === pagination.currentPage ? "solid" : "outline"}
+                    colorScheme={pageNum === pagination.currentPage ? "blue" : "gray"}
+                    onClick={() => handlePageChange(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={!pagination.hasNext}
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+              >
+                Next
+              </Button>
+            </HStack>
+          </Flex>
+        </Box>
       )}
     </Box>
   );
