@@ -41,8 +41,12 @@ class AdSerializer(serializers.ModelSerializer):
         elif obj.image_file:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.image_file.url)
+                try:
+                    return request.build_absolute_uri(obj.image_file.url)
+                except Exception:
+                    # Fallback if build_absolute_uri fails
+                    return f"https://dhivehinoos.net{obj.image_file.url}"
             else:
                 # Fallback for when no request context is available
-                return f"http://localhost:8000{obj.image_file.url}"
+                return f"https://dhivehinoos.net{obj.image_file.url}"
         return None

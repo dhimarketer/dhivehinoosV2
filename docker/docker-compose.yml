@@ -24,6 +24,7 @@ services:
       - DATABASE_URL=sqlite:////app/database/db.sqlite3
       - SECRET_KEY=${SECRET_KEY}
       - API_INGEST_KEY=${API_INGEST_KEY}
+      - USE_MEMORY_CACHE=true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/articles/published/"]
       interval: 30s

@@ -17,8 +17,8 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r django && useradd -r -g django django
+# Create non-root user with specific UID/GID for consistent permissions
+RUN groupadd -r -g 1000 django && useradd -r -g django -u 1000 django
 
 # Install Python dependencies
 COPY requirements.txt /app/
@@ -34,12 +34,14 @@ RUN mkdir -p /app/database /app/static /app/logs \
 # Collect static files as root (will switch to django user later)
 RUN python manage.py collectstatic --noinput
 
-# Create startup script to ensure media directory permissions
+# Create startup script to ensure proper permissions
 RUN echo '#!/bin/bash\n\
-# Create media directories and fix ownership\n\
+# Create directories and fix ownership\n\
 mkdir -p /app/media/articles /app/media/ads\n\
-chown -R django:django /app/media\n\
-chmod -R 777 /app/media\n\
+mkdir -p /app/database\n\
+chown -R django:django /app/media /app/database /app/logs\n\
+chmod -R 755 /app/media /app/database /app/logs\n\
+chmod 664 /app/database/db.sqlite3 2>/dev/null || true\n\
 # Switch to django user and start Gunicorn server\n\
 exec su -s /bin/bash django -c "cd /app && gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 dhivehinoos_backend.wsgi:application"' > /app/start.sh && chmod +x /app/start.sh
 
