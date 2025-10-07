@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://dhivehinoos.net/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -34,9 +34,12 @@ api.interceptors.response.use(
 );
 
 export const articlesAPI = {
-  getPublished: (category = null) => {
-    const params = category ? `?category=${category}` : '';
-    return api.get(`/articles/published/${params}`);
+  getPublished: (category = null, page = 1, pageSize = 10) => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    params.append('page', page);
+    params.append('page_size', pageSize);
+    return api.get(`/articles/published/?${params.toString()}`);
   },
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),
   getAll: (params = '') => {
@@ -90,38 +93,38 @@ export const votesAPI = {
   getStatus: (articleId) => api.get(`/comments/vote-status/${articleId}/`),
 };
 
-// Ads API temporarily disabled for deployment
-// export const adsAPI = {
-//   getActive: (params = {}) => {
-//     const queryString = new URLSearchParams(params).toString();
-//     return api.get(`/ads/active/${queryString ? '?' + queryString : ''}`);
-//   },
-//   getAll: () => api.get('/ads/admin/'),
-//   getPlacements: () => api.get('/ads/placements/'),
-//   create: (data) => {
-//     // If data is FormData, don't set Content-Type header
-//     if (data instanceof FormData) {
-//       return api.post('/ads/admin/', data, {
-//         headers: {
-//           'Content-Type': 'multipart/form-data',
-//         },
-//       });
-//     }
-//     return api.post('/ads/admin/', data);
-//   },
-//   update: (id, data) => {
-//     // If data is FormData, don't set Content-Type header
-//     if (data instanceof FormData) {
-//       return api.put(`/ads/admin/${id}/`, data, {
-//         headers: {
-//           'Content-Type': 'multipart/form-data',
-//         },
-//       });
-//     }
-//     return api.put(`/ads/admin/${id}/`, data);
-//   },
-//   delete: (id) => api.delete(`/ads/admin/${id}/`),
-// };
+// Ads API - Re-enabled
+export const adsAPI = {
+  getActive: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/ads/active/${queryString ? '?' + queryString : ''}`);
+  },
+  getAll: () => api.get('/ads/admin/'),
+  getPlacements: () => api.get('/ads/placements/'),
+  create: (data) => {
+    // If data is FormData, don't set Content-Type header
+    if (data instanceof FormData) {
+      return api.post('/ads/admin/', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.post('/ads/admin/', data);
+  },
+  update: (id, data) => {
+    // If data is FormData, don't set Content-Type header
+    if (data instanceof FormData) {
+      return api.put(`/ads/admin/${id}/`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.put(`/ads/admin/${id}/`, data);
+  },
+  delete: (id) => api.delete(`/ads/admin/${id}/`),
+};
 
 export const contactAPI = {
   create: (data) => api.post('/contact/create/', data),

@@ -20,6 +20,12 @@ class AdSerializer(serializers.ModelSerializer):
         source='placement'
     )
     
+    def update(self, instance, validated_data):
+        # If placement_id is not provided in the data, set placement to None
+        if 'placement' not in validated_data and 'placement_id' not in self.initial_data:
+            validated_data['placement'] = None
+        return super().update(instance, validated_data)
+    
     class Meta:
         model = Ad
         fields = [

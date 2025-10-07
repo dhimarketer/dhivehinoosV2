@@ -22,6 +22,17 @@ class CustomPageNumberPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'current_page': self.page.number,
+            'page_size': self.page.paginator.per_page,
+            'total_pages': self.page.paginator.num_pages,
+            'results': data
+        })
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -72,6 +83,7 @@ class PublishedArticleListView(ListAPIView):
     queryset = Article.objects.filter(status='published')
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
         """Filter articles by category if specified"""

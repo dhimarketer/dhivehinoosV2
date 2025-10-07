@@ -44,10 +44,12 @@ import {
   CheckboxGroup,
   Stack,
   Divider,
+  Link,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import { articlesAPI, commentsAPI, contactAPI } from '../../services/api';
+import { articlesAPI, commentsAPI, contactAPI, adsAPI } from '../../services/api';
+import AdPlacementMap from '../../components/AdPlacementMap';
 import api from '../../services/api';
 import FormattedText from '../../components/FormattedText';
 
@@ -58,6 +60,8 @@ const AdminDashboard = () => {
   const [articles, setArticles] = useState([]);
   const [comments, setComments] = useState([]);
   const [contactMessages, setContactMessages] = useState([]);
+  const [ads, setAds] = useState([]);
+  const [adPlacements, setAdPlacements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [articleFilter, setArticleFilter] = useState('all'); // 'all', 'published', 'draft'
@@ -65,6 +69,7 @@ const AdminDashboard = () => {
   const [selectedArticles, setSelectedArticles] = useState([]);
   const [bulkAction, setBulkAction] = useState('');
   const [editingArticle, setEditingArticle] = useState(null);
+  const [editingAd, setEditingAd] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -82,7 +87,19 @@ const AdminDashboard = () => {
     status: 'draft'
   });
   
+  const [adForm, setAdForm] = useState({
+    title: '',
+    image: '',
+    imageFile: null,
+    destination_url: '',
+    placement: '',
+    is_active: true,
+    start_date: '',
+    end_date: ''
+  });
+  
   const { isOpen: isArticleModalOpen, onOpen: onArticleModalOpen, onClose: onArticleModalClose } = useDisclosure();
+  const { isOpen: isAdModalOpen, onOpen: onAdModalOpen, onClose: onAdModalClose } = useDisclosure();
 
   useEffect(() => {
     fetchData(1, 20); // Start with page 1, page size 20
@@ -110,10 +127,12 @@ const AdminDashboard = () => {
       
       console.log('Fetching articles with params:', params.toString());
       
-      const [articlesRes, commentsRes, contactRes] = await Promise.all([
+      const [articlesRes, commentsRes, contactRes, adsRes, placementsRes] = await Promise.all([
         api.get(`/articles/admin/?${params.toString()}`),
         commentsAPI.getAll ? commentsAPI.getAll() : { data: { results: [] } },
         contactAPI.getAll(),
+        adsAPI.getAll(),
+        adsAPI.getPlacements(),
       ]);
       
       console.log('Articles API response:', articlesRes.data);
@@ -131,6 +150,8 @@ const AdminDashboard = () => {
       
       setComments(commentsRes.data.results || commentsRes.data || []);
       setContactMessages(contactRes.data.results || contactRes.data || []);
+      setAds(adsRes.data.results || adsRes.data || []);
+      setAdPlacements(placementsRes.data.results || placementsRes.data || []);
       
       // Force refresh by updating the refresh key
       setRefreshKey(prev => prev + 1);
@@ -162,7 +183,7 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
-    navigate('/admin/login');
+    navigate('/');
   };
 
   // Filter functions - now handled by backend API
@@ -467,6 +488,111 @@ const AdminDashboard = () => {
   };
 
   // Ad status toggle and deletion functionality temporarily disabled for deployment
+
+  // Ad management handlers
+  const handleCreateAd = () => {
+    setAdForm({
+      title: '',
+      image: '',
+      imageFile: null,
+      destination_url: '',
+      placement: '',
+      is_active: true,
+      start_date: '',
+      end_date: ''
+    });
+    onAdModalOpen();
+  };
+
+  const handleEditAd = (ad) => {
+    setEditingAd(ad);
+    setAdForm({
+      title: ad.title,
+      image: ad.image_url || ad.image || '',
+      imageFile: null,
+      destination_url: ad.destination_url || '',
+      placement: ad.placement?.id || '',
+      is_active: ad.is_active,
+      start_date: ad.start_date ? ad.start_date.split('T')[0] : '',
+      end_date: ad.end_date ? ad.end_date.split('T')[0] : ''
+    });
+    onAdModalOpen();
+  };
+
+  const handleAdSubmit = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('title', adForm.title);
+      if (adForm.destination_url) {
+        formData.append('destination_url', adForm.destination_url);
+      }
+      formData.append('placement_id', adForm.placement);
+      formData.append('is_active', adForm.is_active);
+      
+      if (adForm.start_date) {
+        formData.append('start_date', adForm.start_date);
+      }
+      if (adForm.end_date) {
+        formData.append('end_date', adForm.end_date);
+      }
+      
+      if (adForm.imageFile) {
+        formData.append('image_file', adForm.imageFile);
+      }
+
+      if (editingAd) {
+        // Update existing ad
+        await adsAPI.update(editingAd.id, formData);
+        toast({
+          title: 'Ad updated successfully',
+          status: 'success',
+          duration: 3000,
+        });
+      } else {
+        // Create new ad
+        await adsAPI.create(formData);
+        toast({
+          title: 'Ad created successfully',
+          status: 'success',
+          duration: 3000,
+        });
+      }
+      
+      setEditingAd(null);
+      onAdModalClose();
+      await fetchData();
+    } catch (error) {
+      console.error('Error saving ad:', error);
+      toast({
+        title: editingAd ? 'Error updating ad' : 'Error creating ad',
+        description: error.response?.data?.detail || 'Failed to save ad',
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleDeleteAd = async (id) => {
+    if (window.confirm('Are you sure you want to delete this ad?')) {
+      try {
+        await adsAPI.delete(id);
+        toast({
+          title: 'Ad deleted successfully',
+          status: 'success',
+          duration: 3000,
+        });
+        await fetchData();
+      } catch (error) {
+        console.error('Error deleting ad:', error);
+        toast({
+          title: 'Error deleting ad',
+          description: error.response?.data?.detail || 'Failed to delete ad',
+          status: 'error',
+          duration: 3000,
+        });
+      }
+    }
+  };
 
   const handleApproveComment = async (id) => {
     try {
@@ -1041,6 +1167,85 @@ const AdminDashboard = () => {
     </Box>
   );
 
+  const renderAdsTab = () => (
+    <Box>
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">Ad Management</Heading>
+        <Button colorScheme="blue" onClick={handleCreateAd}>
+          Create New Ad
+        </Button>
+      </Flex>
+      
+      {loading ? (
+        <Box textAlign="center" py={8}>
+          <Spinner size="xl" />
+        </Box>
+      ) : (
+        <Grid templateColumns="repeat(auto-fill, 350px)" gap={4}>
+          {ads.map((ad) => (
+            <Card key={ad.id}>
+              <CardHeader>
+                <Flex justify="space-between" align="start">
+                  <Box>
+                    <Heading size="sm" noOfLines={1}>{ad.title}</Heading>
+                    <Text fontSize="sm" color="gray.600">
+                      Placement: {ad.placement?.name || 'None'}
+                    </Text>
+                  </Box>
+                  <Badge colorScheme={ad.is_active ? 'green' : 'red'}>
+                    {ad.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </Flex>
+              </CardHeader>
+              <CardBody>
+                {(ad.image_url || ad.image) && (
+                  <ChakraImage
+                    src={ad.image_url || ad.image}
+                    alt={ad.title}
+                    maxW="100%"
+                    h="150px"
+                    objectFit="cover"
+                    borderRadius="md"
+                    mb={3}
+                    fallbackSrc="https://via.placeholder.com/300x150/cccccc/666666?text=No+Image"
+                  />
+                )}
+                {ad.destination_url && (
+                  <Text fontSize="sm" color="blue.600" mb={2}>
+                    <Link href={ad.destination_url} isExternal>
+                      {ad.destination_url}
+                    </Link>
+                  </Text>
+                )}
+                <Text fontSize="xs" color="gray.500">
+                  Created: {new Date(ad.created_at).toLocaleDateString()}
+                </Text>
+                {ad.start_date && (
+                  <Text fontSize="xs" color="gray.500">
+                    Start: {new Date(ad.start_date).toLocaleDateString()}
+                  </Text>
+                )}
+                {ad.end_date && (
+                  <Text fontSize="xs" color="gray.500">
+                    End: {new Date(ad.end_date).toLocaleDateString()}
+                  </Text>
+                )}
+                <HStack mt={3}>
+                  <Button size="sm" colorScheme="blue" onClick={() => handleEditAd(ad)}>
+                    Edit
+                  </Button>
+                  <Button size="sm" colorScheme="red" onClick={() => handleDeleteAd(ad.id)}>
+                    Delete
+                  </Button>
+                </HStack>
+              </CardBody>
+            </Card>
+          ))}
+        </Grid>
+      )}
+    </Box>
+  );
+
   return (
     <>
       <Helmet>
@@ -1078,6 +1283,18 @@ const AdminDashboard = () => {
               >
                 Messages ({contactMessages.length})
               </Button>
+            <Button
+              colorScheme={activeTab === 'ads' ? 'blue' : 'gray'}
+              onClick={() => setActiveTab('ads')}
+            >
+              Ads ({ads.length})
+            </Button>
+            <Button
+              colorScheme={activeTab === 'placement-map' ? 'blue' : 'gray'}
+              onClick={() => setActiveTab('placement-map')}
+            >
+              Placement Map
+            </Button>
               <Button
                 colorScheme="purple"
                 onClick={() => navigate('/admin/settings')}
@@ -1092,6 +1309,15 @@ const AdminDashboard = () => {
           {activeTab === 'articles' && renderArticlesTab()}
           {activeTab === 'comments' && renderCommentsTab()}
           {activeTab === 'contact' && renderContactTab()}
+          {activeTab === 'ads' && renderAdsTab()}
+        {activeTab === 'placement-map' && (
+          <AdPlacementMap
+            ads={ads}
+            adPlacements={adPlacements}
+            onAdUpdate={handleEditAd}
+            onRefresh={fetchData}
+          />
+        )}
         </VStack>
       </Container>
 
@@ -1195,7 +1421,135 @@ const AdminDashboard = () => {
         </ModalContent>
       </Modal>
 
-      {/* Ad Modal temporarily disabled for deployment */}
+      {/* Ad Modal */}
+      <Modal isOpen={isAdModalOpen} onClose={onAdModalClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{editingAd ? 'Edit Ad' : 'Create New Ad'}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <VStack spacing={4}>
+              <FormControl isRequired>
+                <FormLabel>Ad Title</FormLabel>
+                <Input 
+                  placeholder="Ad title" 
+                  value={adForm.title}
+                  onChange={(e) => setAdForm({...adForm, title: e.target.value})}
+                />
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Destination URL</FormLabel>
+                <Input 
+                  placeholder="https://example.com" 
+                  value={adForm.destination_url}
+                  onChange={(e) => setAdForm({...adForm, destination_url: e.target.value})}
+                />
+                <FormHelperText>
+                  Optional: Where users will be redirected when they click the ad
+                </FormHelperText>
+              </FormControl>
+              
+              <FormControl isRequired>
+                <FormLabel>Ad Placement</FormLabel>
+                <Select 
+                  value={adForm.placement}
+                  onChange={(e) => setAdForm({...adForm, placement: e.target.value})}
+                >
+                  <option value="">Select placement</option>
+                  {adPlacements.map((placement) => (
+                    <option key={placement.id} value={placement.id}>
+                      {placement.name} - {placement.description}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Ad Image</FormLabel>
+                <VStack spacing={3} align="stretch">
+                  <Box>
+                    <Text fontSize="sm" color="gray.600" mb={2}>Upload Image File</Text>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setAdForm({...adForm, image: event.target.result, imageFile: file});
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </Box>
+                </VStack>
+                <FormHelperText>
+                  Upload an image file for the ad. Recommended size: 300x250px for sidebar, 728x90px for banners.
+                </FormHelperText>
+                {adForm.image && (
+                  <Box mt={2}>
+                    <Text fontSize="sm" color="gray.600" mb={1}>Preview:</Text>
+                    <ChakraImage
+                      src={adForm.image}
+                      alt="Ad preview"
+                      borderRadius="md"
+                      objectFit="cover"
+                      h="100px"
+                      w="200px"
+                      fallbackSrc="https://via.placeholder.com/200x100/cccccc/666666?text=Image+Not+Found"
+                    />
+                  </Box>
+                )}
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Start Date (Optional)</FormLabel>
+                <Input 
+                  type="date"
+                  value={adForm.start_date}
+                  onChange={(e) => setAdForm({...adForm, start_date: e.target.value})}
+                />
+                <FormHelperText>
+                  Leave empty to start immediately
+                </FormHelperText>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>End Date (Optional)</FormLabel>
+                <Input 
+                  type="date"
+                  value={adForm.end_date}
+                  onChange={(e) => setAdForm({...adForm, end_date: e.target.value})}
+                />
+                <FormHelperText>
+                  Leave empty for no end date
+                </FormHelperText>
+              </FormControl>
+              
+              <FormControl display="flex" alignItems="center">
+                <FormLabel mb="0">Active</FormLabel>
+                <Switch
+                  isChecked={adForm.is_active}
+                  onChange={(e) => setAdForm({...adForm, is_active: e.target.checked})}
+                  colorScheme="blue"
+                />
+              </FormControl>
+              
+              <HStack spacing={4} w="full">
+                <Button colorScheme="blue" flex="1" onClick={handleAdSubmit}>
+                  {editingAd ? 'Update Ad' : 'Create Ad'}
+                </Button>
+                <Button onClick={onAdModalClose} flex="1">
+                  Cancel
+                </Button>
+              </HStack>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   );
 };

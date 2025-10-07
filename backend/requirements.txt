@@ -4,6 +4,7 @@ charset-normalizer==3.4.3
 Django==5.2.7
 django-cors-headers==4.9.0
 djangorestframework==3.16.1
+gunicorn==23.0.0
 idna==3.10
 pillow==11.3.0
 redis==6.4.0

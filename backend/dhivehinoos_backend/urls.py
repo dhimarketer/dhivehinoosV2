@@ -33,7 +33,7 @@ def api_info(request):
             'admin': '/admin/',
             'articles': '/api/v1/articles/',
             'comments': '/api/v1/comments/',
-            # 'ads': '/api/v1/ads/',  # Temporarily disabled for deployment
+            'ads': '/api/v1/ads/',  # Re-enabled ad system
             'contact': '/api/v1/contact/',
             'settings': '/api/v1/settings/',
         },
@@ -53,7 +53,7 @@ urlpatterns = [
     # path('admin/', admin.site.urls),  # Disabled to prevent conflict with React admin dashboard
     path('api/v1/articles/', include('articles.urls')),
     path('api/v1/comments/', include('comments.urls')),
-    # path('api/v1/ads/', include('ads.urls')),  # Temporarily disabled for deployment
+    path('api/v1/ads/', include('ads.urls')),  # Re-enabled ad system
     path('api/v1/contact/', include('contact.urls')),
     path('api/v1/settings/', include('settings_app.urls')),
 ]

@@ -126,7 +126,7 @@ const SettingsPage = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
-    navigate('/admin/login');
+    navigate('/');
   };
 
   if (loading) {

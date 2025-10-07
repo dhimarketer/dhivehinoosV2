@@ -21,6 +21,7 @@ import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { articlesAPI, commentsAPI, votesAPI } from '../services/api';
 import FormattedText from '../components/FormattedText';
+import AdComponent from '../components/AdComponent';
 
 const ArticlePage = () => {
   const { slug } = useParams();
@@ -206,6 +207,9 @@ const ArticlePage = () => {
 
       <Container maxW="container.lg" py={8}>
         <VStack spacing={8} align="stretch">
+          {/* Article Header Ad */}
+          <AdComponent placement="article_header" maxAds={1} />
+          
           {/* Article Header */}
           <Card>
             <CardBody>
@@ -326,6 +330,9 @@ const ArticlePage = () => {
               </VStack>
             </CardBody>
           </Card>
+
+          {/* Article Footer Ad */}
+          <AdComponent placement="article_footer" maxAds={1} />
         </VStack>
       </Container>
     </>

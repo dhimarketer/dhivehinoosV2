@@ -123,3 +123,5 @@ class Command(BaseCommand):
             self.style.SUCCESS(f'Successfully created {created_count} new categories')
         )
 
+
+

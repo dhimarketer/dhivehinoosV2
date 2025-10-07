@@ -25,21 +25,40 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
 import CategoryNavigation from '../components/CategoryNavigation';
+import AdComponent from '../components/AdComponent';
 
 const HomePage = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategory = searchParams.get('category');
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalCount: 0,
+    hasNext: false,
+    hasPrevious: false
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const articlesResponse = await articlesAPI.getPublished(selectedCategory);
+        const articlesResponse = await articlesAPI.getPublished(selectedCategory, pagination.currentPage, pagination.pageSize);
         console.log('Articles response:', articlesResponse.data);
         setArticles(articlesResponse.data.results || articlesResponse.data);
+        
+        // Update pagination info
+        setPagination({
+          currentPage: articlesResponse.data.current_page || pagination.currentPage,
+          pageSize: articlesResponse.data.page_size || pagination.pageSize,
+          totalPages: articlesResponse.data.total_pages || 1,
+          totalCount: articlesResponse.data.count || 0,
+          hasNext: articlesResponse.data.next !== null,
+          hasPrevious: articlesResponse.data.previous !== null
+        });
         
         // Preload images for better first-visit experience
         preloadImages(articlesResponse.data.results || articlesResponse.data);
@@ -52,7 +71,7 @@ const HomePage = () => {
     };
 
     fetchData();
-  }, [selectedCategory]);
+  }, [selectedCategory, pagination.currentPage, pagination.pageSize]);
 
   // Preload images to improve first-visit experience
   const preloadImages = (articles) => {
@@ -72,6 +91,15 @@ const HomePage = () => {
       img.onload = () => console.log('Preloaded image:', url);
       img.onerror = () => console.log('Failed to preload image:', url);
     });
+  };
+
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, currentPage: newPage }));
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    setPagination(prev => ({ ...prev, pageSize: newPageSize, currentPage: 1 }));
   };
 
   // Ad rendering functionality temporarily disabled for deployment
@@ -160,6 +188,11 @@ const HomePage = () => {
       </Box>
 
       <Container maxW="container.xl" py={8}>
+        {/* Top Banner Ad */}
+        <Box mb={6}>
+          <AdComponent placement="top_banner" maxAds={1} />
+        </Box>
+
         {/* Category Navigation */}
         <CategoryNavigation selectedCategory={selectedCategory} />
 
@@ -187,6 +220,93 @@ const HomePage = () => {
               <StoryCard key={article.id} article={article} variant="default" />
             ))}
           </Grid>
+
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <Box mt={8} p={4} bg="gray.50" borderRadius="md">
+              <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
+                {/* Page Size Selector */}
+                <HStack spacing={3}>
+                  <Text fontSize="sm" fontWeight="medium">Show:</Text>
+                  <select
+                    value={pagination.pageSize}
+                    onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <Text fontSize="sm" color="gray.600">per page</Text>
+                </HStack>
+                
+                {/* Pagination Info */}
+                <Text fontSize="sm" color="gray.600">
+                  Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
+                  {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of{' '}
+                  {pagination.totalCount} articles
+                </Text>
+                
+                {/* Pagination Buttons */}
+                <HStack spacing={2}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    isDisabled={!pagination.hasPrevious}
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  >
+                    Previous
+                  </Button>
+                  
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        size="sm"
+                        variant={pageNum === pagination.currentPage ? "solid" : "outline"}
+                        colorScheme={pageNum === pagination.currentPage ? "blue" : "gray"}
+                        onClick={() => handlePageChange(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    isDisabled={!pagination.hasNext}
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  >
+                    Next
+                  </Button>
+                </HStack>
+              </Flex>
+            </Box>
+          )}
+        </Box>
+
+        {/* Sidebar Ad */}
+        <Box mt={8} textAlign="center">
+          <AdComponent placement="sidebar" maxAds={2} />
         </Box>
 
         {/* Sidebar-style compact articles for additional content */}
@@ -207,6 +327,11 @@ const HomePage = () => {
             </SimpleGrid>
           </Box>
         )}
+
+        {/* Bottom Banner Ad */}
+        <Box mt={12} textAlign="center">
+          <AdComponent placement="bottom_banner" maxAds={1} />
+        </Box>
       </Container>
     </>
   );
