@@ -22,6 +22,7 @@ import { useParams, Link } from 'react-router-dom';
 import { articlesAPI, commentsAPI, votesAPI } from '../services/api';
 import FormattedText from '../components/FormattedText';
 import AdComponent from '../components/AdComponent';
+import TopNavigation from '../components/TopNavigation';
 
 const ArticlePage = () => {
   const { slug } = useParams();
@@ -204,6 +205,13 @@ const ArticlePage = () => {
           })}
         </script>
       </Helmet>
+
+      {/* Top Navigation */}
+      <TopNavigation 
+        onSearch={() => {}}
+        searchQuery=""
+        setSearchQuery={() => {}}
+      />
 
       <Container maxW="container.lg" py={8}>
         <VStack spacing={8} align="stretch">

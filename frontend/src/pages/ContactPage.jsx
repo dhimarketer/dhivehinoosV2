@@ -17,6 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { contactAPI } from '../services/api';
+import TopNavigation from '../components/TopNavigation';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -73,6 +74,13 @@ const ContactPage = () => {
         <meta property="twitter:title" content="Contact Us - Dhivehinoos.net" />
         <meta property="twitter:description" content="Get in touch with Dhivehinoos.net. Contact us for questions about our AI-generated fictional content for research purposes." />
       </Helmet>
+
+      {/* Top Navigation */}
+      <TopNavigation 
+        onSearch={() => {}}
+        searchQuery=""
+        setSearchQuery={() => {}}
+      />
 
       <Container maxW="container.md" py={8}>
         <Card>

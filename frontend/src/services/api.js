@@ -41,6 +41,14 @@ export const articlesAPI = {
     params.append('page_size', pageSize);
     return api.get(`/articles/published/?${params.toString()}`);
   },
+  search: (query, category = null, page = 1, pageSize = 10) => {
+    const params = new URLSearchParams();
+    params.append('search', query);
+    if (category) params.append('category', category);
+    params.append('page', page);
+    params.append('page_size', pageSize);
+    return api.get(`/articles/published/?${params.toString()}`);
+  },
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),
   getAll: (params = '') => {
     const baseUrl = '/articles/admin/';
@@ -130,6 +138,8 @@ export const contactAPI = {
   create: (data) => api.post('/contact/create/', data),
   getAll: () => api.get(`/contact/admin/?t=${Date.now()}`), // Add cache-busting timestamp
   markAsRead: (id) => api.patch(`/contact/admin/${id}/`, { is_read: true }),
+  archive: (id) => api.patch(`/contact/admin/${id}/archive/`),
+  unarchive: (id) => api.patch(`/contact/admin/${id}/unarchive/`),
 };
 
 export const authAPI = {

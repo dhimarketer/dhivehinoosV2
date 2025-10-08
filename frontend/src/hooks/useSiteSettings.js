@@ -4,7 +4,7 @@ import { settingsAPI } from '../services/api';
 export const useSiteSettings = () => {
   const [settings, setSettings] = useState({
     site_name: 'Dhivehinoos.net',
-    site_description: 'AI-generated fictional content for research purposes',
+    site_description: 'Authentic Maldivian Dhivehi Twitter thoughts and cultural insights for the Maldivian diaspora worldwide. Connect with your roots through curated Dhivehi content.',
     allow_comments: true,
     google_analytics_id: null,
   });

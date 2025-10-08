@@ -6,9 +6,9 @@ class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactMessage
         fields = [
-            'id', 'name', 'email', 'message', 'is_read', 'created_at'
+            'id', 'name', 'email', 'message', 'is_read', 'is_archived', 'created_at'
         ]
-        read_only_fields = ['is_read', 'created_at']
+        read_only_fields = ['is_read', 'is_archived', 'created_at']
 
 
 class ContactMessageCreateSerializer(serializers.ModelSerializer):

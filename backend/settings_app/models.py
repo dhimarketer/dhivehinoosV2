@@ -17,7 +17,7 @@ class SiteSettings(models.Model):
     # Site information
     site_name = models.CharField(max_length=255, default='Dhivehinoos.net')
     site_description = models.TextField(
-        default='AI-generated fictional content for research purposes',
+        default='Authentic Maldivian Dhivehi Twitter thoughts and cultural insights for the Maldivian diaspora worldwide. Connect with your roots through curated Dhivehi content.',
         help_text="Site description for SEO and about pages"
     )
     
@@ -56,12 +56,12 @@ class SiteSettings(models.Model):
         """Get the current site settings, creating default if none exist"""
         settings, created = cls.objects.get_or_create(
             pk=1,
-            defaults={
-                'default_article_status': 'draft',
-                'site_name': 'Dhivehinoos.net',
-                'site_description': 'AI-generated fictional content for research purposes',
-                'allow_comments': True,
-                'require_comment_approval': True,
-            }
+        defaults={
+            'default_article_status': 'draft',
+            'site_name': 'Dhivehinoos.net',
+            'site_description': 'Authentic Maldivian Dhivehi Twitter thoughts and cultural insights for the Maldivian diaspora worldwide. Connect with your roots through curated Dhivehi content.',
+            'allow_comments': True,
+            'require_comment_approval': True,
+        }
         )
         return settings

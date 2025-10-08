@@ -86,11 +86,23 @@ class PublishedArticleListView(ListAPIView):
     pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
-        """Filter articles by category if specified"""
+        """Filter articles by category and search if specified"""
         queryset = Article.objects.filter(status='published').select_related('category')
+        
+        # Category filter
         category_slug = self.request.query_params.get('category', None)
         if category_slug:
             queryset = queryset.filter(category__slug=category_slug)
+        
+        # Search filter
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search_query) |
+                models.Q(content__icontains=search_query) |
+                models.Q(category__name__icontains=search_query)
+            )
+        
         return queryset
     
     def get_serializer_context(self):

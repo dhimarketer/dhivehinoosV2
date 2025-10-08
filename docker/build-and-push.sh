@@ -21,9 +21,15 @@ echo "📝 Please make sure you're logged in to DockerHub:"
 echo "   docker login"
 echo ""
 
+# Apply migrations locally before building
+echo "🗄️ Applying database migrations locally..."
+cd ../backend
+source venv/bin/activate
+python manage.py migrate
+echo "✅ Migrations applied successfully!"
+
 # Build backend image
 echo "🔨 Building backend image..."
-cd ../backend
 docker build -f ../docker/Dockerfile.backend -t $BACKEND_IMAGE:$VERSION .
 docker tag $BACKEND_IMAGE:$VERSION $BACKEND_IMAGE:latest
 

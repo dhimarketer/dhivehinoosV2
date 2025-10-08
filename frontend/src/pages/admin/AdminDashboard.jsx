@@ -636,6 +636,75 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleArchiveMessage = async (messageId) => {
+    try {
+      await contactAPI.archive(messageId);
+      toast({
+        title: 'Message archived',
+        description: 'Contact message has been archived',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error archiving message:', error);
+      toast({
+        title: 'Error archiving message',
+        description: 'Failed to archive message',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleUnarchiveMessage = async (messageId) => {
+    try {
+      await contactAPI.unarchive(messageId);
+      toast({
+        title: 'Message unarchived',
+        description: 'Contact message has been unarchived',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error unarchiving message:', error);
+      toast({
+        title: 'Error unarchiving message',
+        description: 'Failed to unarchive message',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleMarkAsRead = async (messageId) => {
+    try {
+      await contactAPI.markAsRead(messageId);
+      toast({
+        title: 'Message marked as read',
+        description: 'Contact message has been marked as read',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      toast({
+        title: 'Error marking message as read',
+        description: 'Failed to mark message as read',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   const renderArticlesTab = () => (
     <Box>
       <Flex justify="space-between" align="center" mb={6}>
@@ -1142,23 +1211,48 @@ const AdminDashboard = () => {
       ) : (
         <Grid templateColumns="repeat(auto-fill, 400px)" gap={4}>
           {contactMessages.map((message) => (
-            <Card key={message.id} h="300px" w="400px" display="flex" flexDirection="column" overflow="hidden">
+            <Card key={message.id} h="350px" w="400px" display="flex" flexDirection="column" overflow="hidden">
               <CardHeader>
                 <Flex justify="space-between" align="start">
                   <Box>
                     <Heading size="sm" noOfLines={1}>{message.name}</Heading>
                     <Text fontSize="sm" color="gray.600">{message.email}</Text>
                   </Box>
-                  <Badge colorScheme={message.is_read ? 'green' : 'yellow'}>
-                    {message.is_read ? 'Read' : 'Unread'}
-                  </Badge>
+                  <VStack spacing={1} align="end">
+                    <Badge colorScheme={message.is_read ? 'green' : 'yellow'}>
+                      {message.is_read ? 'Read' : 'Unread'}
+                    </Badge>
+                    {message.is_archived && (
+                      <Badge colorScheme="gray">
+                        Archived
+                      </Badge>
+                    )}
+                  </VStack>
                 </Flex>
               </CardHeader>
               <CardBody flex="1" display="flex" flexDirection="column">
-                <Text fontSize="sm" flex="1">{message.message}</Text>
-                <Text fontSize="xs" color="gray.500" mt="auto">
+                <Text fontSize="sm" flex="1" noOfLines={6}>{message.message}</Text>
+                <Text fontSize="xs" color="gray.500" mt="auto" mb={2}>
                   {new Date(message.created_at).toLocaleDateString()}
                 </Text>
+                <HStack spacing={2} justify="end">
+                  <Button
+                    size="xs"
+                    colorScheme={message.is_archived ? "green" : "gray"}
+                    onClick={() => message.is_archived ? handleUnarchiveMessage(message.id) : handleArchiveMessage(message.id)}
+                  >
+                    {message.is_archived ? "Unarchive" : "Archive"}
+                  </Button>
+                  {!message.is_read && (
+                    <Button
+                      size="xs"
+                      colorScheme="blue"
+                      onClick={() => handleMarkAsRead(message.id)}
+                    >
+                      Mark Read
+                    </Button>
+                  )}
+                </HStack>
               </CardBody>
             </Card>
           ))}

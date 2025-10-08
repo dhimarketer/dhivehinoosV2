@@ -47,29 +47,76 @@ docker-compose up -d
 echo "⏳ Waiting for services to be healthy..."
 sleep 30
 
+# Wait for backend to be ready
+echo "⏳ Waiting for backend to be ready..."
+for i in {1..30}; do
+    if docker-compose exec -T dhivehinoos_backend python -c "import django; django.setup(); from django.db import connection; connection.ensure_connection()" 2>/dev/null; then
+        echo "✅ Backend is ready!"
+        break
+    fi
+    echo "⏳ Waiting for backend... ($i/30)"
+    sleep 5
+done
+
+# Run database migrations
+echo "🗄️ Running database migrations..."
+if docker-compose exec -T dhivehinoos_backend python manage.py migrate; then
+    echo "✅ Migrations completed successfully!"
+else
+    echo "❌ Migration failed! Check logs:"
+    docker-compose logs dhivehinoos_backend
+    exit 1
+fi
+
+# Collect static files
+echo "📁 Collecting static files..."
+if docker-compose exec -T dhivehinoos_backend python manage.py collectstatic --noinput; then
+    echo "✅ Static files collected successfully!"
+else
+    echo "❌ Static file collection failed! Check logs:"
+    docker-compose logs dhivehinoos_backend
+    exit 1
+fi
+
 # Check service status
 echo "📊 Checking service status..."
 docker-compose ps
 
 # Test backend health
 echo "🔍 Testing backend health..."
-if curl -f http://localhost:8052/api/v1/articles/published/ > /dev/null 2>&1; then
-    echo "✅ Backend is healthy!"
-else
-    echo "❌ Backend health check failed!"
-    echo "📋 Backend logs:"
-    docker-compose logs dhivehinoos_backend
-fi
+for i in {1..5}; do
+    if curl -f http://localhost:8052/api/v1/articles/published/ > /dev/null 2>&1; then
+        echo "✅ Backend is healthy!"
+        break
+    else
+        if [ $i -eq 5 ]; then
+            echo "❌ Backend health check failed after 5 attempts!"
+            echo "📋 Backend logs:"
+            docker-compose logs dhivehinoos_backend
+            exit 1
+        fi
+        echo "⏳ Backend not ready yet, retrying... ($i/5)"
+        sleep 10
+    fi
+done
 
 # Test frontend
 echo "🔍 Testing frontend..."
-if curl -f http://localhost:8053/ > /dev/null 2>&1; then
-    echo "✅ Frontend is accessible!"
-else
-    echo "❌ Frontend health check failed!"
-    echo "📋 Frontend logs:"
-    docker-compose logs dhivehinoos_frontend
-fi
+for i in {1..5}; do
+    if curl -f http://localhost:8053/ > /dev/null 2>&1; then
+        echo "✅ Frontend is accessible!"
+        break
+    else
+        if [ $i -eq 5 ]; then
+            echo "❌ Frontend health check failed after 5 attempts!"
+            echo "📋 Frontend logs:"
+            docker-compose logs dhivehinoos_frontend
+            exit 1
+        fi
+        echo "⏳ Frontend not ready yet, retrying... ($i/5)"
+        sleep 10
+    fi
+done
 
 echo ""
 echo "🎉 Deployment completed!"

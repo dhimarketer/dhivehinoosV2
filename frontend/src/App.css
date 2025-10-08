@@ -40,3 +40,96 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+  
+  .news-card {
+    min-height: 200px;
+    margin-bottom: 1rem;
+  }
+  
+  .news-card .news-title {
+    font-size: 1.1rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .news-card-image {
+    min-height: 150px;
+  }
+  
+  .featured-article {
+    min-height: 300px;
+  }
+  
+  .featured-article .news-title {
+    font-size: 1.3rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .compact-article {
+    min-height: 120px;
+  }
+  
+  .compact-article .news-title {
+    font-size: 0.95rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* Make buttons and touch targets larger on mobile */
+  button, .chakra-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve spacing for mobile */
+  .chakra-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Make search input more mobile-friendly */
+  input[type="text"], input[type="search"] {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+  
+  /* Improve grid layout for mobile */
+  .chakra-grid {
+    gap: 1rem;
+  }
+  
+  /* Make pagination more mobile-friendly */
+  .chakra-hstack {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  /* Improve navigation for mobile */
+  .site-header {
+    padding: 0.5rem 0;
+  }
+  
+  .site-title {
+    font-size: 1.2rem !important;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .news-card {
+    min-height: 250px;
+  }
+  
+  .news-card .news-title {
+    font-size: 1.2rem !important;
+  }
+  
+  .featured-article .news-title {
+    font-size: 1.5rem !important;
+  }
+}

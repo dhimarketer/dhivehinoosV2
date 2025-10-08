@@ -18,8 +18,13 @@ class ContactMessageViewSet(ModelViewSet):
     def get_queryset(self):
         queryset = ContactMessage.objects.all()
         read_filter = self.request.query_params.get('is_read', None)
+        archived_filter = self.request.query_params.get('is_archived', None)
+        
         if read_filter is not None:
             queryset = queryset.filter(is_read=read_filter.lower() == 'true')
+        if archived_filter is not None:
+            queryset = queryset.filter(is_archived=archived_filter.lower() == 'true')
+            
         return queryset
 
 
@@ -36,3 +41,43 @@ def create_contact_message(request):
             status=status.HTTP_201_CREATED
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PATCH'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def archive_contact_message(request, message_id):
+    """Archive a contact message"""
+    try:
+        message = ContactMessage.objects.get(id=message_id)
+        message.is_archived = True
+        message.save()
+        return Response(
+            ContactMessageSerializer(message).data,
+            status=status.HTTP_200_OK
+        )
+    except ContactMessage.DoesNotExist:
+        return Response(
+            {'error': 'Contact message not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['PATCH'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def unarchive_contact_message(request, message_id):
+    """Unarchive a contact message"""
+    try:
+        message = ContactMessage.objects.get(id=message_id)
+        message.is_archived = False
+        message.save()
+        return Response(
+            ContactMessageSerializer(message).data,
+            status=status.HTTP_200_OK
+        )
+    except ContactMessage.DoesNotExist:
+        return Response(
+            {'error': 'Contact message not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )

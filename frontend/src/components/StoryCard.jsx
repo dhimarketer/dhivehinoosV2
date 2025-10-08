@@ -70,8 +70,9 @@ const StoryCard = ({ article, variant = 'default' }) => {
       <Card
         as={Link}
         to={`/article/${article.slug}`}
-        h="600px"
-        w="800px"
+        h={{ base: "auto", md: "600px" }}
+        w={{ base: "100%", md: "800px" }}
+        maxW="100%"
         display="flex"
         flexDirection="column"
         overflow="hidden"
@@ -130,7 +131,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
                 alt={article.title}
                 borderRadius="md"
                 objectFit="cover"
-                h="300px"
+                h={{ base: "200px", md: "300px" }}
                 w="100%"
                 className="news-card-image"
                 fallbackSrc="https://via.placeholder.com/800x300/cccccc/666666?text=Featured+Article"
@@ -227,8 +228,9 @@ const StoryCard = ({ article, variant = 'default' }) => {
     <Card 
       as={Link}
       to={`/article/${article.slug}`}
-      h="500px" 
-      w="350px" 
+      h={{ base: "auto", md: "500px" }} 
+      w={{ base: "100%", md: "350px" }}
+      maxW="100%"
       display="flex" 
       flexDirection="column" 
       overflow="hidden"
@@ -285,7 +287,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
               alt={article.title}
               borderRadius="md"
               objectFit="cover"
-              h="200px"
+              h={{ base: "150px", md: "200px" }}
               w="100%"
               className="news-card-image"
               fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
