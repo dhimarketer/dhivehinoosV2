@@ -218,9 +218,9 @@ const HomePage = () => {
         onClearSearch={clearSearch}
       />
 
-      <Container maxW="container.xl" py={8}>
+      <Container maxW="container.xl" py={{ base: 4, md: 8 }}>
         {/* Top Banner Ad */}
-        <Box mb={6}>
+        <Box mb={{ base: 4, md: 6 }}>
           <AdComponent placement="top_banner" maxAds={1} />
         </Box>
 
@@ -418,7 +418,7 @@ const HomePage = () => {
         )}
 
         {/* Sidebar Ad */}
-        <Box mt={8} textAlign="center">
+        <Box mt={{ base: 6, md: 8 }} textAlign="center">
           <AdComponent placement="sidebar" maxAds={2} />
         </Box>
 
@@ -429,12 +429,12 @@ const HomePage = () => {
               Recent Stories
             </Heading>
             <SimpleGrid 
-              columns={{ base: 1, md: 2 }} 
+              columns={{ base: 1, sm: 2, md: 3 }} 
               spacing={4}
-              maxW="800px"
+              maxW="1200px"
               mx="auto"
             >
-              {articles.slice(7, 11).map((article) => (
+              {articles.slice(7, 10).map((article) => (
                 <StoryCard key={article.id} article={article} variant="compact" />
               ))}
             </SimpleGrid>
@@ -442,7 +442,7 @@ const HomePage = () => {
         )}
 
         {/* Bottom Banner Ad */}
-        <Box mt={12} textAlign="center">
+        <Box mt={{ base: 8, md: 12 }} textAlign="center">
           <AdComponent placement="bottom_banner" maxAds={1} />
         </Box>
       </Container>

@@ -20,6 +20,12 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['article', 'article_slug', 'author_name', 'content']
     
+    def validate_content(self, value):
+        """Validate that content is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Comment content cannot be empty')
+        return value.strip()
+    
     def validate(self, data):
         # Ensure either article or article_slug is provided
         if not data.get('article') and not data.get('article_slug'):

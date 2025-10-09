@@ -8,6 +8,17 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Define which placements should be centered horizontally
+  const horizontalPlacements = [
+    'top_banner',
+    'bottom_banner', 
+    'article_header',
+    'article_footer',
+    'between_articles'
+  ];
+
+  const isHorizontalPlacement = horizontalPlacements.includes(placement);
+
   useEffect(() => {
     const fetchAds = async () => {
       try {
@@ -55,9 +66,18 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
   }
 
   return (
-    <Box>
+    <Box
+      textAlign={isHorizontalPlacement ? "center" : "left"}
+      mx={isHorizontalPlacement ? "auto" : 0}
+      maxW={isHorizontalPlacement ? { base: "100%", md: "800px", lg: "1000px" } : "100%"}
+      px={{ base: 2, md: 4 }}
+    >
       {ads.map((ad) => (
-        <Box key={ad.id} mb={4}>
+        <Box 
+          key={ad.id} 
+          mb={4}
+          className="ad-container"
+        >
           {ad.destination_url ? (
             <Link
               href={ad.destination_url}
@@ -73,20 +93,23 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
                   h="auto"
                   borderRadius="md"
                   _hover={{ opacity: 0.9 }}
+                  mx="auto"
+                  display="block"
                 />
               ) : (
                 <Box
-                  p={4}
+                  p={{ base: 3, md: 4 }}
                   bg="gray.100"
                   borderRadius="md"
                   textAlign="center"
                   border="2px dashed"
                   borderColor="gray.300"
+                  fontSize={{ base: "sm", md: "md" }}
                 >
-                  <Text fontWeight="bold" fontSize="lg" color="gray.700">
+                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} color="gray.700">
                     {ad.title}
                   </Text>
-                  <Text fontSize="sm" color="gray.500" mt={1}>
+                  <Text fontSize={{ base: "xs", md: "sm" }} color="gray.500" mt={1}>
                     Click to visit
                   </Text>
                 </Box>
@@ -101,20 +124,23 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
                   maxW="100%"
                   h="auto"
                   borderRadius="md"
+                  mx="auto"
+                  display="block"
                 />
               ) : (
                 <Box
-                  p={4}
+                  p={{ base: 3, md: 4 }}
                   bg="gray.100"
                   borderRadius="md"
                   textAlign="center"
                   border="2px dashed"
                   borderColor="gray.300"
+                  fontSize={{ base: "sm", md: "md" }}
                 >
-                  <Text fontWeight="bold" fontSize="lg" color="gray.700">
+                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} color="gray.700">
                     {ad.title}
                   </Text>
-                  <Text fontSize="sm" color="gray.500" mt={1}>
+                  <Text fontSize={{ base: "xs", md: "sm" }} color="gray.500" mt={1}>
                     Advertisement
                   </Text>
                 </Box>

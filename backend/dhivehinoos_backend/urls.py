@@ -31,6 +31,7 @@ def api_info(request):
         'version': '1.0',
         'endpoints': {
             'admin': '/admin/',
+            'auth': '/api/v1/auth/',
             'articles': '/api/v1/articles/',
             'comments': '/api/v1/comments/',
             'ads': '/api/v1/ads/',  # Re-enabled ad system
@@ -51,6 +52,7 @@ urlpatterns = [
     path('sitemap.xml', settings_views.sitemap_view, name='sitemap'),
     path('robots.txt', settings_views.robots_txt_view, name='robots-txt'),
     # path('admin/', admin.site.urls),  # Disabled to prevent conflict with React admin dashboard
+    path('api/v1/auth/', include('auth.urls')),
     path('api/v1/articles/', include('articles.urls')),
     path('api/v1/comments/', include('comments.urls')),
     path('api/v1/ads/', include('ads.urls')),  # Re-enabled ad system

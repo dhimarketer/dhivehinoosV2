@@ -187,6 +187,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
         mb={4}
         border="1px solid"
         borderColor={borderColor}
+        bg={cardBg}
         w="100%"
         maxW="400px"
         h="120px"
@@ -203,19 +204,34 @@ const StoryCard = ({ article, variant = 'default' }) => {
           fallbackSrc="https://via.placeholder.com/120x100/cccccc/666666?text=News"
           onError={handleImageError}
         />
-        <Box p={4} flex="1" display="flex" flexDirection="column" justifyContent="space-between">
+        <Box 
+          p={3} 
+          flex="1" 
+          display="flex" 
+          flexDirection="column" 
+          justifyContent="space-between"
+          minW="0"
+          overflow="hidden"
+        >
           <Heading
             size="sm"
             className="news-title"
             mb={2}
             lineHeight="1.3"
             noOfLines={2}
+            color={titleColor}
+            fontSize={{ base: "sm", md: "md" }}
             _hover={{ color: 'blue.500' }}
             transition="color 0.2s ease"
           >
             {article.title}
           </Heading>
-          <Text fontSize="xs" className="news-meta">
+          <Text 
+            fontSize="xs" 
+            className="news-meta" 
+            color={textColor}
+            fontWeight="medium"
+          >
             {formatDate(article.created_at)}
           </Text>
         </Box>

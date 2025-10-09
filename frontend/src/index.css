@@ -132,6 +132,16 @@ img {
   box-shadow: 0 4px 12px rgba(49, 130, 206, 0.15);
 }
 
+.compact-article .news-title {
+  color: #1a202c !important;
+  font-weight: 600;
+}
+
+.compact-article .news-meta {
+  color: #718096 !important;
+  font-weight: 500;
+}
+
 /* Header styles */
 .site-header {
   background: white;
@@ -153,10 +163,56 @@ img {
   margin: 2rem 0;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
+/* Mobile-First Responsive Design */
+
+/* Base mobile styles (320px+) */
+.news-card {
+  margin-bottom: 1rem;
+  height: auto;
+  min-height: 300px;
+}
+
+.featured-article .news-title {
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.site-title {
+  font-size: 1.125rem;
+}
+
+/* Small mobile (480px+) */
+@media (min-width: 480px) {
   .news-card {
-    margin-bottom: 1rem;
+    min-height: 320px;
+  }
+  
+  .featured-article .news-title {
+    font-size: 1.375rem;
+  }
+  
+  .site-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Tablet (768px+) */
+@media (min-width: 768px) {
+  .news-card {
+    margin-bottom: 1.5rem;
+    min-height: 400px;
+  }
+  
+  .news-card.default-card {
+    height: 400px;
+  }
+  
+  .news-card.featured-card {
+    height: 450px;
+  }
+  
+  .news-card.compact-card {
+    height: 120px;
   }
   
   .featured-article .news-title {
@@ -164,7 +220,22 @@ img {
   }
   
   .site-title {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .news-card {
+    margin-bottom: 2rem;
+  }
+  
+  .featured-article .news-title {
+    font-size: 1.75rem;
+  }
+  
+  .site-title {
+    font-size: 1.75rem;
   }
 }
 
@@ -184,18 +255,50 @@ img {
   }
 }
 
-/* Ad styles */
+/* Ad styles - Mobile First */
 .ad-container {
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
+  margin: 0 auto;
+  max-width: 100%;
 }
 
 .ad-container:hover {
-  transform: scale(1.02);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Horizontal ad containers (banners) */
+.ad-container.horizontal {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Responsive ad sizing */
+@media (min-width: 768px) {
+  .ad-container {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .ad-container:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  
+  .ad-container.horizontal {
+    max-width: 800px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ad-container.horizontal {
+    max-width: 1000px;
+  }
 }
 
 /* Grid layout improvements */

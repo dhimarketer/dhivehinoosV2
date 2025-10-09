@@ -69,7 +69,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
         onClick={onLinkClick}
         _hover={{ bg: 'brand.50', color: 'brand.600' }}
       >
-        Contact
+        Contact Us
       </Button>
       <Button 
         as={Link} 
@@ -78,7 +78,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
         size="sm"
         onClick={onLinkClick}
       >
-        Admin Login
+        Login
       </Button>
     </>
   );

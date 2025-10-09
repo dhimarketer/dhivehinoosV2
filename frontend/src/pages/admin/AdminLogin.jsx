@@ -34,7 +34,7 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      // Simple authentication for testing
+      // Simple authentication - check credentials directly
       if (formData.username === 'admin' && formData.password === 'admin123') {
         localStorage.setItem('isAuthenticated', 'true');
         navigate('/admin/dashboard');

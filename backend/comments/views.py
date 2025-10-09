@@ -45,6 +45,15 @@ class ArticleCommentsListView(ListAPIView):
 @csrf_exempt
 def create_comment(request):
     """Public API for creating comments"""
+    # Check if comments are allowed
+    from settings_app.models import SiteSettings
+    settings = SiteSettings.get_settings()
+    if not settings.allow_comments:
+        return Response(
+            {'error': 'Comments are currently disabled'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
     serializer = CommentCreateSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         comment = serializer.save()
@@ -52,7 +61,12 @@ def create_comment(request):
             CommentSerializer(comment).data, 
             status=status.HTTP_201_CREATED
         )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Return detailed validation errors
+    return Response({
+        'error': 'Validation failed',
+        'details': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])

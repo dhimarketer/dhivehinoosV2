@@ -19,6 +19,8 @@ class AdSerializer(serializers.ModelSerializer):
         allow_null=True,
         source='placement'
     )
+    start_date = serializers.DateTimeField(required=False, allow_null=True)
+    end_date = serializers.DateTimeField(required=False, allow_null=True)
     
     def to_internal_value(self, data):
         # Handle empty string for placement_id

@@ -23,9 +23,11 @@ import { articlesAPI, commentsAPI, votesAPI } from '../services/api';
 import FormattedText from '../components/FormattedText';
 import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const ArticlePage = () => {
   const { slug } = useParams();
+  const { settings } = useSiteSettings();
   const [article, setArticle] = useState(null);
   const [comments, setComments] = useState([]);
   const [voteStatus, setVoteStatus] = useState({ has_voted: false, vote_type: null, vote_score: 0 });
@@ -101,13 +103,27 @@ const ArticlePage = () => {
     setSubmittingComment(true);
     try {
       const response = await commentsAPI.create({
-        article: article.id,
+        article_slug: article.slug,
         ...commentForm,
       });
       setComments([response.data, ...comments]);
       setCommentForm({ author_name: '', content: '' });
     } catch (err) {
       console.error('Error submitting comment:', err);
+      console.error('Error response:', err.response?.data);
+      
+      // Show detailed error message to user
+      if (err.response?.data?.details) {
+        const errorDetails = err.response.data.details;
+        const errorMessages = Object.entries(errorDetails)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        alert(`Validation Error:\n${errorMessages}`);
+      } else if (err.response?.data?.error) {
+        alert(err.response.data.error);
+      } else {
+        alert('Failed to submit comment. Please try again.');
+      }
     } finally {
       setSubmittingComment(false);
     }
@@ -213,8 +229,8 @@ const ArticlePage = () => {
         setSearchQuery={() => {}}
       />
 
-      <Container maxW="container.lg" py={8}>
-        <VStack spacing={8} align="stretch">
+      <Container maxW="container.lg" py={{ base: 4, md: 8 }}>
+        <VStack spacing={{ base: 6, md: 8 }} align="stretch">
           {/* Article Header Ad */}
           <AdComponent placement="article_header" maxAds={1} />
           
@@ -224,9 +240,9 @@ const ArticlePage = () => {
               <ChakraImage
                 src={article.image_url}
                 alt={article.title}
-                borderRadius="lg"
+                borderRadius={{ base: "md", md: "lg" }}
                 objectFit="cover"
-                h="400px"
+                h={{ base: "250px", md: "400px" }}
                 w="100%"
                 mb={4}
                 fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
@@ -245,19 +261,23 @@ const ArticlePage = () => {
                 <Text fontWeight="bold">Vote Score: {voteStatus.vote_score}</Text>
                 <Button
                   colorScheme="green"
-                  size="sm"
+                  size="xs"
                   onClick={() => handleVote('up')}
                   isDisabled={voteStatus.has_voted}
+                  minW="auto"
+                  px={2}
                 >
-                  👍 Upvote
+                  👍
                 </Button>
                 <Button
                   colorScheme="red"
-                  size="sm"
+                  size="xs"
                   onClick={() => handleVote('down')}
                   isDisabled={voteStatus.has_voted}
+                  minW="auto"
+                  px={2}
                 >
-                  👎 Downvote
+                  👎
                 </Button>
                 {voteStatus.has_voted && (
                   <Text fontSize="sm" color="gray.500">
@@ -279,65 +299,67 @@ const ArticlePage = () => {
           </Card>
 
           {/* Comments Section */}
-          <Card>
-            <CardBody>
-              <Heading size="lg" mb={6}>
-                Comments ({comments.length})
-              </Heading>
+          {settings.allow_comments && (
+            <Card>
+              <CardBody>
+                <Heading size="lg" mb={6}>
+                  Comments ({comments.length})
+                </Heading>
 
-              {/* Comment Form */}
-              <Box mb={8}>
-                <form onSubmit={handleCommentSubmit}>
-                  <VStack spacing={4}>
-                    <Input
-                      placeholder="Your name (optional)"
-                      value={commentForm.author_name}
-                      onChange={(e) => setCommentForm({ ...commentForm, author_name: e.target.value })}
-                    />
-                    <Textarea
-                      placeholder="Write your comment..."
-                      value={commentForm.content}
-                      onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
-                      rows={4}
-                      required
-                    />
-                    <Button
-                      type="submit"
-                      colorScheme="blue"
-                      isLoading={submittingComment}
-                      loadingText="Submitting..."
-                    >
-                      Submit Comment
-                    </Button>
-                  </VStack>
-                </form>
-              </Box>
+                {/* Comment Form */}
+                <Box mb={8}>
+                  <form onSubmit={handleCommentSubmit}>
+                    <VStack spacing={4}>
+                      <Input
+                        placeholder="Your name (optional)"
+                        value={commentForm.author_name}
+                        onChange={(e) => setCommentForm({ ...commentForm, author_name: e.target.value })}
+                      />
+                      <Textarea
+                        placeholder="Write your comment..."
+                        value={commentForm.content}
+                        onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
+                        rows={4}
+                        required
+                      />
+                      <Button
+                        type="submit"
+                        colorScheme="blue"
+                        isLoading={submittingComment}
+                        loadingText="Submitting..."
+                      >
+                        Submit Comment
+                      </Button>
+                    </VStack>
+                  </form>
+                </Box>
 
-              <Divider mb={6} />
+                <Divider mb={6} />
 
-              {/* Comments List */}
-              <VStack spacing={4} align="stretch">
-                {comments.map((comment) => (
-                  <Box key={comment.id} p={4} bg="gray.50" borderRadius="md">
-                    <HStack justify="space-between" mb={2}>
-                      <Text fontWeight="bold">
-                        {comment.author_name || 'Anonymous'}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </Text>
-                    </HStack>
-                    <Text>{comment.content}</Text>
-                  </Box>
-                ))}
-                {comments.length === 0 && (
-                  <Text color="gray.500" textAlign="center" py={8}>
-                    No comments yet. Be the first to comment!
-                  </Text>
-                )}
-              </VStack>
-            </CardBody>
-          </Card>
+                {/* Comments List */}
+                <VStack spacing={4} align="stretch">
+                  {comments.map((comment) => (
+                    <Box key={comment.id} p={4} bg="gray.50" borderRadius="md">
+                      <HStack justify="space-between" mb={2}>
+                        <Text fontWeight="bold">
+                          {comment.author_name || 'Anonymous'}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          {new Date(comment.created_at).toLocaleDateString()}
+                        </Text>
+                      </HStack>
+                      <Text>{comment.content}</Text>
+                    </Box>
+                  ))}
+                  {comments.length === 0 && (
+                    <Text color="gray.500" textAlign="center" py={8}>
+                      No comments yet. Be the first to comment!
+                    </Text>
+                  )}
+                </VStack>
+              </CardBody>
+            </Card>
+          )}
 
           {/* Article Footer Ad */}
           <AdComponent placement="article_footer" maxAds={1} />
