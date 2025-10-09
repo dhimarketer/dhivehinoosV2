@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -14,6 +14,11 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Session authentication is handled automatically with cookies
+    // Add CSRF token if available
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    if (csrfToken) {
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
     return config;
   },
   (error) => {
@@ -25,9 +30,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      window.location.href = '/admin/login';
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('isAuthenticated');
+      // Don't redirect automatically - let the component handle it
+      console.log('Authentication error:', error.response?.status);
     }
     return Promise.reject(error);
   }
@@ -149,7 +155,7 @@ export const authAPI = {
 };
 
 export const settingsAPI = {
-  get: () => api.get('/settings/public/'),
+  get: () => api.get('/settings/admin/get/'),
   update: (data) => api.put('/settings/admin/', data),
   getPublic: () => api.get('/settings/public/'),
 };

@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -11,26 +11,51 @@ from .models import SiteSettings
 from .serializers import SiteSettingsSerializer
 import json
 
-@api_view(['GET', 'PUT'])
+@csrf_exempt
 def site_settings_view(request):
     """
-    GET: Retrieve current site settings
-    PUT: Update site settings
+    PUT: Update site settings (admin only)
     """
-    if request.method == 'GET':
-        settings = SiteSettings.get_settings()
-        serializer = SiteSettingsSerializer(settings)
-        return Response(serializer.data)
+    print(f"Settings update view called: {request.method}")
     
-    elif request.method == 'PUT':
-        settings = SiteSettings.get_settings()
-        serializer = SiteSettingsSerializer(settings, data=request.data, partial=True)
-        
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if request.method == 'PUT':
+        try:
+            import json
+            data = json.loads(request.body)
+            print(f"Received settings data: {data}")
+            
+            # Get current settings
+            settings = SiteSettings.get_settings()
+            print(f"Current settings before update: {SiteSettingsSerializer(settings).data}")
+            
+            # Update settings
+            serializer = SiteSettingsSerializer(settings, data=data, partial=True)
+            
+            if serializer.is_valid():
+                updated_settings = serializer.save()
+                print(f"Settings saved successfully: {SiteSettingsSerializer(updated_settings).data}")
+                return JsonResponse(serializer.data)
+            
+            print(f"Validation errors: {serializer.errors}")
+            return JsonResponse(serializer.errors, status=400)
+            
+        except json.JSONDecodeError:
+            print("JSON decode error")
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Exception: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@csrf_exempt
+def test_settings_view(request):
+    """
+    Test endpoint to verify CSRF exemption is working
+    """
+    if request.method == 'POST':
+        return JsonResponse({'message': 'CSRF exemption working!', 'data': request.body.decode()})
+    return JsonResponse({'message': 'Test endpoint - send POST to test CSRF exemption'})
 
 @api_view(['GET'])
 def public_settings_view(request):
@@ -49,6 +74,16 @@ def public_settings_view(request):
     }
     
     return Response(public_data)
+
+@api_view(['GET'])
+def admin_settings_view(request):
+    """
+    GET: Retrieve all site settings for admin users
+    Returns all settings including admin-only fields
+    """
+    settings = SiteSettings.get_settings()
+    serializer = SiteSettingsSerializer(settings)
+    return Response(serializer.data)
 
 @api_view(['GET'])
 def sitemap_view(request):

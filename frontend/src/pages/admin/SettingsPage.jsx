@@ -48,8 +48,8 @@ const SettingsPage = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      // Use public settings endpoint for reading
-      const response = await settingsAPI.getPublic();
+      // Use admin settings endpoint for reading all settings
+      const response = await settingsAPI.get();
       setSettings(response.data);
       setError('');
     } catch (err) {
@@ -70,7 +70,8 @@ const SettingsPage = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      // Check if user is authenticated
+      
+      // Simple authentication check
       const isAuthenticated = localStorage.getItem('isAuthenticated');
       if (!isAuthenticated) {
         toast({
@@ -84,7 +85,10 @@ const SettingsPage = () => {
         return;
       }
       
-      await settingsAPI.update(settings);
+      console.log('Saving settings:', settings);
+      const response = await settingsAPI.update(settings);
+      console.log('Settings save response:', response.data);
+      
       toast({
         title: 'Settings saved',
         description: 'Your settings have been updated successfully',
@@ -92,26 +96,18 @@ const SettingsPage = () => {
         duration: 3000,
         isClosable: true,
       });
+      
+      // Refresh settings to confirm they were saved
+      await fetchSettings();
     } catch (err) {
       console.error('Error saving settings:', err);
-      if (err.response?.status === 403) {
-        toast({
-          title: 'Access denied',
-          description: 'Please log in as admin to save settings',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-        navigate('/admin/login');
-      } else {
-        toast({
-          title: 'Error saving settings',
-          description: err.response?.data?.error || 'Failed to save settings',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
+      toast({
+        title: 'Error saving settings',
+        description: err.response?.data?.error || 'Failed to save settings',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     } finally {
       setSaving(false);
     }
