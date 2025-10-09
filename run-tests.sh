@@ -67,8 +67,14 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
+# Check if vitest is available
+if ! command -v npx vitest &> /dev/null; then
+    echo "Installing Vitest..."
+    npm install --save-dev vitest @vitest/ui @testing-library/jest-dom @testing-library/react @testing-library/user-event jsdom
+fi
+
 # Run frontend tests
-if run_tests "Frontend Component Tests" "npm test -- --run"; then
+if run_tests "Frontend Component Tests" "npx vitest --run"; then
     echo "Frontend component tests passed"
 else
     echo "Frontend component tests failed"
