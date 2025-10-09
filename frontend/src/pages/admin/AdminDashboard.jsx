@@ -526,7 +526,10 @@ const AdminDashboard = () => {
       if (adForm.destination_url) {
         formData.append('destination_url', adForm.destination_url);
       }
-      formData.append('placement_id', adForm.placement);
+      // Only append placement_id if it's not empty
+      if (adForm.placement && adForm.placement !== '') {
+        formData.append('placement_id', adForm.placement);
+      }
       formData.append('is_active', adForm.is_active);
       
       if (adForm.start_date) {

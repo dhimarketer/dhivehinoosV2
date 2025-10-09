@@ -20,6 +20,22 @@ class AdSerializer(serializers.ModelSerializer):
         source='placement'
     )
     
+    def to_internal_value(self, data):
+        # Handle empty string for placement_id
+        if 'placement_id' in data and data['placement_id'] == '':
+            data = data.copy()
+            data['placement_id'] = None
+        
+        # Handle date fields - convert empty strings to None
+        if 'start_date' in data and data['start_date'] == '':
+            data = data.copy()
+            data['start_date'] = None
+        if 'end_date' in data and data['end_date'] == '':
+            data = data.copy()
+            data['end_date'] = None
+            
+        return super().to_internal_value(data)
+    
     def update(self, instance, validated_data):
         # If placement_id is not provided in the data, set placement to None
         if 'placement' not in validated_data and 'placement_id' not in self.initial_data:

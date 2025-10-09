@@ -7,6 +7,13 @@ set -e
 
 echo "🚀 Deploying Dhivehinoos.net to Linode..."
 
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Error: Docker daemon is not running!"
+    echo "Please start Docker service: sudo systemctl start docker"
+    exit 1
+fi
+
 # Check if we're in the right directory
 if [ ! -f "docker-compose.yml" ]; then
     echo "❌ Error: docker-compose.yml not found!"
@@ -24,12 +31,18 @@ sudo mkdir -p /opt/dhivehinoos/logs
 
 # Set proper permissions
 echo "🔐 Setting permissions..."
-sudo chown -R $USER:$USER /opt/dhivehinoos/
+sudo chown -R 1000:1000 /opt/dhivehinoos/ || echo "⚠️  Warning: Could not set ownership, continuing..."
 
 # Pull latest images
 echo "📥 Pulling latest Docker images..."
-docker pull dhimarketer/backend:latest
-docker pull dhimarketer/frontend:latest
+if ! docker pull dhimarketer/backend:latest; then
+    echo "❌ Failed to pull backend image!"
+    exit 1
+fi
+if ! docker pull dhimarketer/frontend:latest; then
+    echo "❌ Failed to pull frontend image!"
+    exit 1
+fi
 
 # Stop existing containers
 echo "🛑 Stopping existing containers..."
@@ -41,7 +54,12 @@ docker image prune -f || true
 
 # Start services
 echo "🚀 Starting services..."
-docker-compose up -d
+if ! docker-compose up -d; then
+    echo "❌ Failed to start services!"
+    echo "📋 Docker Compose logs:"
+    docker-compose logs
+    exit 1
+fi
 
 # Wait for services to be healthy
 echo "⏳ Waiting for services to be healthy..."
@@ -50,7 +68,7 @@ sleep 30
 # Wait for backend to be ready
 echo "⏳ Waiting for backend to be ready..."
 for i in {1..30}; do
-    if docker-compose exec -T dhivehinoos_backend python -c "import django; django.setup(); from django.db import connection; connection.ensure_connection()" 2>/dev/null; then
+    if docker-compose exec -T dhivehinoos_backend curl -f http://localhost:8000/api/v1/articles/published/ > /dev/null 2>&1; then
         echo "✅ Backend is ready!"
         break
     fi
