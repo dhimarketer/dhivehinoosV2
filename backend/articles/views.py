@@ -14,8 +14,12 @@ from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import Article, Category
-from .serializers import ArticleSerializer, ArticleListSerializer, ArticleIngestSerializer, CategorySerializer
+from .models import Article, Category, PublishingSchedule, ScheduledArticle
+from .serializers import (
+    ArticleSerializer, ArticleListSerializer, ArticleIngestSerializer, CategorySerializer,
+    PublishingScheduleSerializer, ScheduledArticleSerializer
+)
+from .scheduling_service import ArticleSchedulingService
 
 
 class CustomPageNumberPagination(PageNumberPagination):
@@ -274,5 +278,200 @@ def categorize_text(request):
     except Exception as e:
         return Response(
             {'error': 'Categorization failed', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# Scheduling API endpoints
+
+class PublishingScheduleViewSet(ModelViewSet):
+    """Admin viewset for managing publishing schedules"""
+    queryset = PublishingSchedule.objects.all()
+    serializer_class = PublishingScheduleSerializer
+    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    pagination_class = CustomPageNumberPagination
+    
+    def get_queryset(self):
+        queryset = PublishingSchedule.objects.all()
+        
+        # Active filter
+        is_active = self.request.query_params.get('is_active', None)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset
+
+
+class ScheduledArticleViewSet(ModelViewSet):
+    """Admin viewset for managing scheduled articles"""
+    queryset = ScheduledArticle.objects.all()
+    serializer_class = ScheduledArticleSerializer
+    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    pagination_class = CustomPageNumberPagination
+    
+    def get_queryset(self):
+        queryset = ScheduledArticle.objects.select_related('article', 'schedule').all()
+        
+        # Status filter
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Schedule filter
+        schedule_id = self.request.query_params.get('schedule', None)
+        if schedule_id:
+            queryset = queryset.filter(schedule_id=schedule_id)
+        
+        return queryset
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def schedule_article(request, article_id):
+    """Schedule an article for publishing"""
+    try:
+        article = get_object_or_404(Article, id=article_id)
+        
+        if article.status != 'draft':
+            return Response(
+                {'error': 'Only draft articles can be scheduled'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        schedule_id = request.data.get('schedule_id')
+        custom_time = request.data.get('scheduled_publish_time')
+        
+        schedule = None
+        if schedule_id:
+            try:
+                schedule = PublishingSchedule.objects.get(id=schedule_id, is_active=True)
+            except PublishingSchedule.DoesNotExist:
+                return Response(
+                    {'error': 'Schedule not found or inactive'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        scheduled_article = ArticleSchedulingService.schedule_article(
+            article, 
+            schedule=schedule, 
+            custom_time=custom_time
+        )
+        
+        return Response(ScheduledArticleSerializer(scheduled_article).data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Scheduling failed', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def publish_article_now(request, article_id):
+    """Publish an article immediately"""
+    try:
+        article = get_object_or_404(Article, id=article_id)
+        
+        if article.publish_now():
+            return Response({'status': 'published'})
+        else:
+            return Response(
+                {'error': 'Failed to publish article'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Publishing failed', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def reschedule_article(request, scheduled_article_id):
+    """Reschedule a scheduled article"""
+    try:
+        scheduled_article = get_object_or_404(ScheduledArticle, id=scheduled_article_id)
+        
+        new_time = request.data.get('scheduled_publish_time')
+        
+        updated_scheduled_article = ArticleSchedulingService.reschedule_article(
+            scheduled_article, 
+            new_time=new_time
+        )
+        
+        return Response(ScheduledArticleSerializer(updated_scheduled_article).data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Rescheduling failed', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def cancel_scheduled_article(request, scheduled_article_id):
+    """Cancel a scheduled article"""
+    try:
+        scheduled_article = get_object_or_404(ScheduledArticle, id=scheduled_article_id)
+        
+        updated_scheduled_article = ArticleSchedulingService.cancel_scheduled_article(scheduled_article)
+        
+        return Response(ScheduledArticleSerializer(updated_scheduled_article).data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Cancellation failed', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def schedule_stats(request):
+    """Get statistics for publishing schedules"""
+    try:
+        schedule_id = request.query_params.get('schedule_id')
+        
+        if schedule_id:
+            try:
+                schedule = PublishingSchedule.objects.get(id=schedule_id)
+                stats = ArticleSchedulingService.get_schedule_stats(schedule)
+            except PublishingSchedule.DoesNotExist:
+                return Response(
+                    {'error': 'Schedule not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            stats = ArticleSchedulingService.get_schedule_stats()
+        
+        return Response(stats)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to get stats', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def process_scheduled_articles(request):
+    """Process scheduled articles (admin endpoint)"""
+    try:
+        results = ArticleSchedulingService.process_scheduled_articles()
+        return Response(results)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Processing failed', 'details': str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

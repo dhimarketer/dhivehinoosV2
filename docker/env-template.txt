@@ -1,0 +1,19 @@
+# Environment variables for Dhivehinoos.net production deployment
+# Copy this content to your Linode server at /opt/dhivehinoos/docker/.env
+
+# Django Settings
+SECRET_KEY=your-secret-key-here-change-this-in-production
+DEBUG=False
+ALLOWED_HOSTS=dhivehinoos.net,www.dhivehinoos.net,localhost,127.0.0.1
+
+# API Configuration
+API_INGEST_KEY=your-n8n-api-key-here
+
+# Cache Configuration
+USE_MEMORY_CACHE=true
+
+# Database (using SQLite for simplicity)
+DATABASE_URL=sqlite:////app/database/db.sqlite3
+
+# Redis (if needed later)
+REDIS_URL=redis://127.0.0.1:6379/3

@@ -80,6 +80,7 @@ const ContactPage = () => {
         onSearch={() => {}}
         searchQuery=""
         setSearchQuery={() => {}}
+        selectedCategory={null}
       />
 
       <Container maxW="container.md" py={8}>
@@ -103,14 +104,15 @@ const ContactPage = () => {
                 <Card bg="yellow.50" borderColor="yellow.200" borderWidth="1px">
                   <CardBody>
                     <Text fontSize="md" color="gray.700" lineHeight="1.6">
-                      <strong>Important Disclaimer:</strong> This website is <strong>NOT a news site</strong> and does not provide factual news reporting. 
-                      All content published on Dhivehinoos.net consists of <strong>AI-generated fictional material created for research purposes only</strong>. 
-                      The articles, stories, and content are generated using artificial intelligence and are intended solely for academic research, 
-                      entertainment, and educational purposes.
+                      <strong>Important Disclaimer:</strong> This website aggregates and synthesizes sentiments, discussions, and trending topics from across Maldivian social media platforms and news sources. 
+                      All content published on Dhivehinoos.net is <strong>AI-generated based on aggregated social media sentiments and news discussions</strong> from various Maldivian online communities, 
+                      news outlets, and social platforms. The articles and stories are created using artificial intelligence to synthesize and present these aggregated sentiments 
+                      in a readable format for research, entertainment, and educational purposes.
                     </Text>
                     <Text fontSize="md" color="gray.700" mt={3} lineHeight="1.6">
                       This disclaimer is provided to comply with government registration guidelines and to ensure transparency about the nature of our content. 
-                      Readers should not rely on any information from this site as factual news or current events reporting.
+                      While our content is based on real social media discussions and news sentiments from Maldivian sources, readers should not rely on any information 
+                      from this site as direct factual news reporting or current events coverage.
                     </Text>
                   </CardBody>
                 </Card>

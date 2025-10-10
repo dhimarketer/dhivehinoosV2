@@ -49,11 +49,25 @@ class ArticleCategorizationService:
         scores = self._calculate_categorization_scores(text_to_analyze)
         
         if not scores:
+            # If no specific category matches, default to Opinion for most content
+            # This handles the case where most articles are opinion pieces
+            opinion_category = Category.objects.filter(name='Opinion', is_active=True).first()
+            if opinion_category:
+                return opinion_category
             return None
         
         # Return the category with the highest score
         best_category_id = max(scores.keys(), key=lambda k: scores[k])
-        return self.category_cache[best_category_id]['category']
+        best_category = self.category_cache[best_category_id]['category']
+        
+        # If the best score is very low, default to Opinion
+        best_score = scores[best_category_id]
+        if best_score < 2.0:  # Low confidence threshold
+            opinion_category = Category.objects.filter(name='Opinion', is_active=True).first()
+            if opinion_category:
+                return opinion_category
+        
+        return best_category
     
     def _calculate_categorization_scores(self, text: str) -> Dict[int, float]:
         """Calculate categorization scores for all categories"""

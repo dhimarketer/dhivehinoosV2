@@ -20,7 +20,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
     
     def validate_default_article_status(self, value):
         """Validate that the status is a valid choice"""
-        valid_choices = ['draft', 'published']
+        valid_choices = ['draft', 'published', 'scheduled']
         if value not in valid_choices:
             raise serializers.ValidationError(f"Status must be one of: {', '.join(valid_choices)}")
         return value

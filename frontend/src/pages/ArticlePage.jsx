@@ -227,6 +227,7 @@ const ArticlePage = () => {
         onSearch={() => {}}
         searchQuery=""
         setSearchQuery={() => {}}
+        selectedCategory={null}
       />
 
       <Container maxW="container.lg" py={{ base: 4, md: 8 }}>

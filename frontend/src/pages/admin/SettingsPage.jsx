@@ -24,10 +24,12 @@ import {
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { settingsAPI } from '../../services/api';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const toast = useToast();
   const [settings, setSettings] = useState({
     default_article_status: 'draft',
@@ -71,20 +73,6 @@ const SettingsPage = () => {
     try {
       setSaving(true);
       
-      // Simple authentication check
-      const isAuthenticated = localStorage.getItem('isAuthenticated');
-      if (!isAuthenticated) {
-        toast({
-          title: 'Authentication required',
-          description: 'Please log in to save settings',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-        navigate('/admin/login');
-        return;
-      }
-      
       console.log('Saving settings:', settings);
       const response = await settingsAPI.update(settings);
       console.log('Settings save response:', response.data);
@@ -121,8 +109,7 @@ const SettingsPage = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    navigate('/');
+    logout();
   };
 
   if (loading) {
@@ -179,6 +166,7 @@ const SettingsPage = () => {
                   >
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
+                    <option value="scheduled">Scheduled</option>
                   </Select>
                   <Text fontSize="sm" color="gray.600" mt={2}>
                     New articles created via API will be set to this status by default.

@@ -58,6 +58,7 @@ urlpatterns = [
     path('api/v1/ads/', include('ads.urls')),  # Re-enabled ad system
     path('api/v1/contact/', include('contact.urls')),
     path('api/v1/settings/', include('settings_app.urls')),
+    path('api/v1/subscriptions/', include('subscriptions.urls')),
 ]
 
 # Serve media files in development and production

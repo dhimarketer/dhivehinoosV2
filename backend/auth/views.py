@@ -10,6 +10,7 @@ import json
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def login_view(request):
     """
     Login endpoint for admin users

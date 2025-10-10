@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -16,7 +16,8 @@ import {
   FormErrorMessage,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +28,16 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from || '/admin/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,12 +45,12 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      // Simple authentication - check credentials directly
-      if (formData.username === 'admin' && formData.password === 'admin123') {
-        localStorage.setItem('isAuthenticated', 'true');
-        navigate('/admin/dashboard');
+      const result = await login(formData.username, formData.password);
+      if (result.success) {
+        const from = location.state?.from || '/admin/dashboard';
+        navigate(from, { replace: true });
       } else {
-        setError('Invalid credentials');
+        setError(result.error || 'Login failed');
       }
     } catch (err) {
       setError('Login failed. Please try again.');

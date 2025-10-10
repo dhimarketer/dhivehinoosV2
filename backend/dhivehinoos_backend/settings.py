@@ -38,13 +38,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.syndication',
     'rest_framework',
     'corsheaders',
+    'auth',  # Custom authentication app
     'articles',
     'comments',
     'ads',  # Re-enabled ad system
     'contact',
     'settings_app',
+    'subscriptions',
 ]
 
 MIDDLEWARE = [

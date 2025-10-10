@@ -12,6 +12,8 @@ import SettingsPage from './pages/admin/SettingsPage';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import { useSiteSettings } from './hooks/useSiteSettings';
 import { trackPageView } from './utils/analytics';
+import { AuthProvider, ProtectedRoute } from './contexts/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function AppContent() {
   const { settings } = useSiteSettings();
@@ -35,8 +37,16 @@ function AppContent() {
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/settings" element={<SettingsPage />} />
-        <Route path="/admin/*" element={<AdminDashboard />} />
+        <Route path="/admin/settings" element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/*" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
       </Routes>
     </>
   );
@@ -46,9 +56,13 @@ function App() {
   return (
     <ChakraProvider theme={theme}>
       <HelmetProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <ErrorBoundary>
+          <Router>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </Router>
+        </ErrorBoundary>
       </HelmetProvider>
     </ChakraProvider>
   );

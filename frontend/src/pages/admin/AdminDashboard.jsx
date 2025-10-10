@@ -48,13 +48,17 @@ import {
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { articlesAPI, commentsAPI, contactAPI, adsAPI } from '../../services/api';
 import AdPlacementMap from '../../components/AdPlacementMap';
 import api from '../../services/api';
 import FormattedText from '../../components/FormattedText';
+import SchedulingPage from './SchedulingPage';
+import SubscriptionManagement from './SubscriptionManagement';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('articles');
   const [articles, setArticles] = useState([]);
@@ -84,7 +88,9 @@ const AdminDashboard = () => {
     content: '',
     image: '',
     imageFile: null,
-    status: 'draft'
+    status: 'draft',
+    publishing_mode: 'instant',
+    scheduled_publish_time: ''
   });
   
   const [adForm, setAdForm] = useState({
@@ -182,8 +188,7 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    navigate('/');
+    logout();
   };
 
   // Filter functions - now handled by backend API
@@ -221,7 +226,9 @@ const AdminDashboard = () => {
       content: '',
       image: '',
       imageFile: null,
-      status: 'draft'
+      status: 'draft',
+      publishing_mode: 'instant',
+      scheduled_publish_time: ''
     });
     onArticleModalOpen();
   };
@@ -233,7 +240,9 @@ const AdminDashboard = () => {
       content: article.content || '',
       image: article.image || '',
       imageFile: null,
-      status: article.status || 'draft'
+      status: article.status || 'draft',
+      publishing_mode: article.publishing_mode || 'instant',
+      scheduled_publish_time: article.scheduled_publish_time || ''
     });
     onArticleModalOpen();
   };
@@ -252,13 +261,19 @@ const AdminDashboard = () => {
         apiData.append('content', articleForm.content);
         apiData.append('image_file', articleForm.imageFile);
         apiData.append('status', articleForm.status);
+        apiData.append('publishing_mode', articleForm.publishing_mode);
+        if (articleForm.scheduled_publish_time) {
+          apiData.append('scheduled_publish_time', articleForm.scheduled_publish_time);
+        }
       } else {
         // Regular JSON data for URL-based images or no image
         apiData = {
           title: articleForm.title,
           content: articleForm.content,
           image: articleForm.image || null,
-          status: articleForm.status
+          status: articleForm.status,
+          publishing_mode: articleForm.publishing_mode,
+          scheduled_publish_time: articleForm.scheduled_publish_time || null
         };
       }
       
@@ -909,8 +924,12 @@ const AdminDashboard = () => {
                 <Flex justify="space-between" align="start">
                   <Box flex="1">
                     <Heading size="sm" mb={2} noOfLines={2}>{article.title}</Heading>
-                    <Badge colorScheme={article.status === 'published' ? 'green' : 'yellow'} variant="solid">
-                      {article.status === 'published' ? '📰 Published' : '📝 Draft'}
+                    <Badge colorScheme={
+                      article.status === 'published' ? 'green' : 
+                      article.status === 'scheduled' ? 'blue' : 'yellow'
+                    } variant="solid">
+                      {article.status === 'published' ? '📰 Published' : 
+                       article.status === 'scheduled' ? '⏰ Scheduled' : '📝 Draft'}
                     </Badge>
                   </Box>
                   <HStack>
@@ -1024,9 +1043,18 @@ const AdminDashboard = () => {
                     </Box>
                   </Td>
                   <Td>
-                    <Badge colorScheme={article.status === 'published' ? 'green' : 'yellow'} variant="solid" size="sm">
-                      {article.status === 'published' ? '📰 Published' : '📝 Draft'}
+                    <Badge colorScheme={
+                      article.status === 'published' ? 'green' : 
+                      article.status === 'scheduled' ? 'blue' : 'yellow'
+                    } variant="solid" size="sm">
+                      {article.status === 'published' ? '📰 Published' : 
+                       article.status === 'scheduled' ? '⏰ Scheduled' : '📝 Draft'}
                     </Badge>
+                    {article.scheduled_publish_time && (
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        Scheduled: {new Date(article.scheduled_publish_time).toLocaleString()}
+                      </Text>
+                    )}
                   </Td>
                   <Td fontSize="sm" color="gray.600">
                     {new Date(article.created_at).toLocaleDateString()}
@@ -1392,6 +1420,18 @@ const AdminDashboard = () => {
             >
               Placement Map
             </Button>
+            <Button
+              colorScheme={activeTab === 'scheduling' ? 'blue' : 'gray'}
+              onClick={() => setActiveTab('scheduling')}
+            >
+              Scheduling
+            </Button>
+            <Button
+              colorScheme={activeTab === 'subscriptions' ? 'blue' : 'gray'}
+              onClick={() => setActiveTab('subscriptions')}
+            >
+              Subscriptions
+            </Button>
               <Button
                 colorScheme="purple"
                 onClick={() => navigate('/admin/settings')}
@@ -1407,6 +1447,8 @@ const AdminDashboard = () => {
           {activeTab === 'comments' && renderCommentsTab()}
           {activeTab === 'contact' && renderContactTab()}
           {activeTab === 'ads' && renderAdsTab()}
+          {activeTab === 'scheduling' && <SchedulingPage />}
+          {activeTab === 'subscriptions' && <SubscriptionManagement />}
         {activeTab === 'placement-map' && (
           <AdPlacementMap
             ads={ads}
@@ -1496,6 +1538,34 @@ const AdminDashboard = () => {
                 )}
               </FormControl>
               <FormControl>
+                <FormLabel>Publishing Mode</FormLabel>
+                <Select 
+                  value={articleForm.publishing_mode}
+                  onChange={(e) => setArticleForm({...articleForm, publishing_mode: e.target.value})}
+                >
+                  <option value="instant">Instant</option>
+                  <option value="scheduled">Scheduled</option>
+                </Select>
+                <FormHelperText>
+                  Choose how this article should be published
+                </FormHelperText>
+              </FormControl>
+              
+              {articleForm.publishing_mode === 'scheduled' && (
+                <FormControl>
+                  <FormLabel>Scheduled Publish Time</FormLabel>
+                  <Input 
+                    type="datetime-local"
+                    value={articleForm.scheduled_publish_time}
+                    onChange={(e) => setArticleForm({...articleForm, scheduled_publish_time: e.target.value})}
+                  />
+                  <FormHelperText>
+                    When this article should be published (leave empty to use default schedule)
+                  </FormHelperText>
+                </FormControl>
+              )}
+              
+              <FormControl>
                 <FormLabel>Status</FormLabel>
                 <Select 
                   value={articleForm.status}
@@ -1503,7 +1573,11 @@ const AdminDashboard = () => {
                 >
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
+                  <option value="scheduled">Scheduled</option>
                 </Select>
+                <FormHelperText>
+                  Draft: Not visible to public. Published: Visible immediately. Scheduled: Will be published at scheduled time.
+                </FormHelperText>
               </FormControl>
               <HStack spacing={4} w="full">
                 <Button colorScheme="blue" flex="1" onClick={handleArticleSubmit}>

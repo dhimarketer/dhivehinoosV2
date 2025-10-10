@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -21,18 +21,47 @@ import {
   useBreakpointValue,
   useColorModeValue,
   Text,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
+  Spinner,
+  Badge,
+  Tooltip,
 } from '@chakra-ui/react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SearchIcon, HamburgerIcon } from '@chakra-ui/icons';
+import { SearchIcon, HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { categoriesAPI } from '../services/api';
 
-const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, onClearSearch }) => {
+const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, onClearSearch, selectedCategory }) => {
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('brand.600', 'brand.400');
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await categoriesAPI.getAll();
+        const categoriesData = response.data.results || response.data;
+        setCategories(categoriesData);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -49,6 +78,97 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
     }
   };
 
+  const CategoriesDropdown = ({ isVertical = false, onLinkClick }) => {
+    if (isVertical) {
+      return (
+        <VStack spacing={2} align="stretch" w="full">
+          <Text fontSize="sm" fontWeight="bold" color="gray.600" px={2}>
+            Categories
+          </Text>
+          <Button 
+            as={Link} 
+            to="/" 
+            variant="ghost" 
+            size="sm"
+            onClick={onLinkClick}
+            justifyContent="flex-start"
+            color={selectedCategory === null ? 'brand.600' : 'gray.600'}
+            bg={selectedCategory === null ? 'brand.50' : 'transparent'}
+          >
+            📰 All Articles
+          </Button>
+          {categoriesLoading ? (
+            <Box p={2} textAlign="center">
+              <Spinner size="sm" />
+            </Box>
+          ) : (
+            categories.map((category) => (
+              <Button
+                key={category.id}
+                as={Link}
+                to={`/?category=${category.slug}`}
+                variant="ghost"
+                size="sm"
+                onClick={onLinkClick}
+                justifyContent="flex-start"
+                color={selectedCategory === category.slug ? 'brand.600' : 'gray.600'}
+                bg={selectedCategory === category.slug ? 'brand.50' : 'transparent'}
+              >
+                <Text mr={2}>{category.icon}</Text>
+                {category.name}
+                <Badge ml="auto" size="xs" colorScheme="gray" variant="subtle">
+                  {category.articles_count}
+                </Badge>
+              </Button>
+            ))
+          )}
+        </VStack>
+      );
+    }
+
+    return (
+      <Menu>
+        <MenuButton
+          as={Button}
+          variant="ghost"
+          size="sm"
+          rightIcon={<ChevronDownIcon />}
+          _hover={{ bg: 'brand.50', color: 'brand.600' }}
+        >
+          Categories
+        </MenuButton>
+        <MenuList>
+          <MenuItem as={Link} to="/" onClick={onLinkClick}>
+            <Text mr={2}>📰</Text>
+            All Articles
+          </MenuItem>
+          <MenuDivider />
+          {categoriesLoading ? (
+            <MenuItem isDisabled>
+              <Spinner size="sm" mr={2} />
+              Loading...
+            </MenuItem>
+          ) : (
+            categories.map((category) => (
+              <MenuItem
+                key={category.id}
+                as={Link}
+                to={`/?category=${category.slug}`}
+                onClick={onLinkClick}
+              >
+                <Text mr={2}>{category.icon}</Text>
+                <Text flex="1">{category.name}</Text>
+                <Badge size="xs" colorScheme="gray" variant="subtle">
+                  {category.articles_count}
+                </Badge>
+              </MenuItem>
+            ))
+          )}
+        </MenuList>
+      </Menu>
+    );
+  };
+
   const NavigationLinks = ({ isVertical = false, onLinkClick }) => (
     <>
       <Button 
@@ -61,6 +181,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
       >
         Home
       </Button>
+      <CategoriesDropdown isVertical={isVertical} onLinkClick={onLinkClick} />
       <Button 
         as={Link} 
         to="/contact" 

@@ -26,9 +26,9 @@ import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
 import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
-import CategoryNavigation from '../components/CategoryNavigation';
 import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
+import NewsletterSubscription from '../components/NewsletterSubscription';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const HomePage = () => {
@@ -216,6 +216,7 @@ const HomePage = () => {
         searchQuery={searchInput}
         setSearchQuery={setSearchInput}
         onClearSearch={clearSearch}
+        selectedCategory={selectedCategory}
       />
 
       <Container maxW="container.xl" py={{ base: 4, md: 8 }}>
@@ -224,8 +225,6 @@ const HomePage = () => {
           <AdComponent placement="top_banner" maxAds={1} />
         </Box>
 
-        {/* Category Navigation */}
-        <CategoryNavigation selectedCategory={selectedCategory} />
 
         {/* Search Results or Regular Content */}
         {loading ? (
@@ -326,6 +325,13 @@ const HomePage = () => {
             >
               Clear Search
             </Button>
+          </Box>
+        )}
+
+        {/* Newsletter Subscription Section */}
+        {!searchQuery.trim() && (
+          <Box mb={8}>
+            <NewsletterSubscription variant="inline" showTitle={true} />
           </Box>
         )}
 

@@ -9,6 +9,7 @@ class SiteSettings(models.Model):
         choices=[
             ('draft', 'Draft'),
             ('published', 'Published'),
+            ('scheduled', 'Scheduled'),
         ],
         default='draft',
         help_text="Default status for new articles created via API"

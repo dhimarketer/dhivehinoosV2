@@ -21,6 +21,22 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
+# Check if .env file exists, create it if missing
+if [ ! -f ".env" ]; then
+    echo "⚠️  Warning: .env file not found! Creating default .env file..."
+    cat > .env << 'EOF'
+# Environment variables for Dhivehinoos.net production deployment
+SECRET_KEY=django-insecure-production-key-change-this
+DEBUG=False
+ALLOWED_HOSTS=dhivehinoos.net,www.dhivehinoos.net,localhost,127.0.0.1
+API_INGEST_KEY=your-n8n-api-key-here
+USE_MEMORY_CACHE=true
+DATABASE_URL=sqlite:////app/database/db.sqlite3
+REDIS_URL=redis://127.0.0.1:6379/3
+EOF
+    echo "✅ Created default .env file. Please update SECRET_KEY and API_INGEST_KEY with proper values."
+fi
+
 # Create necessary directories if they don't exist
 echo "📁 Creating necessary directories..."
 sudo mkdir -p /opt/dhivehinoos/database
@@ -84,6 +100,14 @@ else
     echo "❌ Migration failed! Check logs:"
     docker-compose logs dhivehinoos_backend
     exit 1
+fi
+
+# Create default schedules
+echo "📅 Creating default publishing schedules..."
+if docker-compose exec -T dhivehinoos_backend python manage.py create_default_schedules; then
+    echo "✅ Default schedules created successfully!"
+else
+    echo "⚠️  Warning: Could not create default schedules, continuing..."
 fi
 
 # Collect static files
