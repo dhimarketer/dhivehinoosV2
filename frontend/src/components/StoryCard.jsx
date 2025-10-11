@@ -57,6 +57,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
       return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
     } else {
       return date.toLocaleDateString('en-US', { 
+        timeZone: 'Indian/Maldives',
         month: 'long', 
         day: 'numeric', 
         year: 'numeric' 

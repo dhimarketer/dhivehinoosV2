@@ -10,4 +10,5 @@ urlpatterns = [
     path('create/', views.create_contact_message, name='create-contact-message'),
     path('admin/<int:message_id>/archive/', views.archive_contact_message, name='archive-contact-message'),
     path('admin/<int:message_id>/unarchive/', views.unarchive_contact_message, name='unarchive-contact-message'),
+    path('admin/<int:message_id>/delete/', views.delete_contact_message, name='delete-contact-message'),
 ]

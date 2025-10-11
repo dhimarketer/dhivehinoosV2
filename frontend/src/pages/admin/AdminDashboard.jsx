@@ -614,6 +614,7 @@ const AdminDashboard = () => {
 
   const handleApproveComment = async (id) => {
     try {
+      console.log('Approving comment:', id);
       await commentsAPI.approve(id);
       await fetchData();
       toast({
@@ -623,9 +624,10 @@ const AdminDashboard = () => {
       });
     } catch (error) {
       console.error('Error approving comment:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to approve comment';
       toast({
         title: 'Error approving comment',
-        description: error.response?.data?.detail || 'Failed to approve comment',
+        description: errorMessage,
         status: 'error',
         duration: 3000,
       });
@@ -635,6 +637,7 @@ const AdminDashboard = () => {
   const handleRejectComment = async (id) => {
     if (window.confirm('Are you sure you want to reject this comment?')) {
       try {
+        console.log('Rejecting comment:', id);
         await commentsAPI.reject(id);
         await fetchData();
         toast({
@@ -644,9 +647,10 @@ const AdminDashboard = () => {
         });
       } catch (error) {
         console.error('Error rejecting comment:', error);
+        const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to reject comment';
         toast({
           title: 'Error rejecting comment',
-          description: error.response?.data?.detail || 'Failed to reject comment',
+          description: errorMessage,
           status: 'error',
           duration: 3000,
         });
@@ -677,26 +681,28 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUnarchiveMessage = async (messageId) => {
-    try {
-      await contactAPI.unarchive(messageId);
-      toast({
-        title: 'Message unarchived',
-        description: 'Contact message has been unarchived',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-      fetchData(); // Refresh data
-    } catch (error) {
-      console.error('Error unarchiving message:', error);
-      toast({
-        title: 'Error unarchiving message',
-        description: 'Failed to unarchive message',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+  const handleDeleteMessage = async (messageId) => {
+    if (window.confirm('Are you sure you want to permanently delete this message? This action cannot be undone.')) {
+      try {
+        await contactAPI.delete(messageId);
+        toast({
+          title: 'Message deleted',
+          description: 'Contact message has been permanently deleted',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+        fetchData(); // Refresh data
+      } catch (error) {
+        console.error('Error deleting message:', error);
+        toast({
+          title: 'Error deleting message',
+          description: 'Failed to delete message',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     }
   };
 
@@ -1052,15 +1058,33 @@ const AdminDashboard = () => {
                     </Badge>
                     {article.scheduled_publish_time && (
                       <Text fontSize="xs" color="gray.500" mt={1}>
-                        Scheduled: {new Date(article.scheduled_publish_time).toLocaleString()}
+                        Scheduled: {new Date(article.scheduled_publish_time).toLocaleString('en-US', {
+                          timeZone: 'Indian/Maldives',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
                       </Text>
                     )}
                   </Td>
                   <Td fontSize="sm" color="gray.600">
-                    {new Date(article.created_at).toLocaleDateString()}
+                    {new Date(article.created_at).toLocaleDateString('en-US', {
+                      timeZone: 'Indian/Maldives',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
                   </Td>
                   <Td fontSize="sm" color="gray.600">
-                    {new Date(article.updated_at).toLocaleDateString()}
+                    {new Date(article.updated_at).toLocaleDateString('en-US', {
+                      timeZone: 'Indian/Maldives',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
                   </Td>
                   <Td>
                     <HStack spacing={1}>
@@ -1196,7 +1220,23 @@ const AdminDashboard = () => {
           <Tbody>
             {comments.map((comment) => (
               <Tr key={comment.id}>
-                <Td>{comment.article_title || 'N/A'}</Td>
+                <Td>
+                  <Box>
+                    <Text fontWeight="medium" fontSize="sm">
+                      {comment.article_title || 'N/A'}
+                    </Text>
+                    <Link 
+                      href={`/article/${comment.article_slug}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      color="blue.500"
+                      fontSize="xs"
+                      textDecoration="underline"
+                    >
+                      View Article →
+                    </Link>
+                  </Box>
+                </Td>
                 <Td>{comment.author_name}</Td>
                 <Td maxW="200px" isTruncated>{comment.content}</Td>
                 <Td>
@@ -1264,7 +1304,15 @@ const AdminDashboard = () => {
               <CardBody flex="1" display="flex" flexDirection="column">
                 <Text fontSize="sm" flex="1" noOfLines={6}>{message.message}</Text>
                 <Text fontSize="xs" color="gray.500" mt="auto" mb={2}>
-                  {new Date(message.created_at).toLocaleDateString()}
+                  {new Date(message.created_at).toLocaleDateString('en-US', {
+                    timeZone: 'Indian/Maldives',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
                 </Text>
                 <HStack spacing={2} justify="end">
                   <Button
@@ -1283,6 +1331,14 @@ const AdminDashboard = () => {
                       Mark Read
                     </Button>
                   )}
+                  <Button
+                    size="xs"
+                    colorScheme="red"
+                    variant="outline"
+                    onClick={() => handleDeleteMessage(message.id)}
+                  >
+                    Delete
+                  </Button>
                 </HStack>
               </CardBody>
             </Card>

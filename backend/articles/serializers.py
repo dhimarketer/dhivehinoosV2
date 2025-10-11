@@ -179,6 +179,67 @@ class PublishingScheduleSerializer(serializers.ModelSerializer):
     def get_interval_minutes(self, obj):
         """Return the interval in minutes"""
         return obj.get_interval_minutes()
+    
+    def validate(self, data):
+        """Custom validation for schedule data"""
+        errors = {}
+        
+        # Validate custom_interval_minutes when frequency is 'custom'
+        if data.get('frequency') == 'custom':
+            if not data.get('custom_interval_minutes'):
+                errors['custom_interval_minutes'] = 'Custom interval minutes is required when frequency is custom'
+            elif data.get('custom_interval_minutes') < 1 or data.get('custom_interval_minutes') > 10080:
+                errors['custom_interval_minutes'] = 'Custom interval must be between 1 and 10080 minutes'
+        else:
+            # Clear custom_interval_minutes for non-custom frequencies
+            if 'custom_interval_minutes' in data:
+                data['custom_interval_minutes'] = None
+        
+        # Validate forbidden hours
+        forbidden_start = data.get('forbidden_hours_start')
+        forbidden_end = data.get('forbidden_hours_end')
+        
+        if forbidden_start and forbidden_end:
+            if forbidden_start == forbidden_end:
+                errors['forbidden_hours_end'] = 'Forbidden hours start and end cannot be the same'
+        
+        # Validate max_articles_per_day
+        max_articles = data.get('max_articles_per_day')
+        if max_articles is not None and (max_articles < 1 or max_articles > 100):
+            errors['max_articles_per_day'] = 'Max articles per day must be between 1 and 100'
+        
+        # Validate queue_priority
+        priority = data.get('queue_priority')
+        if priority is not None and priority < 0:
+            errors['queue_priority'] = 'Queue priority must be a positive number'
+        
+        if errors:
+            raise serializers.ValidationError(errors)
+        
+        return data
+    
+    def validate_name(self, value):
+        """Validate schedule name"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Schedule name cannot be empty')
+        
+        # Check for uniqueness (excluding current instance for updates)
+        instance = self.instance
+        if instance:
+            if PublishingSchedule.objects.filter(name=value).exclude(id=instance.id).exists():
+                raise serializers.ValidationError('A schedule with this name already exists')
+        else:
+            if PublishingSchedule.objects.filter(name=value).exists():
+                raise serializers.ValidationError('A schedule with this name already exists')
+        
+        return value.strip()
+    
+    def validate_frequency(self, value):
+        """Validate frequency choice"""
+        valid_choices = [choice[0] for choice in PublishingSchedule.FREQUENCY_CHOICES]
+        if value not in valid_choices:
+            raise serializers.ValidationError(f'Invalid frequency. Must be one of: {", ".join(valid_choices)}')
+        return value
 
 
 class ScheduledArticleSerializer(serializers.ModelSerializer):

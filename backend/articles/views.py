@@ -288,7 +288,7 @@ class PublishingScheduleViewSet(ModelViewSet):
     """Admin viewset for managing publishing schedules"""
     queryset = PublishingSchedule.objects.all()
     serializer_class = PublishingScheduleSerializer
-    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    permission_classes = [permissions.IsAuthenticated]  # Require authentication
     pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
@@ -300,13 +300,59 @@ class PublishingScheduleViewSet(ModelViewSet):
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
         
         return queryset
+    
+    def update(self, request, *args, **kwargs):
+        """Override update method to provide better error handling"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(
+                    {'error': 'Validation failed', 'details': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            # Log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Schedule update error: {str(e)}")
+            
+            return Response(
+                {'error': 'Update failed', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def create(self, request, *args, **kwargs):
+        """Override create method to provide better error handling"""
+        try:
+            serializer = self.get_serializer(data=request.data)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(
+                    {'error': 'Validation failed', 'details': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            return Response(
+                {'error': 'Creation failed', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ScheduledArticleViewSet(ModelViewSet):
     """Admin viewset for managing scheduled articles"""
     queryset = ScheduledArticle.objects.all()
     serializer_class = ScheduledArticleSerializer
-    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    permission_classes = [permissions.IsAuthenticated]  # Require authentication
     pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
@@ -462,7 +508,7 @@ def schedule_stats(request):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 @csrf_exempt
 def process_scheduled_articles(request):
     """Process scheduled articles (admin endpoint)"""

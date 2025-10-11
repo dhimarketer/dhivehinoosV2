@@ -17,34 +17,34 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      // Initialize authentication state from localStorage
-      const storedAuth = localStorage.getItem('isAuthenticated');
-      const storedUser = localStorage.getItem('user');
-      
-      if (storedAuth === 'true' && storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
+    const initializeAuth = async () => {
+      try {
+        // Always check authentication status with backend on page load/refresh
+        const isAuth = await authService.checkAuthStatus();
+        
+        if (isAuth) {
           setIsAuthenticated(true);
-          setUser(userData);
-          
-          // Verify with backend in background (don't block UI)
-          checkAuthStatus().catch(error => {
-            console.log('Background auth check failed:', error);
-            // Don't clear auth state immediately - let user try to use the app
-          });
-        } catch (error) {
-          console.error('Error parsing stored user data:', error);
+          setUser(authService.getCurrentUser());
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+          // Clear any stale authentication data
           localStorage.removeItem('isAuthenticated');
           localStorage.removeItem('user');
         }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setIsAuthenticated(false);
+        setUser(null);
+        // Clear any stale authentication data
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('AuthContext initialization error:', error);
-      setLoading(false);
-    }
+    };
+
+    initializeAuth();
   }, []);
 
   const checkAuthStatus = async () => {
@@ -117,13 +117,19 @@ export const AuthProvider = ({ children }) => {
 
 // Protected Route Component
 export const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, checkAuthStatus } = useAuth();
 
   useEffect(() => {
+    // If not authenticated and not loading, try to check auth status once more
     if (!loading && !isAuthenticated) {
-      window.location.href = '/admin/login';
+      checkAuthStatus().then(() => {
+        // After checking, if still not authenticated, redirect to login
+        if (!isAuthenticated) {
+          window.location.href = '/admin/login';
+        }
+      });
     }
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, loading, checkAuthStatus]);
 
   if (loading) {
     return (
@@ -139,7 +145,16 @@ export const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <div>Redirecting to login...</div>
+      </div>
+    );
   }
 
   return children;

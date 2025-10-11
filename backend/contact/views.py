@@ -43,6 +43,27 @@ def create_contact_message(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['DELETE'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def delete_contact_message(request, message_id):
+    """Delete a contact message"""
+    try:
+        message = ContactMessage.objects.get(id=message_id)
+        message.delete()
+        return Response({'message': 'Contact message deleted successfully'})
+    except ContactMessage.DoesNotExist:
+        return Response(
+            {'error': 'Contact message not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to delete contact message', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 @api_view(['PATCH'])
 @permission_classes([permissions.AllowAny])
 @csrf_exempt

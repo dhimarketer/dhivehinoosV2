@@ -29,6 +29,56 @@ class CommentViewSet(ModelViewSet):
         return queryset
 
 
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def approve_comment(request, comment_id):
+    """Approve a comment"""
+    try:
+        comment = Comment.objects.get(id=comment_id)
+        comment.is_approved = True
+        comment.save()
+        return Response({
+            'message': 'Comment approved successfully',
+            'comment': CommentSerializer(comment).data
+        })
+    except Comment.DoesNotExist:
+        return Response(
+            {'error': 'Comment not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to approve comment', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def reject_comment(request, comment_id):
+    """Reject/unapprove a comment"""
+    try:
+        comment = Comment.objects.get(id=comment_id)
+        comment.is_approved = False
+        comment.save()
+        return Response({
+            'message': 'Comment rejected successfully',
+            'comment': CommentSerializer(comment).data
+        })
+    except Comment.DoesNotExist:
+        return Response(
+            {'error': 'Comment not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to reject comment', 'details': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 class ArticleCommentsListView(ListAPIView):
     """Public API for listing approved comments for an article"""
     serializer_class = CommentSerializer

@@ -6,7 +6,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.middleware.csrf import get_token
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -15,52 +19,84 @@ def login_view(request):
     """
     Login endpoint for admin users
     """
+    logger.info(f"Login attempt from {request.META.get('REMOTE_ADDR')}")
+    
     try:
-        data = json.loads(request.body)
+        # Parse JSON data
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON in login request")
+            return Response(
+                {'error': 'Invalid JSON data'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         username = data.get('username')
         password = data.get('password')
         
+        logger.info(f"Login attempt for user: {username}")
+        
         if not username or not password:
+            logger.warning("Missing username or password")
             return Response(
                 {'error': 'Username and password are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Authenticate user
         user = authenticate(request, username=username, password=password)
         
         if user is not None:
+            logger.info(f"User {username} authenticated successfully")
             if user.is_staff:
+                # Login the user
                 login(request, user)
-                return Response({
+                
+                # Get CSRF token for the session
+                csrf_token = get_token(request)
+                
+                response_data = {
                     'message': 'Login successful',
                     'user': {
                         'id': user.id,
                         'username': user.username,
                         'is_staff': user.is_staff,
                         'is_superuser': user.is_superuser,
-                    }
-                })
+                    },
+                    'csrf_token': csrf_token
+                }
+                
+                logger.info(f"User {username} logged in successfully")
+                return Response(response_data)
             else:
+                logger.warning(f"Non-staff user {username} attempted login")
                 return Response(
                     {'error': 'Only admin users can access this system'},
                     status=status.HTTP_403_FORBIDDEN
                 )
         else:
+            logger.warning(f"Authentication failed for user: {username}")
             return Response(
                 {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
             
-    except json.JSONDecodeError:
-        return Response(
-            {'error': 'Invalid JSON data'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
     except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         return Response(
-            {'error': 'Login failed'},
+            {'error': 'Login failed', 'details': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_csrf_token(request):
+    """
+    Get CSRF token for frontend
+    """
+    csrf_token = get_token(request)
+    return Response({'csrf_token': csrf_token})
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

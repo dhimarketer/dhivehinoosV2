@@ -89,11 +89,48 @@ const SchedulingPage = () => {
 
   const toggleSchedule = async (scheduleId, isActive) => {
     try {
-      await api.patch(`/articles/schedules/${scheduleId}/`, { is_active: !isActive });
+      console.log(`Toggling schedule ${scheduleId}, current active: ${isActive}`);
+      
+      if (isActive) {
+        // Deactivating - this is always allowed
+        console.log('Deactivating schedule...');
+        await api.patch(`/articles/schedules/${scheduleId}/`, { is_active: false });
+        toast({
+          title: 'Schedule deactivated',
+          status: 'success',
+          duration: 2000,
+        });
+      } else {
+        // Activating - check if another schedule is active
+        const activeSchedule = schedules.find(s => s.is_active);
+        if (activeSchedule && activeSchedule.id !== scheduleId) {
+          const confirmMessage = `Schedule "${activeSchedule.name}" is currently active. Activating this schedule will deactivate it. Continue?`;
+          if (!window.confirm(confirmMessage)) {
+            return;
+          }
+        }
+        
+        console.log('Activating schedule...');
+        await api.patch(`/articles/schedules/${scheduleId}/`, { is_active: true });
+        toast({
+          title: 'Schedule activated',
+          description: 'Articles from inactive schedules have been automatically reassigned to this schedule.',
+          status: 'success',
+          duration: 4000,
+        });
+      }
+      console.log('Schedule toggle successful, refreshing data...');
       fetchData();
     } catch (err) {
-      setError('Failed to toggle schedule');
-      console.error('Error toggling schedule:', err);
+      console.error('Schedule toggle error:', err);
+      const errorMessage = err.response?.data?.is_active?.[0] || err.response?.data?.error || 'Failed to toggle schedule';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 3000,
+      });
     }
   };
 
@@ -228,7 +265,16 @@ const SchedulingPage = () => {
   };
 
   const formatDateTime = (dateTime) => {
-    return new Date(dateTime).toLocaleString();
+    if (!dateTime) return 'Not scheduled';
+    return new Date(dateTime).toLocaleString('en-US', {
+      timeZone: 'Indian/Maldives',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const formatTime = (time) => {
@@ -254,6 +300,15 @@ const SchedulingPage = () => {
         <Box>
           <Heading size="xl" mb={2}>Article Scheduling</Heading>
           <Text color="gray.600">Manage publishing schedules and scheduled articles</Text>
+          <Alert status="info" mt={4} borderRadius="md">
+            <AlertIcon />
+            <Box>
+              <Text fontWeight="medium">Single Active Schedule System</Text>
+              <Text fontSize="sm">
+                Only one schedule can be active at a time. When articles arrive via API, they will use the currently active schedule.
+              </Text>
+            </Box>
+          </Alert>
         </Box>
 
         {error && (
@@ -337,9 +392,14 @@ const SchedulingPage = () => {
                       }
                     </Td>
                     <Td>
-                      <Badge colorScheme={schedule.is_active ? 'green' : 'gray'}>
-                        {schedule.is_active ? 'Active' : 'Inactive'}
+                      <Badge colorScheme={schedule.is_active ? 'green' : 'gray'} size="lg">
+                        {schedule.is_active ? '🟢 Active' : '⚪ Inactive'}
                       </Badge>
+                      {schedule.is_active && (
+                        <Text fontSize="xs" color="green.600" mt={1} fontWeight="medium">
+                          Currently Active Schedule
+                        </Text>
+                      )}
                     </Td>
                     <Td>
                       {schedule.forbidden_hours_start && schedule.forbidden_hours_end

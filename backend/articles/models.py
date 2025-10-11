@@ -171,6 +171,122 @@ class PublishingSchedule(models.Model):
                     )
         
         return next_time
+    
+    def save(self, *args, **kwargs):
+        """Override save to ensure only one schedule is active at a time and reassign articles"""
+        from django.utils import timezone
+        
+        # Check if this schedule is being activated
+        was_activating = False
+        if self.is_active and self.pk:
+            # Check if this schedule was previously inactive
+            try:
+                old_schedule = PublishingSchedule.objects.get(pk=self.pk)
+                was_activating = not old_schedule.is_active and self.is_active
+            except PublishingSchedule.DoesNotExist:
+                was_activating = True
+        
+        # Ensure only one schedule is active at a time
+        if self.is_active:
+            # Use update() for better performance instead of individual saves
+            PublishingSchedule.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+        
+        super().save(*args, **kwargs)
+        
+        # If this schedule is being activated, reassign articles from inactive schedules
+        if was_activating:
+            self._reassign_articles_from_inactive_schedules()
+    
+    def _reassign_articles_from_inactive_schedules(self):
+        """Reassign articles from inactive schedules to this active schedule"""
+        from django.utils import timezone
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # Get all scheduled articles from inactive schedules
+        inactive_schedules = PublishingSchedule.objects.filter(is_active=False)
+        articles_to_reassign = ScheduledArticle.objects.filter(
+            schedule__in=inactive_schedules,
+            status__in=['queued', 'scheduled']
+        ).select_related('article', 'schedule')
+        
+        if not articles_to_reassign.exists():
+            logger.info(f"No articles found on inactive schedules to reassign")
+            return
+        
+        logger.info(f"Reassigning {articles_to_reassign.count()} articles from inactive schedules to '{self.name}'")
+        
+        reassigned_count = 0
+        for scheduled_article in articles_to_reassign:
+            try:
+                # Calculate new publish time based on this schedule
+                new_publish_time = self.get_next_publish_time()
+                
+                # Update the scheduled article
+                scheduled_article.schedule = self
+                scheduled_article.scheduled_publish_time = new_publish_time
+                scheduled_article.save()
+                
+                # Update the article's scheduled time as well
+                scheduled_article.article.scheduled_publish_time = new_publish_time
+                scheduled_article.article.save()
+                
+                reassigned_count += 1
+                logger.info(f"Reassigned article '{scheduled_article.article.title}' from '{scheduled_article.schedule.name}' to '{self.name}' (new time: {new_publish_time})")
+                
+            except Exception as e:
+                logger.error(f"Failed to reassign article '{scheduled_article.article.title}': {str(e)}")
+        
+        logger.info(f"Successfully reassigned {reassigned_count} articles to '{self.name}'")
+    
+    def get_schedule_stats(self):
+        """Get statistics for this schedule"""
+        from django.utils import timezone
+        
+        today = timezone.now().date()
+        
+        # Get all scheduled articles for this schedule
+        scheduled_articles = ScheduledArticle.objects.filter(schedule=self)
+        
+        stats = {
+            'total_scheduled': scheduled_articles.count(),
+            'queued': scheduled_articles.filter(status='queued').count(),
+            'scheduled': scheduled_articles.filter(status='scheduled').count(),
+            'published_today': scheduled_articles.filter(
+                status='published',
+                published_at__date=today
+            ).count(),
+            'daily_limit': self.max_articles_per_day,
+            'daily_limit_reached': False,
+            'next_publish_time': None
+        }
+        
+        # Check if daily limit is reached
+        if self.max_articles_per_day and stats['published_today'] >= self.max_articles_per_day:
+            stats['daily_limit_reached'] = True
+        
+        # Get next publish time
+        try:
+            stats['next_publish_time'] = self.get_next_publish_time()
+        except Exception:
+            stats['next_publish_time'] = None
+        
+        return stats
+    
+    @classmethod
+    def get_active_schedule(cls):
+        """Get the currently active schedule"""
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return None
+        except cls.MultipleObjectsReturned:
+            # If somehow multiple schedules are active, get the first one and deactivate others
+            active_schedules = cls.objects.filter(is_active=True)
+            first_schedule = active_schedules.first()
+            active_schedules.exclude(pk=first_schedule.pk).update(is_active=False)
+            return first_schedule
 
 
 class ScheduledArticle(models.Model):
@@ -329,7 +445,7 @@ class Article(models.Model):
         
         if not schedule:
             # Get the default active schedule
-            schedule = PublishingSchedule.objects.filter(is_active=True).order_by('-queue_priority').first()
+            schedule = PublishingSchedule.get_active_schedule()
             if not schedule:
                 raise ValueError("No active publishing schedule found")
         

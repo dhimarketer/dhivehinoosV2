@@ -62,11 +62,19 @@ class Command(BaseCommand):
         # Get articles ready for publishing
         from articles.models import ScheduledArticle
         
-        ready_articles = ScheduledArticle.objects.filter(
-            schedule=schedule,
-            status__in=['queued', 'scheduled'],
-            scheduled_publish_time__lte=timezone.now()
-        ).select_related('article').order_by('scheduled_publish_time', '-priority')
+        if schedule_id:
+            # Process only articles from specific schedule
+            ready_articles = ScheduledArticle.objects.filter(
+                schedule=schedule,
+                status__in=['queued', 'scheduled'],
+                scheduled_publish_time__lte=timezone.now()
+            ).select_related('article').order_by('scheduled_publish_time', '-priority')
+        else:
+            # Process ALL articles ready for publishing (regardless of schedule)
+            ready_articles = ScheduledArticle.objects.filter(
+                status__in=['queued', 'scheduled'],
+                scheduled_publish_time__lte=timezone.now()
+            ).select_related('article', 'schedule').order_by('scheduled_publish_time', '-priority')
         
         if not ready_articles.exists():
             self.stdout.write(
@@ -84,6 +92,7 @@ class Command(BaseCommand):
             
             if verbose:
                 self.stdout.write(f"    Status: {scheduled_article.status}")
+                self.stdout.write(f"    Schedule: {scheduled_article.schedule.name} (Active: {scheduled_article.schedule.is_active})")
                 self.stdout.write(f"    Priority: {scheduled_article.priority}")
                 self.stdout.write(f"    Can publish now: {scheduled_article.can_publish_now()}")
         

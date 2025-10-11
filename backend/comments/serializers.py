@@ -3,13 +3,21 @@ from .models import Comment, Vote
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    article_title = serializers.CharField(source='article.title', read_only=True)
+    article_slug = serializers.CharField(source='article.slug', read_only=True)
+    article_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = Comment
         fields = [
-            'id', 'article', 'author_name', 'content', 'is_approved',
-            'created_at'
+            'id', 'article', 'article_title', 'article_slug', 'article_url',
+            'author_name', 'content', 'is_approved', 'created_at'
         ]
         read_only_fields = ['created_at']
+    
+    def get_article_url(self, obj):
+        """Generate article URL for admin to view the article"""
+        return f"/article/{obj.article.slug}"
 
 
 class CommentCreateSerializer(serializers.ModelSerializer):

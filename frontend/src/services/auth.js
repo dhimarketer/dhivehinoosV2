@@ -45,7 +45,7 @@ class AuthService {
   async checkAuthStatus() {
     try {
       const response = await api.get('/auth/user/');
-      if (response.status === 200) {
+      if (response.status === 200 && response.data.user) {
         this.isAuthenticated = true;
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(response.data.user));

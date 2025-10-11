@@ -15,7 +15,7 @@ class ArticleSchedulingService:
     @staticmethod
     def get_default_schedule():
         """Get the default active publishing schedule"""
-        return PublishingSchedule.objects.filter(is_active=True).order_by('-queue_priority').first()
+        return PublishingSchedule.get_active_schedule()
     
     @staticmethod
     def schedule_article(article, schedule=None, custom_time=None):

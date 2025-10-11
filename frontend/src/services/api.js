@@ -12,13 +12,32 @@ const api = axios.create({
 
 // Request interceptor for session authentication
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Session authentication is handled automatically with cookies
-    // Add CSRF token if available
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
-    if (csrfToken) {
-      config.headers['X-CSRFToken'] = csrfToken;
+    // Get CSRF token if not already present
+    if (!config.headers['X-CSRFToken']) {
+      try {
+        const response = await fetch('/api/v1/auth/csrf-token/', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          config.headers['X-CSRFToken'] = data.csrf_token;
+        }
+      } catch (error) {
+        console.warn('Could not fetch CSRF token:', error);
+      }
     }
+    
+    // Fallback: try to get CSRF token from DOM
+    if (!config.headers['X-CSRFToken']) {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+      if (csrfToken) {
+        config.headers['X-CSRFToken'] = csrfToken;
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -98,8 +117,8 @@ export const commentsAPI = {
   getByArticle: (slug) => api.get(`/comments/article/${slug}/`),
   getAll: () => api.get(`/comments/admin/?t=${Date.now()}`), // Add cache-busting timestamp
   create: (data) => api.post('/comments/create/', data),
-  approve: (id) => api.patch(`/comments/admin/${id}/`, { is_approved: true }),
-  reject: (id) => api.delete(`/comments/admin/${id}/`),
+  approve: (id) => api.post(`/comments/admin/${id}/approve/`),
+  reject: (id) => api.post(`/comments/admin/${id}/reject/`),
 };
 
 export const votesAPI = {
@@ -146,6 +165,7 @@ export const contactAPI = {
   markAsRead: (id) => api.patch(`/contact/admin/${id}/`, { is_read: true }),
   archive: (id) => api.patch(`/contact/admin/${id}/archive/`),
   unarchive: (id) => api.patch(`/contact/admin/${id}/unarchive/`),
+  delete: (id) => api.delete(`/contact/admin/${id}/delete/`),
 };
 
 export const authAPI = {
