@@ -96,13 +96,13 @@ export const articlesAPI = {
   update: (id, data) => {
     // If data is FormData, don't set Content-Type header
     if (data instanceof FormData) {
-      return api.put(`/articles/admin/${id}/`, data, {
+      return api.patch(`/articles/admin/${id}/`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
     }
-    return api.put(`/articles/admin/${id}/`, data);
+    return api.patch(`/articles/admin/${id}/`, data);
   },
   delete: (id) => api.delete(`/articles/admin/${id}/`),
 };

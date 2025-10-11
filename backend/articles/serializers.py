@@ -16,38 +16,7 @@ class CategorySerializer(serializers.ModelSerializer):
         return obj.articles.filter(status='published').count()
 
 
-class ArticleSerializer(serializers.ModelSerializer):
-    vote_score = serializers.ReadOnlyField()
-    approved_comments_count = serializers.ReadOnlyField()
-    image_url = serializers.SerializerMethodField()
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
-    
-    class Meta:
-        model = Article
-        fields = [
-            'id', 'title', 'slug', 'content', 'image', 'image_file', 'image_url', 'status',
-            'category', 'category_id', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
-        ]
-        read_only_fields = ['slug', 'created_at', 'updated_at']
-    
-    def get_image_url(self, obj):
-        """Return the full image URL with fallback handling"""
-        # Prioritize image_file over image URL for reliability
-        if obj.image_file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image_file.url)
-            else:
-                # Fallback for when no request context is available
-                return f"http://localhost:8000{obj.image_file.url}"
-        elif obj.image:
-            # Only return external image URL if it's not a placeholder
-            if not obj.image.startswith('https://via.placeholder.com'):
-                return obj.image
-            # If it's a placeholder, return None to trigger fallback
-            return None
-        return None
+# Removed duplicate ArticleSerializer - using the one below with scheduling fields
 
 
 class ArticleListSerializer(serializers.ModelSerializer):
@@ -311,3 +280,32 @@ class ArticleSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'scheduled_publish') and obj.scheduled_publish:
             return ScheduledArticleSerializer(obj.scheduled_publish).data
         return None
+    
+    def update(self, instance, validated_data):
+        """Custom update method to handle image updates properly"""
+        # Handle category_id separately
+        category_id = validated_data.pop('category_id', None)
+        if category_id is not None:
+            try:
+                from .models import Category
+                instance.category = Category.objects.get(id=category_id)
+            except Category.DoesNotExist:
+                pass  # Keep existing category if new one doesn't exist
+        
+        # Special handling for published articles
+        # If article is published and no status is provided, keep it published
+        if instance.status == 'published' and 'status' not in validated_data:
+            # Don't change the status - keep it published
+            pass
+        elif instance.status == 'published' and validated_data.get('status') == 'draft':
+            # If admin explicitly wants to unpublish, allow it
+            pass
+        
+        # Update all other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Save the instance
+        instance.save()
+        
+        return instance

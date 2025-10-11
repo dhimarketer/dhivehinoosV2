@@ -38,6 +38,13 @@ class ArticleSchedulingService:
             if not schedule:
                 raise ValueError("No active publishing schedule found")
         
+        # Ensure the schedule is active
+        if not schedule.is_active:
+            logger.warning(f"Schedule '{schedule.name}' is not active, using default active schedule")
+            schedule = ArticleSchedulingService.get_default_schedule()
+            if not schedule:
+                raise ValueError("No active publishing schedule found")
+        
         # Calculate publish time
         if custom_time:
             publish_time = custom_time
@@ -66,7 +73,7 @@ class ArticleSchedulingService:
             scheduled_article.status = 'scheduled'
             scheduled_article.save()
         
-        logger.info(f"Scheduled article '{article.title}' for {publish_time}")
+        logger.info(f"Scheduled article '{article.title}' for {publish_time} using schedule '{schedule.name}'")
         return scheduled_article
     
     @staticmethod
@@ -82,6 +89,7 @@ class ArticleSchedulingService:
             'processed': 0,
             'published': 0,
             'failed': 0,
+            'reassigned': 0,
             'errors': []
         }
         
@@ -93,10 +101,33 @@ class ArticleSchedulingService:
         
         logger.info(f"Found {ready_articles.count()} articles ready for publishing")
         
+        # Get the active schedule for reassignment
+        active_schedule = ArticleSchedulingService.get_default_schedule()
+        
         for scheduled_article in ready_articles:
             results['processed'] += 1
             
             try:
+                # If the article is on an inactive schedule, reassign it to the active schedule
+                if not scheduled_article.schedule.is_active and active_schedule:
+                    logger.info(f"Reassigning article '{scheduled_article.article.title}' from inactive schedule '{scheduled_article.schedule.name}' to active schedule '{active_schedule.name}'")
+                    
+                    # Calculate new publish time based on active schedule
+                    new_publish_time = active_schedule.get_next_publish_time()
+                    
+                    # Update the scheduled article
+                    scheduled_article.schedule = active_schedule
+                    scheduled_article.scheduled_publish_time = new_publish_time
+                    scheduled_article.save()
+                    
+                    # Update the article's scheduled time as well
+                    scheduled_article.article.scheduled_publish_time = new_publish_time
+                    scheduled_article.article.save()
+                    
+                    results['reassigned'] += 1
+                    logger.info(f"Reassigned article '{scheduled_article.article.title}' to {new_publish_time}")
+                    continue
+                
                 # Check if we can publish now (respecting time restrictions)
                 if not scheduled_article.can_publish_now():
                     logger.info(f"Skipping article '{scheduled_article.article.title}' - time not allowed")

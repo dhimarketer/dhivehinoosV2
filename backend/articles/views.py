@@ -66,6 +66,39 @@ class ArticleViewSet(ModelViewSet):
         
         return queryset
     
+    def update(self, request, *args, **kwargs):
+        """Custom update method with better error handling and logging"""
+        try:
+            instance = self.get_object()
+            print(f"🔄 Updating article: ID={instance.id}, Title='{instance.title}'")
+            print(f"📝 Update data: {request.data}")
+            
+            # Handle partial updates (PATCH) vs full updates (PUT)
+            partial = kwargs.pop('partial', False)
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            
+            if serializer.is_valid():
+                updated_instance = serializer.save()
+                print(f"✅ Article updated successfully: ID={updated_instance.id}")
+                return Response(serializer.data)
+            else:
+                print(f"❌ Validation failed: {serializer.errors}")
+                return Response(
+                    {'error': 'Validation failed', 'details': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            print(f"❌ Update error: {str(e)}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Article update error: {str(e)}")
+            
+            return Response(
+                {'error': 'Update failed', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     def destroy(self, request, *args, **kwargs):
         """Custom destroy method with logging"""
         instance = self.get_object()

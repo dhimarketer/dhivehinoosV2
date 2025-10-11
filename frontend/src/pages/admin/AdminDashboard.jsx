@@ -260,7 +260,12 @@ const AdminDashboard = () => {
         apiData.append('title', articleForm.title);
         apiData.append('content', articleForm.content);
         apiData.append('image_file', articleForm.imageFile);
-        apiData.append('status', articleForm.status);
+        
+        // For published articles, don't send status to keep them published
+        if (!editingArticle || editingArticle.status !== 'published') {
+          apiData.append('status', articleForm.status);
+        }
+        
         apiData.append('publishing_mode', articleForm.publishing_mode);
         if (articleForm.scheduled_publish_time) {
           apiData.append('scheduled_publish_time', articleForm.scheduled_publish_time);
@@ -271,10 +276,14 @@ const AdminDashboard = () => {
           title: articleForm.title,
           content: articleForm.content,
           image: articleForm.image || null,
-          status: articleForm.status,
           publishing_mode: articleForm.publishing_mode,
           scheduled_publish_time: articleForm.scheduled_publish_time || null
         };
+        
+        // For published articles, don't send status to keep them published
+        if (!editingArticle || editingArticle.status !== 'published') {
+          apiData.status = articleForm.status;
+        }
       }
       
       console.log('Submitting article data:', apiData);

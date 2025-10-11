@@ -110,6 +110,19 @@ else
     echo "⚠️  Warning: Could not create default schedules, continuing..."
 fi
 
+# Set up cron job for scheduled article processing
+echo "⏰ Setting up cron job for scheduled article processing..."
+CRON_JOB="*/5 * * * * docker-compose -f /opt/dhivehinoos/docker-compose.yml exec -T dhivehinoos_backend python manage.py process_scheduled_articles >> /opt/dhivehinoos/logs/scheduling.log 2>&1"
+
+# Check if cron job already exists
+if ! crontab -l 2>/dev/null | grep -q "process_scheduled_articles"; then
+    # Add the cron job
+    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+    echo "✅ Cron job added successfully!"
+else
+    echo "✅ Cron job already exists!"
+fi
+
 # Collect static files
 echo "📁 Collecting static files..."
 if docker-compose exec -T dhivehinoos_backend python manage.py collectstatic --noinput; then
