@@ -23,6 +23,7 @@ import { articlesAPI, commentsAPI, votesAPI } from '../services/api';
 import FormattedText from '../components/FormattedText';
 import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
+import SocialShare from '../components/SocialShare';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const ArticlePage = () => {
@@ -289,6 +290,11 @@ const ArticlePage = () => {
 
               {/* Article Content */}
               <FormattedText content={article.content} />
+              
+              {/* Social Sharing */}
+              <Box mt={6} p={4} bg="gray.50" borderRadius="md">
+                <SocialShare article={article} />
+              </Box>
               
               {/* Back to Home Link */}
               <Box mt={8} textAlign="center">

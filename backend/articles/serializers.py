@@ -247,13 +247,14 @@ class ArticleSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     scheduled_publish_info = serializers.SerializerMethodField()
+    social_metadata = serializers.SerializerMethodField()
     
     class Meta:
         model = Article
         fields = [
             'id', 'title', 'slug', 'content', 'image', 'image_file', 'image_url', 'status',
             'category', 'category_id', 'publishing_mode', 'scheduled_publish_time',
-            'scheduled_publish_info', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
+            'scheduled_publish_info', 'social_metadata', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at']
     
@@ -280,6 +281,45 @@ class ArticleSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'scheduled_publish') and obj.scheduled_publish:
             return ScheduledArticleSerializer(obj.scheduled_publish).data
         return None
+    
+    def get_social_metadata(self, obj):
+        """Return social sharing metadata"""
+        request = self.context.get('request')
+        base_url = 'https://dhivehinoos.net'
+        
+        if request:
+            article_url = request.build_absolute_uri(f'/article/{obj.slug}')
+        else:
+            article_url = f'{base_url}/article/{obj.slug}'
+        
+        # Get image URL for social sharing
+        image_url = self.get_image_url(obj)
+        if not image_url:
+            image_url = f'{base_url}/static/favicon.svg'
+        
+        # Create description from content (first 160 characters)
+        description = obj.title
+        if obj.content:
+            # Strip HTML tags and get first 160 characters
+            import re
+            clean_content = re.sub(r'<[^>]+>', '', obj.content)
+            if len(clean_content) > 160:
+                description = f"{obj.title} - {clean_content[:160]}..."
+            else:
+                description = f"{obj.title} - {clean_content}"
+        
+        return {
+            'url': article_url,
+            'title': obj.title,
+            'description': description,
+            'image': image_url,
+            'site_name': 'Dhivehinoos.net',
+            'type': 'article',
+            'published_time': obj.created_at.isoformat() if obj.created_at else None,
+            'modified_time': obj.updated_at.isoformat() if obj.updated_at else None,
+            'author': 'Dhivehinoos.net',
+            'category': obj.category.name if obj.category else None,
+        }
     
     def update(self, instance, validated_data):
         """Custom update method to handle image updates properly"""

@@ -327,7 +327,7 @@ class ScheduledArticle(models.Model):
         return (
             self.status in ['queued', 'scheduled'] and
             timezone.now() >= self.scheduled_publish_time and
-            self.schedule.is_time_allowed()
+            self.schedule.is_time_allowed(timezone.now())
         )
     
     def publish(self):

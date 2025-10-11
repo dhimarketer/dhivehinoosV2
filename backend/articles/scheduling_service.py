@@ -94,6 +94,7 @@ class ArticleSchedulingService:
         }
         
         # Get all scheduled articles that are ready to publish
+        # Use the same logic as the management command
         ready_articles = ScheduledArticle.objects.filter(
             status__in=['queued', 'scheduled'],
             scheduled_publish_time__lte=timezone.now()

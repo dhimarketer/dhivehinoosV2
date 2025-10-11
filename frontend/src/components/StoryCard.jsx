@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 import FormattedText from './FormattedText';
+import SocialShare from './SocialShare';
 
 const StoryCard = ({ article, variant = 'default' }) => {
   const [imageLoading, setImageLoading] = useState(true);
@@ -160,9 +161,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
           />
           <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
             <Text>{formatDate(article.created_at)}</Text>
-            <Flex gap={4}>
+            <Flex gap={4} align="center">
               <Text className="news-stats">👍 {article.vote_score || 0}</Text>
               <Text className="news-stats">💬 {article.approved_comments_count || 0}</Text>
+              <SocialShare article={article} variant="minimal" />
             </Flex>
           </Flex>
         </CardBody>
@@ -332,9 +334,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
         />
         <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
           <Text fontWeight="medium">Read More</Text>
-          <Flex gap={3}>
+          <Flex gap={3} align="center">
             <Text className="news-stats">👍 {article.vote_score || 0}</Text>
             <Text className="news-stats">💬 {article.approved_comments_count || 0}</Text>
+            <SocialShare article={article} variant="minimal" />
           </Flex>
         </Flex>
       </CardBody>
