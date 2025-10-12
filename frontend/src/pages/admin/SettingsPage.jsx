@@ -35,12 +35,17 @@ const SettingsPage = () => {
     default_article_status: 'draft',
     site_name: 'Dhivehinoos.net',
     site_description: 'Authentic Maldivian Dhivehi Twitter thoughts and cultural insights for the Maldivian diaspora worldwide. Connect with your roots through curated Dhivehi content.',
+    contact_email: 'emaildym@proton.me',
     allow_comments: true,
     require_comment_approval: true,
     google_analytics_id: '',
+    comment_webhook_enabled: false,
+    comment_webhook_url: '',
+    comment_webhook_secret: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -110,6 +115,54 @@ const SettingsPage = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const testWebhook = async () => {
+    try {
+      setTestingWebhook(true);
+      
+      // Use the same API base URL as the rest of the app
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      
+      const response = await fetch(`${API_BASE_URL}/comments/test-webhook/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: 'Webhook test successful',
+          description: 'Your webhook is working correctly!',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Webhook test failed',
+          description: result.message || 'Webhook test failed. Check your URL and try again.',
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (err) {
+      console.error('Error testing webhook:', err);
+      toast({
+        title: 'Webhook test error',
+        description: 'Failed to test webhook. Please check your configuration.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setTestingWebhook(false);
+    }
   };
 
   if (loading) {
@@ -238,6 +291,85 @@ const SettingsPage = () => {
                 <Text fontSize="sm" color="gray.600">
                   When comment approval is required, comments will need admin approval before being visible to users.
                 </Text>
+              </VStack>
+            </CardBody>
+          </Card>
+
+          {/* Webhook Settings */}
+          <Card>
+            <CardHeader>
+              <Heading size="md">Webhook Settings</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={6} align="stretch">
+                <FormControl display="flex" alignItems="center">
+                  <FormLabel mb="0">Enable Comment Webhook</FormLabel>
+                  <Switch
+                    isChecked={settings.comment_webhook_enabled}
+                    onChange={(e) => handleChange('comment_webhook_enabled', e.target.checked)}
+                    colorScheme="blue"
+                  />
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Webhook URL</FormLabel>
+                  <Input
+                    value={settings.comment_webhook_url || ''}
+                    onChange={(e) => handleChange('comment_webhook_url', e.target.value)}
+                    placeholder="https://your-n8n-workflow-url.com/webhook"
+                    isDisabled={!settings.comment_webhook_enabled}
+                  />
+                  <Text fontSize="sm" color="gray.600" mt={2}>
+                    Enter your n8n workflow webhook URL. Approved comments will be sent to this endpoint.
+                    Leave empty to disable webhook notifications.
+                  </Text>
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    Must start with http:// or https://
+                  </Text>
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Webhook Secret (Optional)</FormLabel>
+                  <Input
+                    type="password"
+                    value={settings.comment_webhook_secret || ''}
+                    onChange={(e) => handleChange('comment_webhook_secret', e.target.value)}
+                    placeholder="Optional secret key for webhook authentication"
+                    isDisabled={!settings.comment_webhook_enabled}
+                  />
+                  <Text fontSize="sm" color="gray.600" mt={2}>
+                    Optional secret key for webhook authentication. This will be sent in the X-Webhook-Secret header.
+                  </Text>
+                </FormControl>
+
+                {settings.comment_webhook_enabled && settings.comment_webhook_url && (
+                  <Box>
+                    <Button
+                      colorScheme="green"
+                      variant="outline"
+                      size="sm"
+                      onClick={testWebhook}
+                      isLoading={testingWebhook}
+                      loadingText="Testing..."
+                    >
+                      Test Webhook
+                    </Button>
+                    <Text fontSize="xs" color="gray.500" mt={1}>
+                      Test your webhook configuration to ensure it's working correctly.
+                    </Text>
+                  </Box>
+                )}
+
+                <Alert status="info">
+                  <AlertIcon />
+                  <Box>
+                    <Text fontSize="sm" fontWeight="bold">Webhook Payload:</Text>
+                    <Text fontSize="xs" mt={1}>
+                      When a comment is approved, the webhook will receive a JSON payload containing:
+                      comment details, article information, and site metadata.
+                    </Text>
+                  </Box>
+                </Alert>
               </VStack>
             </CardBody>
           </Card>

@@ -1,13 +1,22 @@
 from rest_framework import status, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView
+from rest_framework.authentication import SessionAuthentication
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from articles.models import Article
 from .models import Comment, Vote
+
+
+class NoCSRFSessionAuthentication(SessionAuthentication):
+    """
+    Custom authentication class that doesn't enforce CSRF tokens
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF enforcement
 from .serializers import (
     CommentSerializer, CommentCreateSerializer,
     VoteSerializer, VoteCreateSerializer
@@ -31,13 +40,23 @@ class CommentViewSet(ModelViewSet):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@csrf_exempt
+@authentication_classes([NoCSRFSessionAuthentication])
 def approve_comment(request, comment_id):
     """Approve a comment"""
     try:
         comment = Comment.objects.get(id=comment_id)
+        
+        # Check if comment is already approved
+        if comment.is_approved:
+            return Response({
+                'message': 'Comment is already approved',
+                'comment': CommentSerializer(comment).data
+            })
+        
+        # Approve the comment (webhook will be sent automatically via save method)
         comment.is_approved = True
         comment.save()
+        
         return Response({
             'message': 'Comment approved successfully',
             'comment': CommentSerializer(comment).data
@@ -56,7 +75,7 @@ def approve_comment(request, comment_id):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@csrf_exempt
+@authentication_classes([NoCSRFSessionAuthentication])
 def reject_comment(request, comment_id):
     """Reject/unapprove a comment"""
     try:
@@ -92,7 +111,7 @@ class ArticleCommentsListView(ListAPIView):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@csrf_exempt
+@authentication_classes([NoCSRFSessionAuthentication])
 def create_comment(request):
     """Public API for creating comments"""
     # Check if comments are allowed
@@ -121,7 +140,7 @@ def create_comment(request):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@csrf_exempt
+@authentication_classes([NoCSRFSessionAuthentication])
 def create_vote(request):
     """Public API for creating votes"""
     serializer = VoteCreateSerializer(data=request.data, context={'request': request})
@@ -161,3 +180,50 @@ def article_vote_status(request, article_id):
         'vote_type': vote.vote_type if vote else None,
         'vote_score': article.vote_score
     })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@authentication_classes([NoCSRFSessionAuthentication])
+def test_comment_webhook(request):
+    """Test the comment webhook configuration"""
+    try:
+        from .webhook_service import CommentWebhookService
+        from settings_app.models import SiteSettings
+        
+        site_settings = SiteSettings.get_settings()
+        
+        if not site_settings.comment_webhook_enabled:
+            return Response({
+                'success': False,
+                'message': 'Comment webhook is disabled',
+                'settings': {
+                    'webhook_enabled': site_settings.comment_webhook_enabled,
+                    'webhook_url': site_settings.comment_webhook_url,
+                }
+            })
+        
+        if not site_settings.comment_webhook_url:
+            return Response({
+                'success': False,
+                'message': 'Comment webhook URL is not configured',
+                'settings': {
+                    'webhook_enabled': site_settings.comment_webhook_enabled,
+                    'webhook_url': site_settings.comment_webhook_url,
+                }
+            })
+        
+        # Test the webhook
+        result = CommentWebhookService.test_webhook(
+            site_settings.comment_webhook_url,
+            site_settings.comment_webhook_secret
+        )
+        
+        return Response(result)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Webhook test failed: {str(e)}',
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

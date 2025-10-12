@@ -10,9 +10,13 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'default_article_status',
             'site_name',
             'site_description',
+            'contact_email',
             'allow_comments',
             'require_comment_approval',
             'google_analytics_id',
+            'comment_webhook_url',
+            'comment_webhook_enabled',
+            'comment_webhook_secret',
             'created_at',
             'updated_at',
         ]
@@ -37,3 +41,31 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
                 "Google Analytics ID must be in GA4 format (e.g., G-XXXXXXXXXX)"
             )
         return value
+    
+    def validate_comment_webhook_url(self, value):
+        """Validate webhook URL format"""
+        if not value:  # Allow empty/null values
+            return value
+        
+        # Basic URL validation - should start with http:// or https://
+        if not value.startswith(('http://', 'https://')):
+            raise serializers.ValidationError(
+                "Webhook URL must start with http:// or https://"
+            )
+        
+        # Check for common webhook URL patterns
+        if 'n8n' in value.lower() or 'webhook' in value.lower() or 'api' in value.lower():
+            return value
+        
+        # Allow any valid URL format
+        return value
+    
+    def validate(self, data):
+        """Cross-field validation"""
+        # If webhook is enabled, URL should be provided
+        if data.get('comment_webhook_enabled') and not data.get('comment_webhook_url'):
+            raise serializers.ValidationError({
+                'comment_webhook_url': 'Webhook URL is required when webhook is enabled'
+            })
+        
+        return data

@@ -14,11 +14,15 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     // Session authentication is handled automatically with cookies
-    // For state-changing operations (POST, PUT, PATCH, DELETE), always get a fresh CSRF token
+    // For state-changing operations (POST, PUT, PATCH, DELETE), get CSRF token only for non-exempt endpoints
     const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
     const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
     
-    if (needsFreshToken || !config.headers['X-CSRFToken']) {
+    // Check if this is a CSRF-exempt endpoint (like comments/create)
+    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/'];
+    const isCsrfExempt = csrfExemptEndpoints.some(endpoint => config.url?.includes(endpoint));
+    
+    if (needsFreshToken && !isCsrfExempt && !config.headers['X-CSRFToken']) {
       try {
         const response = await fetch('/api/v1/auth/csrf-token/', {
           method: 'GET',
@@ -33,8 +37,8 @@ api.interceptors.request.use(
       }
     }
     
-    // Fallback: try to get CSRF token from DOM
-    if (!config.headers['X-CSRFToken']) {
+    // Fallback: try to get CSRF token from DOM (only for non-exempt endpoints)
+    if (!isCsrfExempt && !config.headers['X-CSRFToken']) {
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
       if (csrfToken) {
         config.headers['X-CSRFToken'] = csrfToken;

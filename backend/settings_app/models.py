@@ -45,6 +45,25 @@ class SiteSettings(models.Model):
         help_text="Google Analytics tracking ID (e.g., G-XXXXXXXXXX)"
     )
     
+    # Webhook settings
+    comment_webhook_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="Webhook URL to send approved comments to (e.g., n8n workflow URL)"
+    )
+    
+    comment_webhook_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether to send approved comments to webhook"
+    )
+    
+    comment_webhook_secret = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Secret key for webhook authentication (optional)"
+    )
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

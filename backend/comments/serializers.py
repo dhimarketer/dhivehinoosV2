@@ -28,6 +28,15 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['article', 'article_slug', 'author_name', 'content']
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the queryset for article field dynamically
+        from articles.models import Article
+        self.fields['article'] = serializers.PrimaryKeyRelatedField(
+            queryset=Article.objects.filter(status='published'),
+            required=False
+        )
+    
     def validate_content(self, value):
         """Validate that content is not empty"""
         if not value or not value.strip():

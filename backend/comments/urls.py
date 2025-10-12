@@ -13,4 +13,5 @@ urlpatterns = [
     path('vote-status/<int:article_id>/', views.article_vote_status, name='article-vote-status'),
     path('admin/<int:comment_id>/approve/', views.approve_comment, name='approve-comment'),
     path('admin/<int:comment_id>/reject/', views.reject_comment, name='reject-comment'),
+    path('test-webhook/', views.test_comment_webhook, name='test-comment-webhook'),
 ]
