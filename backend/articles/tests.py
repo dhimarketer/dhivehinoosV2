@@ -417,6 +417,15 @@ class SchedulingAPITest(APITestCase):
     def setUp(self):
         self.client = APIClient()
         
+        # Create a test user for authentication
+        from django.contrib.auth.models import User
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            is_staff=True
+        )
+        self.client.force_authenticate(user=self.user)
+        
         self.category = Category.objects.create(
             name='Test Category',
             slug='test-category',
@@ -538,6 +547,15 @@ class SchedulingIntegrationTest(TransactionTestCase):
     
     def setUp(self):
         self.client = APIClient()
+        
+        # Create a test user for authentication
+        from django.contrib.auth.models import User
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            is_staff=True
+        )
+        self.client.force_authenticate(user=self.user)
         
         self.category = Category.objects.create(
             name='Test Category',

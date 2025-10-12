@@ -94,8 +94,8 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsAuthenticated(false);
       setUser(null);
-      // Let the component handle navigation
-      window.location.href = '/admin/login';
+      // Redirect to landing page instead of admin login
+      window.location.href = '/';
     }
   };
 

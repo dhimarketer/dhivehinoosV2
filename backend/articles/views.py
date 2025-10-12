@@ -479,8 +479,7 @@ class ScheduledArticleViewSet(ModelViewSet):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
-@csrf_exempt
+@permission_classes([permissions.IsAuthenticated])
 def schedule_article(request, article_id):
     """Schedule an article for publishing"""
     try:
@@ -493,7 +492,19 @@ def schedule_article(request, article_id):
             )
         
         schedule_id = request.data.get('schedule_id')
-        custom_time = request.data.get('scheduled_publish_time')
+        custom_time_str = request.data.get('scheduled_publish_time')
+        custom_time = None
+        
+        if custom_time_str:
+            # Parse the datetime string
+            from datetime import datetime
+            try:
+                custom_time = datetime.fromisoformat(custom_time_str.replace('Z', '+00:00'))
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid datetime format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         schedule = None
         if schedule_id:
@@ -521,8 +532,7 @@ def schedule_article(request, article_id):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
-@csrf_exempt
+@permission_classes([permissions.IsAuthenticated])
 def publish_article_now(request, article_id):
     """Publish an article immediately"""
     try:
@@ -544,14 +554,25 @@ def publish_article_now(request, article_id):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
-@csrf_exempt
+@permission_classes([permissions.IsAuthenticated])
 def reschedule_article(request, scheduled_article_id):
     """Reschedule a scheduled article"""
     try:
         scheduled_article = get_object_or_404(ScheduledArticle, id=scheduled_article_id)
         
-        new_time = request.data.get('scheduled_publish_time')
+        new_time_str = request.data.get('scheduled_publish_time')
+        new_time = None
+        
+        if new_time_str:
+            # Parse the datetime string
+            from datetime import datetime
+            try:
+                new_time = datetime.fromisoformat(new_time_str.replace('Z', '+00:00'))
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid datetime format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         updated_scheduled_article = ArticleSchedulingService.reschedule_article(
             scheduled_article, 
@@ -568,8 +589,7 @@ def reschedule_article(request, scheduled_article_id):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
-@csrf_exempt
+@permission_classes([permissions.IsAuthenticated])
 def cancel_scheduled_article(request, scheduled_article_id):
     """Cancel a scheduled article"""
     try:
@@ -598,7 +618,7 @@ def health_check(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 def schedule_stats(request):
     """Get statistics for publishing schedules"""
     try:
@@ -627,7 +647,6 @@ def schedule_stats(request):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
-@csrf_exempt
 def process_scheduled_articles(request):
     """Process scheduled articles (admin endpoint)"""
     try:

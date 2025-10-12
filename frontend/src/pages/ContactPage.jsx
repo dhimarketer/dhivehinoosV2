@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -14,10 +14,14 @@ import {
   AlertIcon,
   FormControl,
   FormLabel,
+  HStack,
+  Icon,
+  Link,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
-import { contactAPI } from '../services/api';
+import { contactAPI, settingsAPI } from '../services/api';
 import TopNavigation from '../components/TopNavigation';
+import { EmailIcon } from '@chakra-ui/icons';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +31,23 @@ const ContactPage = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [contactEmail, setContactEmail] = useState('emaildym@proton.me');
+
+  useEffect(() => {
+    const fetchContactEmail = async () => {
+      try {
+        const response = await settingsAPI.getPublic();
+        if (response.data.contact_email) {
+          setContactEmail(response.data.contact_email);
+        }
+      } catch (error) {
+        console.error('Error fetching contact email:', error);
+        // Keep default email if fetch fails
+      }
+    };
+    
+    fetchContactEmail();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,9 +112,30 @@ const ContactPage = () => {
                 <Heading size="xl" mb={4}>
                   Get in Touch
                 </Heading>
-                <Text color="gray.600">
+                <Text color="gray.600" mb={4}>
                   We'd love to hear from you. Send us a message and we'll respond as soon as possible.
                 </Text>
+                
+                {/* Contact Email Display */}
+                <Card bg="blue.50" borderColor="blue.200" borderWidth="1px" maxW="400px" mx="auto">
+                  <CardBody>
+                    <HStack spacing={3} justify="center">
+                      <EmailIcon color="blue.500" />
+                      <Text fontWeight="medium" color="blue.700">
+                        Contact us directly:
+                      </Text>
+                    </HStack>
+                    <Link 
+                      href={`mailto:${contactEmail}`}
+                      color="blue.600"
+                      fontWeight="semibold"
+                      fontSize="lg"
+                      _hover={{ color: 'blue.800', textDecoration: 'underline' }}
+                    >
+                      {contactEmail}
+                    </Link>
+                  </CardBody>
+                </Card>
               </Box>
 
               {/* About Section with Disclaimer */}

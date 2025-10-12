@@ -335,6 +335,9 @@ class ScheduledArticle(models.Model):
         if self.status not in ['queued', 'scheduled']:
             raise ValueError(f"Cannot publish article with status: {self.status}")
         
+        if not self.can_publish_now():
+            raise ValueError("Article is not ready to publish yet")
+        
         try:
             self.article.status = 'published'
             self.article.save()

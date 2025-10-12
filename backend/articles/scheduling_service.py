@@ -53,6 +53,7 @@ class ArticleSchedulingService:
         
         # Update article
         article.status = 'scheduled'
+        article.publishing_mode = 'scheduled'
         article.scheduled_publish_time = publish_time
         article.save()
         
@@ -211,6 +212,7 @@ class ArticleSchedulingService:
         
         # Update the article record
         scheduled_article.article.status = 'draft'
+        scheduled_article.article.publishing_mode = 'instant'
         scheduled_article.article.scheduled_publish_time = None
         scheduled_article.article.save()
         
@@ -241,12 +243,14 @@ class ArticleSchedulingService:
             'total_scheduled': ScheduledArticle.objects.filter(schedule=schedule).count(),
             'queued': ScheduledArticle.objects.filter(schedule=schedule, status='queued').count(),
             'scheduled': ScheduledArticle.objects.filter(schedule=schedule, status='scheduled').count(),
+            'published': ScheduledArticle.objects.filter(schedule=schedule, status='published').count(),
             'published_today': ScheduledArticle.objects.filter(
                 schedule=schedule,
                 status='published',
                 published_at__date=today
             ).count(),
             'failed': ScheduledArticle.objects.filter(schedule=schedule, status='failed').count(),
+            'cancelled': ScheduledArticle.objects.filter(schedule=schedule, status='cancelled').count(),
             'next_publish_time': None,
             'daily_limit': schedule.max_articles_per_day,
             'daily_limit_reached': False

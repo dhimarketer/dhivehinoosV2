@@ -49,6 +49,14 @@ const SchedulingPage = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 20,
+    totalPages: 1,
+    totalCount: 0,
+    hasNext: false,
+    hasPrevious: false
+  });
   const { isOpen: isScheduleModalOpen, onOpen: onScheduleModalOpen, onClose: onScheduleModalClose } = useDisclosure();
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [scheduleForm, setScheduleForm] = useState({
@@ -67,17 +75,35 @@ const SchedulingPage = () => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (page = pagination.currentPage, pageSize = pagination.pageSize) => {
     try {
       setLoading(true);
+      
+      // Build query parameters for scheduled articles
+      const scheduledParams = new URLSearchParams({
+        page: page.toString(),
+        page_size: pageSize.toString(),
+      });
+      
       const [schedulesRes, scheduledRes, statsRes] = await Promise.all([
         api.get('/articles/schedules/'),
-        api.get('/articles/scheduled-articles/'),
+        api.get(`/articles/scheduled-articles/?${scheduledParams.toString()}`),
         api.get('/articles/schedule-stats/')
       ]);
       
       setSchedules(schedulesRes.data.results || schedulesRes.data);
-      setScheduledArticles(scheduledRes.data.results || scheduledRes.data);
+      
+      // Update scheduled articles and pagination info
+      setScheduledArticles(scheduledRes.data.results || []);
+      setPagination({
+        currentPage: scheduledRes.data.current_page || page,
+        pageSize: scheduledRes.data.page_size || pageSize,
+        totalPages: scheduledRes.data.total_pages || 1,
+        totalCount: scheduledRes.data.count || 0,
+        hasNext: scheduledRes.data.next !== null,
+        hasPrevious: scheduledRes.data.previous !== null
+      });
+      
       setStats(statsRes.data);
     } catch (err) {
       setError('Failed to fetch scheduling data');
@@ -170,6 +196,14 @@ const SchedulingPage = () => {
       setError('Failed to cancel scheduled article');
       console.error('Error cancelling article:', err);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    fetchData(newPage, pagination.pageSize);
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    fetchData(1, newPageSize);
   };
 
   const openScheduleModal = (schedule = null) => {
@@ -493,6 +527,77 @@ const SchedulingPage = () => {
               </Tbody>
             </Table>
           </Card>
+          
+          {/* Pagination Controls for Scheduled Articles */}
+          {scheduledArticles.length > 0 && (
+            <Box mt={4} p={4} bg="gray.50" borderRadius="md">
+              <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
+                {/* Page Size Selector */}
+                <HStack spacing={3}>
+                  <Text fontSize="sm" fontWeight="medium">Show:</Text>
+                  <Select
+                    size="sm"
+                    width="80px"
+                    value={pagination.pageSize}
+                    onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </Select>
+                  <Text fontSize="sm" color="gray.600">per page</Text>
+                </HStack>
+                
+                {/* Pagination Info */}
+                <Text fontSize="sm" color="gray.600">
+                  Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
+                  {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of{' '}
+                  {pagination.totalCount} scheduled articles
+                </Text>
+                
+                {/* Pagination Buttons */}
+                <HStack spacing={2}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    isDisabled={!pagination.hasPrevious}
+                  >
+                    Previous
+                  </Button>
+                  
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    const startPage = Math.max(1, pagination.currentPage - 2);
+                    const pageNum = startPage + i;
+                    if (pageNum > pagination.totalPages) return null;
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        size="sm"
+                        variant={pageNum === pagination.currentPage ? "solid" : "outline"}
+                        colorScheme={pageNum === pagination.currentPage ? "blue" : "gray"}
+                        onClick={() => handlePageChange(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    isDisabled={!pagination.hasNext}
+                  >
+                    Next
+                  </Button>
+                </HStack>
+              </Flex>
+            </Box>
+          )}
         </Box>
       </VStack>
 

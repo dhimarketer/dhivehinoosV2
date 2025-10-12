@@ -21,6 +21,10 @@ class SiteSettings(models.Model):
         default='Authentic Maldivian Dhivehi Twitter thoughts and cultural insights for the Maldivian diaspora worldwide. Connect with your roots through curated Dhivehi content.',
         help_text="Site description for SEO and about pages"
     )
+    contact_email = models.EmailField(
+        default='emaildym@proton.me',
+        help_text="Main contact email address for the website"
+    )
     
     # Content settings
     allow_comments = models.BooleanField(

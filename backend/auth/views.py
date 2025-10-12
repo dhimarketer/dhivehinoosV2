@@ -91,6 +91,7 @@ def login_view(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def get_csrf_token(request):
     """
     Get CSRF token for frontend
@@ -99,7 +100,7 @@ def get_csrf_token(request):
     return Response({'csrf_token': csrf_token})
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def logout_view(request):
     """
     Logout endpoint

@@ -345,16 +345,7 @@ class ArticleSerializer(serializers.ModelSerializer):
             except Category.DoesNotExist:
                 pass  # Keep existing category if new one doesn't exist
         
-        # Special handling for published articles
-        # If article is published and no status is provided, keep it published
-        if instance.status == 'published' and 'status' not in validated_data:
-            # Don't change the status - keep it published
-            pass
-        elif instance.status == 'published' and validated_data.get('status') == 'draft':
-            # If admin explicitly wants to unpublish, allow it
-            pass
-        
-        # Update all other fields
+        # Update all fields including status - allow admin to change status as needed
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         

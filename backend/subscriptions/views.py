@@ -106,7 +106,13 @@ def subscribe_newsletter(request):
 def confirm_subscription(request, token):
     """Confirm subscription via token"""
     try:
-        subscription = get_object_or_404(NewsletterSubscription, subscription_token=token)
+        try:
+            subscription = NewsletterSubscription.objects.get(subscription_token=token)
+        except NewsletterSubscription.DoesNotExist:
+            return Response(
+                {'error': 'Invalid subscription token'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         if subscription.status == 'pending':
             subscription.confirm_subscription()
@@ -135,7 +141,13 @@ def confirm_subscription(request, token):
 def unsubscribe_newsletter(request, token):
     """Unsubscribe from newsletter via token"""
     try:
-        subscription = get_object_or_404(NewsletterSubscription, unsubscribe_token=token)
+        try:
+            subscription = NewsletterSubscription.objects.get(unsubscribe_token=token)
+        except NewsletterSubscription.DoesNotExist:
+            return Response(
+                {'error': 'Invalid unsubscribe token'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         if subscription.status == 'active':
             subscription.unsubscribe()

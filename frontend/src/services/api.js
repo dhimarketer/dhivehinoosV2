@@ -14,8 +14,11 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     // Session authentication is handled automatically with cookies
-    // Get CSRF token if not already present
-    if (!config.headers['X-CSRFToken']) {
+    // For state-changing operations (POST, PUT, PATCH, DELETE), always get a fresh CSRF token
+    const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
+    
+    if (needsFreshToken || !config.headers['X-CSRFToken']) {
       try {
         const response = await fetch('/api/v1/auth/csrf-token/', {
           method: 'GET',
