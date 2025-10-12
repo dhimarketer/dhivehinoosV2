@@ -84,7 +84,7 @@ sleep 30
 # Wait for backend to be ready
 echo "⏳ Waiting for backend to be ready..."
 for i in {1..30}; do
-    if docker-compose exec -T dhivehinoos_backend curl -f http://localhost:8000/api/v1/articles/published/ > /dev/null 2>&1; then
+    if curl -f http://localhost:8052/api/v1/articles/published/ > /dev/null 2>&1; then
         echo "✅ Backend is ready!"
         break
     fi
@@ -112,7 +112,7 @@ fi
 
 # Set up cron job for scheduled article processing
 echo "⏰ Setting up cron job for scheduled article processing..."
-CRON_JOB="*/5 * * * * docker-compose -f /opt/dhivehinoos/docker-compose.yml exec -T dhivehinoos_backend python manage.py process_scheduled_articles >> /opt/dhivehinoos/logs/scheduling.log 2>&1"
+CRON_JOB="*/5 * * * * cd /opt/dhivehinoos && docker-compose exec -T dhivehinoos_backend python manage.py process_scheduled_articles >> /opt/dhivehinoos/logs/scheduling.log 2>&1"
 
 # Check if cron job already exists
 if ! crontab -l 2>/dev/null | grep -q "process_scheduled_articles"; then
