@@ -173,7 +173,7 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Cache Configuration - Use memory cache if Redis is not available
+# Cache Configuration - Use Redis by default, fallback to memory cache
 if os.environ.get('USE_MEMORY_CACHE', 'false').lower() == 'true':
     CACHES = {
         'default': {
@@ -184,8 +184,20 @@ if os.environ.get('USE_MEMORY_CACHE', 'false').lower() == 'true':
 else:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/3'),
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'CONNECTION_POOL_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                },
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'IGNORE_EXCEPTIONS': True,  # Don't raise exceptions if Redis is down
+            },
+            'TIMEOUT': 300,  # 5 minutes default timeout
+            'VERSION': 1,
+            'KEY_PREFIX': 'dhivehinoos',
         }
     }
 
@@ -201,6 +213,12 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False  # Let reverse proxy handle SSL
 USE_TLS = os.environ.get('USE_TLS', 'False').lower() == 'true'
+
+# Force HTTPS URLs in production
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = False  # Let reverse proxy handle SSL
+    USE_TLS = True
 
 # Session Configuration
 SESSION_COOKIE_SECURE = False  # Set to False to allow HTTP in production

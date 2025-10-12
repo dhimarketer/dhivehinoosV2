@@ -21,6 +21,22 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
+# Check if .env file exists, create it if missing
+if [ ! -f ".env" ]; then
+    echo "⚠️  Warning: .env file not found! Creating default .env file..."
+    cat > .env << 'EOF'
+# Environment variables for Dhivehinoos.net production deployment
+SECRET_KEY=django-insecure-production-key-change-this
+DEBUG=False
+ALLOWED_HOSTS=dhivehinoos.net,www.dhivehinoos.net,localhost,127.0.0.1
+API_INGEST_KEY=your-n8n-api-key-here
+USE_MEMORY_CACHE=true
+DATABASE_URL=sqlite:////app/database/db.sqlite3
+REDIS_URL=redis://127.0.0.1:6379/3
+EOF
+    echo "✅ Created default .env file. Please update SECRET_KEY and API_INGEST_KEY with proper values."
+fi
+
 # Create necessary directories if they don't exist
 echo "📁 Creating necessary directories..."
 sudo mkdir -p /opt/dhivehinoos/database
@@ -68,7 +84,7 @@ sleep 30
 # Wait for backend to be ready
 echo "⏳ Waiting for backend to be ready..."
 for i in {1..30}; do
-    if docker-compose exec -T dhivehinoos_backend curl -f http://localhost:8000/api/v1/articles/published/ > /dev/null 2>&1; then
+    if curl -f http://localhost:8052/api/v1/articles/published/ > /dev/null 2>&1; then
         echo "✅ Backend is ready!"
         break
     fi
@@ -96,7 +112,7 @@ fi
 
 # Set up cron job for scheduled article processing
 echo "⏰ Setting up cron job for scheduled article processing..."
-CRON_JOB="*/5 * * * * docker-compose -f /opt/dhivehinoos/docker-compose.yml exec -T dhivehinoos_backend python manage.py process_scheduled_articles >> /opt/dhivehinoos/logs/scheduling.log 2>&1"
+CRON_JOB="*/5 * * * * cd /opt/dhivehinoos && docker-compose exec -T dhivehinoos_backend python manage.py process_scheduled_articles >> /opt/dhivehinoos/logs/scheduling.log 2>&1"
 
 # Check if cron job already exists
 if ! crontab -l 2>/dev/null | grep -q "process_scheduled_articles"; then

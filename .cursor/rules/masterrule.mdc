@@ -1,3 +1,4 @@
 ---
 alwaysApply: true
 ---
+always assume you are workinging in the local machine. always try to use virtual environment. you cannot access the linode machine user is working. your job is to work on the codebase and build and push to dockerhub. user will run the commands in linode. 

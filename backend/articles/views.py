@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import models
+from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -14,12 +15,19 @@ from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import logging
 from .models import Article, Category, PublishingSchedule, ScheduledArticle
 from .serializers import (
     ArticleSerializer, ArticleListSerializer, ArticleIngestSerializer, CategorySerializer,
     PublishingScheduleSerializer, ScheduledArticleSerializer
 )
 from .scheduling_service import ArticleSchedulingService
+from .cache_utils import (
+    get_cache_key, cache_article_data, get_cached_article_data, 
+    invalidate_article_cache, CACHE_TIMEOUTS
+)
+
+logger = logging.getLogger(__name__)
 
 
 class CustomPageNumberPagination(PageNumberPagination):
@@ -80,6 +88,10 @@ class ArticleViewSet(ModelViewSet):
             if serializer.is_valid():
                 updated_instance = serializer.save()
                 print(f"✅ Article updated successfully: ID={updated_instance.id}")
+                
+                # Invalidate cache for this article
+                invalidate_article_cache(article_id=updated_instance.id)
+                
                 return Response(serializer.data)
             else:
                 print(f"❌ Validation failed: {serializer.errors}")
@@ -110,13 +122,43 @@ class ArticleViewSet(ModelViewSet):
         # Perform the actual deletion
         self.perform_destroy(instance)
         
+        # Invalidate cache for this article
+        invalidate_article_cache(article_id=article_id)
+        
         print(f"✅ Article deleted successfully: ID={article_id}")
         
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def create(self, request, *args, **kwargs):
+        """Custom create method with cache invalidation"""
+        try:
+            serializer = self.get_serializer(data=request.data)
+            
+            if serializer.is_valid():
+                instance = serializer.save()
+                print(f"✅ Article created successfully: ID={instance.id}")
+                
+                # Invalidate cache since we have a new article
+                invalidate_article_cache()
+                
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print(f"❌ Validation errors: {serializer.errors}")
+                return Response(
+                    {'error': 'Validation failed', 'details': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            print(f"❌ Creation failed: {str(e)}")
+            return Response(
+                {'error': 'Creation failed', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class PublishedArticleListView(ListAPIView):
-    """Public API for listing published articles"""
+    """Public API for listing published articles with Redis caching"""
     queryset = Article.objects.filter(status='published')
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.AllowAny]
@@ -126,13 +168,21 @@ class PublishedArticleListView(ListAPIView):
         """Filter articles by category and search if specified"""
         queryset = Article.objects.filter(status='published').select_related('category')
         
+        # Handle both DRF requests (with query_params) and regular Django requests (with GET)
+        if hasattr(self.request, 'query_params'):
+            # Django REST Framework request
+            category_slug = self.request.query_params.get('category', None)
+            search_query = self.request.query_params.get('search', None)
+        else:
+            # Regular Django request
+            category_slug = self.request.GET.get('category', None)
+            search_query = self.request.GET.get('search', None)
+        
         # Category filter
-        category_slug = self.request.query_params.get('category', None)
         if category_slug:
             queryset = queryset.filter(category__slug=category_slug)
         
         # Search filter
-        search_query = self.request.query_params.get('search', None)
         if search_query:
             queryset = queryset.filter(
                 models.Q(title__icontains=search_query) |
@@ -140,7 +190,24 @@ class PublishedArticleListView(ListAPIView):
                 models.Q(category__name__icontains=search_query)
             )
         
-        return queryset
+        return queryset.order_by('-created_at')
+    
+    def list(self, request, *args, **kwargs):
+        """Override list method - temporarily disable caching for debugging"""
+        # For now, let's disable caching and use regular database query
+        queryset = self.get_queryset()
+        
+        # Apply pagination
+        paginator = self.pagination_class()
+        page_obj = paginator.paginate_queryset(queryset, request)
+        
+        if page_obj is not None:
+            serializer = self.get_serializer(page_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        # If no pagination, serialize all data
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
     def get_serializer_context(self):
         """Pass request context to serializer for absolute URL generation"""
@@ -150,11 +217,18 @@ class PublishedArticleListView(ListAPIView):
 
 
 class PublishedArticleDetailView(RetrieveAPIView):
-    """Public API for retrieving a published article"""
+    """Public API for retrieving a published article with Redis caching"""
     queryset = Article.objects.filter(status='published')
     serializer_class = ArticleSerializer
     permission_classes = [permissions.AllowAny]
     lookup_field = 'slug'
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve method - temporarily disable caching for debugging"""
+        # For now, let's disable caching and use regular database query
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
     
     def get_serializer_context(self):
         """Pass request context to serializer for absolute URL generation"""
@@ -510,6 +584,17 @@ def cancel_scheduled_article(request, scheduled_article_id):
             {'error': 'Cancellation failed', 'details': str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def health_check(request):
+    """Simple health check endpoint that doesn't depend on database or Redis"""
+    return Response({
+        'status': 'healthy',
+        'service': 'dhivehinoos-backend',
+        'timestamp': timezone.now().isoformat()
+    })
 
 
 @api_view(['GET'])

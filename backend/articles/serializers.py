@@ -55,6 +55,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
 class ArticleIngestSerializer(serializers.ModelSerializer):
     """Serializer for n8n article ingestion"""
     image_url = serializers.URLField(write_only=True, required=False)
+    proposed_url = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=500)
     category_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     publishing_mode = serializers.ChoiceField(
         choices=[('instant', 'Instant'), ('scheduled', 'Scheduled')],
@@ -67,11 +68,12 @@ class ArticleIngestSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Article
-        fields = ['title', 'content', 'image_url', 'category_id', 'publishing_mode', 'scheduled_publish_time', 'schedule_id']
+        fields = ['title', 'content', 'image_url', 'proposed_url', 'category_id', 'publishing_mode', 'scheduled_publish_time', 'schedule_id']
     
     def create(self, validated_data):
         # Remove fields that are not model fields
         image_url = validated_data.pop('image_url', None)
+        proposed_url = validated_data.pop('proposed_url', None)
         category_id = validated_data.pop('category_id', None)
         publishing_mode = validated_data.pop('publishing_mode', 'instant')
         scheduled_publish_time = validated_data.pop('scheduled_publish_time', None)
@@ -85,6 +87,7 @@ class ArticleIngestSerializer(serializers.ModelSerializer):
         # Create the article with the configured default status
         article = Article.objects.create(
             **validated_data,
+            proposed_url=proposed_url,
             status=default_status,
             publishing_mode=publishing_mode,
             scheduled_publish_time=scheduled_publish_time
@@ -244,6 +247,7 @@ class ArticleSerializer(serializers.ModelSerializer):
     vote_score = serializers.ReadOnlyField()
     approved_comments_count = serializers.ReadOnlyField()
     image_url = serializers.SerializerMethodField()
+    article_url = serializers.ReadOnlyField()
     category = CategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     scheduled_publish_info = serializers.SerializerMethodField()
@@ -252,7 +256,7 @@ class ArticleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'content', 'image', 'image_file', 'image_url', 'status',
+            'id', 'title', 'slug', 'proposed_url', 'article_url', 'content', 'image', 'image_file', 'image_url', 'status',
             'category', 'category_id', 'publishing_mode', 'scheduled_publish_time',
             'scheduled_publish_info', 'social_metadata', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
         ]
@@ -287,10 +291,19 @@ class ArticleSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         base_url = 'https://dhivehinoos.net'
         
-        if request:
-            article_url = request.build_absolute_uri(f'/article/{obj.slug}')
+        # Use the article's URL property which handles proposed_url vs slug
+        article_path = obj.article_url
+        if article_path:
+            if request:
+                article_url = request.build_absolute_uri(article_path)
+            else:
+                article_url = f'{base_url}{article_path}'
         else:
-            article_url = f'{base_url}/article/{obj.slug}'
+            # Fallback to slug-based URL if no URL is available
+            if request:
+                article_url = request.build_absolute_uri(f'/article/{obj.slug}')
+            else:
+                article_url = f'{base_url}/article/{obj.slug}'
         
         # Get image URL for social sharing
         image_url = self.get_image_url(obj)

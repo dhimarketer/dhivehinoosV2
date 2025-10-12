@@ -17,6 +17,9 @@ urlpatterns = [
     path('categories/<slug:slug>/', views.CategoryDetailView.as_view(), name='category-detail'),
     path('categorize/', views.categorize_text, name='categorize-text'),
     
+    # Health check endpoint
+    path('health/', views.health_check, name='health-check'),
+    
     # RSS/Atom Feeds
     path('rss/', LatestArticlesFeed(), name='rss-feed'),
     path('atom/', AtomLatestArticlesFeed(), name='atom-feed'),

@@ -365,6 +365,7 @@ class Article(models.Model):
     
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
+    proposed_url = models.CharField(max_length=500, blank=True, null=True, help_text="Custom URL path for this article (optional)")
     content = models.TextField()  # HTML allowed
     image = models.URLField(blank=True, null=True, help_text="External image URL (optional)")
     image_file = models.ImageField(blank=True, null=True, upload_to='articles/', help_text="Uploaded image file (optional)")
@@ -436,6 +437,19 @@ class Article(models.Model):
             return self.image
         elif self.image_file:
             return self.image_file.url
+        return None
+    
+    @property
+    def article_url(self):
+        """Return the article URL path, using proposed_url if available, otherwise slug"""
+        if self.proposed_url:
+            # Clean the proposed URL to ensure it starts with /
+            url = self.proposed_url.strip()
+            if not url.startswith('/'):
+                url = '/' + url
+            return url
+        elif self.slug:
+            return f'/article/{self.slug}'
         return None
     
     def schedule_for_publishing(self, schedule=None):
