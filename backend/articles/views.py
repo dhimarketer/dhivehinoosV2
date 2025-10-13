@@ -98,8 +98,11 @@ class ArticleViewSet(ModelViewSet):
                 updated_instance = serializer.save()
                 print(f"✅ Article updated successfully: ID={updated_instance.id}")
                 
-                # Invalidate cache for this article
-                invalidate_article_cache(article_id=updated_instance.id)
+                # Invalidate cache for this article (non-blocking)
+                try:
+                    invalidate_article_cache(article_id=updated_instance.id)
+                except Exception as cache_error:
+                    print(f"⚠️ Cache invalidation failed (non-critical): {cache_error}")
                 
                 return Response(serializer.data)
             else:
@@ -132,7 +135,11 @@ class ArticleViewSet(ModelViewSet):
         self.perform_destroy(instance)
         
         # Invalidate cache for this article
-        invalidate_article_cache(article_id=article_id)
+        # Invalidate cache (non-blocking)
+        try:
+            invalidate_article_cache(article_id=article_id)
+        except Exception as cache_error:
+            print(f"⚠️ Cache invalidation failed (non-critical): {cache_error}")
         
         print(f"✅ Article deleted successfully: ID={article_id}")
         
@@ -181,8 +188,11 @@ class ArticleViewSet(ModelViewSet):
                 instance = serializer.save()
                 print(f"✅ Article created successfully: ID={instance.id}")
                 
-                # Invalidate cache since we have a new article
-                invalidate_article_cache()
+                # Invalidate cache since we have a new article (non-blocking)
+                try:
+                    invalidate_article_cache(clear_all=True)
+                except Exception as cache_error:
+                    print(f"⚠️ Cache invalidation failed (non-critical): {cache_error}")
                 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:

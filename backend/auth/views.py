@@ -1,7 +1,8 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.authentication import SessionAuthentication
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
@@ -11,6 +12,13 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
+
+class NoCSRFSessionAuthentication(SessionAuthentication):
+    """
+    Custom authentication class that doesn't enforce CSRF tokens
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF enforcement
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -101,6 +109,7 @@ def get_csrf_token(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([NoCSRFSessionAuthentication])
 @csrf_exempt
 def logout_view(request):
     """

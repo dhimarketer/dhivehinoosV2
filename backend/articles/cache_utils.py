@@ -116,10 +116,18 @@ def invalidate_article_cache(article_id=None, category_id=None, clear_all=False)
     """
     try:
         if clear_all:
-            # Clear all article-related caches
+            # Clear all article-related caches - use specific keys instead of wildcards
+            keys_to_clear = []
             for prefix in CACHE_PREFIXES.values():
-                cache.delete_many([f"{prefix}:*"])
-            logger.info("Cleared all article caches")
+                # Add common cache keys without wildcards
+                keys_to_clear.extend([
+                    f"{prefix}",
+                    f"{prefix}:1",  # Common pagination key
+                    f"{prefix}:published",
+                    f"{prefix}:latest",
+                ])
+            cache.delete_many(keys_to_clear)
+            logger.info(f"Cleared {len(keys_to_clear)} article caches")
         else:
             keys_to_delete = []
             

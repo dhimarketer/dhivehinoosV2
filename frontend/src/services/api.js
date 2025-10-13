@@ -8,7 +8,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Enable cookies for session authentication
-  timeout: 30000, // Increased to 30 seconds for production stability
+  timeout: 15000, // Reduced to 15 seconds for better user experience
   retry: 2, // Increased retries for better reliability
   retryDelay: 1000, // Increased delay between retries
 });
@@ -25,7 +25,21 @@ api.interceptors.request.use(
     const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
     
     // Check if this is a CSRF-exempt endpoint (like comments/create, articles admin, toggle-status)
-    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/', '/articles/admin/', '/articles/toggle-status/', '/articles/schedules/'];
+    const csrfExemptEndpoints = [
+        '/comments/create/', 
+        '/comments/vote/', 
+        '/comments/admin/', 
+        '/articles/admin/', 
+        '/articles/toggle-status/', 
+        '/articles/schedules/',
+        '/auth/login/',
+        '/auth/logout/',
+        '/auth/create-admin/',
+        '/settings/admin/',
+        '/contact/create/',
+        '/subscriptions/',
+        '/ads/admin/'
+    ];
     const isCsrfExempt = csrfExemptEndpoints.some(endpoint => config.url?.includes(endpoint));
     
     if (needsFreshToken && !isCsrfExempt && !config.headers['X-CSRFToken']) {
@@ -173,7 +187,9 @@ export const categoriesAPI = {
 export const commentsAPI = {
   getByArticle: (slug) => api.get(`/comments/article/${slug}/`),
   getAll: () => api.get(`/comments/admin/?t=${Date.now()}`), // Add cache-busting timestamp
-  create: (data) => api.post('/comments/create/', data),
+  create: (data) => api.post('/comments/create/', data, {
+    timeout: 10000, // 10 second timeout specifically for comment creation
+  }),
   approve: (id) => api.post(`/comments/admin/${id}/approve/`),
   reject: (id) => api.post(`/comments/admin/${id}/reject/`),
 };

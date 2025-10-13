@@ -124,12 +124,12 @@ class CommentWebhookService:
             if secret:
                 headers['X-Webhook-Secret'] = secret
             
-            # Send POST request with timeout
+            # Send POST request with shorter timeout to prevent blocking
             response = requests.post(
                 url,
                 json=payload,
                 headers=headers,
-                timeout=30,  # 30 second timeout
+                timeout=5,  # Reduced to 5 seconds to prevent blocking comment creation
                 verify=True  # Verify SSL certificates
             )
             
@@ -142,7 +142,7 @@ class CommentWebhookService:
                 return False
                 
         except requests.exceptions.Timeout:
-            logger.error(f"Webhook request timeout for {url}")
+            logger.error(f"Webhook request timeout for {url} (5s timeout)")
             return False
         except requests.exceptions.ConnectionError:
             logger.error(f"Webhook connection error for {url}")

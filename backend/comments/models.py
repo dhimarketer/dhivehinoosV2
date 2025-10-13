@@ -40,13 +40,44 @@ class Comment(models.Model):
         # Check if the comment is now approved and wasn't approved before (or is newly created)
         if self.is_approved and (is_new_comment or not original_approved_status):
             try:
+                # Send webhook asynchronously to prevent blocking comment creation
+                import threading
+                import logging
                 from .webhook_service import CommentWebhookService
-                CommentWebhookService.send_approved_comment(self)
+                
+                def send_webhook_async():
+                    try:
+                        # Add a small delay to ensure comment is fully saved
+                        import time
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        time.sleep(0.1)
+                        
+                        # Send webhook with error handling
+                        success = CommentWebhookService.send_approved_comment(self)
+                        if success:
+                            logger.info(f"Webhook sent successfully for approved comment {self.id}")
+                        else:
+                            logger.warning(f"Webhook failed for approved comment {self.id}")
+                            
+                    except Exception as e:
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Failed to send webhook for approved comment {self.id}: {str(e)}")
+                
+                # Start webhook in background thread with daemon=True to prevent blocking shutdown
+                webhook_thread = threading.Thread(target=send_webhook_async, daemon=True)
+                webhook_thread.start()
+                
+                # Log that webhook was initiated
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Webhook initiated for approved comment {self.id}")
+                
             except Exception as e:
                 # Log error but don't fail the save operation
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.error(f"Failed to send webhook for approved comment {self.id}: {str(e)}")
+                logger.error(f"Failed to start webhook thread for approved comment {self.id}: {str(e)}")
 
 
 class Vote(models.Model):

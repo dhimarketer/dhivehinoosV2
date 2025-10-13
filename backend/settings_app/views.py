@@ -1,7 +1,8 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.authentication import SessionAuthentication
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -11,8 +12,16 @@ from .models import SiteSettings
 from .serializers import SiteSettingsSerializer
 import json
 
+class NoCSRFSessionAuthentication(SessionAuthentication):
+    """
+    Custom authentication class that doesn't enforce CSRF tokens
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF enforcement
+
 @api_view(['PUT'])
 @permission_classes([IsAdminUser])
+@authentication_classes([NoCSRFSessionAuthentication])
 @csrf_exempt
 def site_settings_view(request):
     """
