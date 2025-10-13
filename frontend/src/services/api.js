@@ -8,6 +8,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Enable cookies for session authentication
+  timeout: 30000, // 30 seconds timeout
 });
 
 // Request interceptor for session authentication
@@ -18,8 +19,8 @@ api.interceptors.request.use(
     const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
     const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
     
-    // Check if this is a CSRF-exempt endpoint (like comments/create)
-    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/'];
+    // Check if this is a CSRF-exempt endpoint (like comments/create, articles admin)
+    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/', '/articles/admin/'];
     const isCsrfExempt = csrfExemptEndpoints.some(endpoint => config.url?.includes(endpoint));
     
     if (needsFreshToken && !isCsrfExempt && !config.headers['X-CSRFToken']) {
