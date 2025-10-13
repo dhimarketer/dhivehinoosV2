@@ -62,11 +62,19 @@ const SettingsPage = () => {
     } catch (err) {
       console.error('Error fetching settings:', err);
       setError('Failed to load settings');
+      
+      let errorMessage = 'Could not load current settings';
+      if (err.response?.status === 403) {
+        errorMessage = 'Authentication required. Please log in again.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Session expired. Please log in again.';
+      }
+      
       toast({
         title: 'Error loading settings',
-        description: 'Could not load current settings',
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
@@ -94,11 +102,26 @@ const SettingsPage = () => {
       await fetchSettings();
     } catch (err) {
       console.error('Error saving settings:', err);
+      
+      let errorMessage = 'Failed to save settings';
+      let errorTitle = 'Error saving settings';
+      
+      // Handle specific error cases
+      if (err.response?.status === 403) {
+        errorTitle = 'Authentication Required';
+        errorMessage = 'Please log in again to save settings. Your session may have expired.';
+      } else if (err.response?.status === 401) {
+        errorTitle = 'Not Authenticated';
+        errorMessage = 'You must be logged in to save settings.';
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      }
+      
       toast({
-        title: 'Error saving settings',
-        description: err.response?.data?.error || 'Failed to save settings',
+        title: errorTitle,
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
@@ -124,12 +147,34 @@ const SettingsPage = () => {
       // Use the same API base URL as the rest of the app
       const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
       
+      // Get CSRF token for the request
+      let csrfToken = null;
+      try {
+        const csrfResponse = await fetch(`${API_BASE_URL}/auth/csrf-token/`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (csrfResponse.ok) {
+          const csrfData = await csrfResponse.json();
+          csrfToken = csrfData.csrf_token;
+        }
+      } catch (error) {
+        console.warn('Could not fetch CSRF token:', error);
+      }
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/comments/test-webhook/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         credentials: 'include',
+        timeout: 10000,  // 10 second timeout
       });
       
       const result = await response.json();
@@ -153,11 +198,22 @@ const SettingsPage = () => {
       }
     } catch (err) {
       console.error('Error testing webhook:', err);
+      
+      let errorMessage = 'Failed to test webhook. Please check your configuration.';
+      
+      if (err.name === 'TypeError' && err.message.includes('NetworkError')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (err.name === 'AbortError') {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (err.message.includes('403')) {
+        errorMessage = 'Authentication required. Please log in again.';
+      }
+      
       toast({
         title: 'Webhook test error',
-        description: 'Failed to test webhook. Please check your configuration.',
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {

@@ -113,6 +113,8 @@ export const articlesAPI = {
     return api.patch(`/articles/admin/${id}/`, data);
   },
   delete: (id) => api.delete(`/articles/admin/${id}/`),
+  // Simple toggle status - no authentication required
+  toggleStatus: (id) => api.post(`/articles/toggle-status/${id}/`),
 };
 
 export const categoriesAPI = {

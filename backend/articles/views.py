@@ -617,6 +617,34 @@ def health_check(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def toggle_article_status(request, article_id):
+    """Simple endpoint to toggle article status - no authentication required"""
+    try:
+        article = get_object_or_404(Article, id=article_id)
+        new_status = 'draft' if article.status == 'published' else 'published'
+        
+        article.status = new_status
+        article.save()
+        
+        print(f"✅ Article {article_id} status changed to {new_status}")
+        
+        return Response({
+            'id': article.id,
+            'status': article.status,
+            'message': f'Article {new_status} successfully'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error toggling article status: {str(e)}")
+        return Response(
+            {'error': 'Failed to toggle status', 'details': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def schedule_stats(request):

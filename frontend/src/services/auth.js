@@ -31,9 +31,13 @@ class AuthService {
 
   async logout() {
     try {
-      await api.post('/auth/logout/');
+      // Set a shorter timeout for logout to avoid ECONNABORTED
+      await api.post('/auth/logout/', {}, {
+        timeout: 5000  // 5 second timeout
+      });
     } catch (error) {
       console.error('Logout error:', error);
+      // Don't throw error - logout should always succeed locally
     } finally {
       // Clear local storage regardless of API call success
       localStorage.removeItem('isAuthenticated');

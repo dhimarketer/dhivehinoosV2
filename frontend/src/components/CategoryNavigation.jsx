@@ -28,14 +28,27 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
+        setError(null); // Clear previous errors
         const response = await categoriesAPI.getAll();
         // Handle paginated response - extract results array
         const categoriesData = response.data.results || response.data;
         setCategories(categoriesData);
-        setError(null);
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError('Failed to load categories');
+        
+        // Handle different types of errors
+        if (err.code === 'ECONNABORTED') {
+          console.warn('Categories request timed out, using empty list');
+          setCategories([]); // Use empty array for timeouts
+          setError(null); // Don't show error for timeouts
+        } else if (err.response?.status >= 500) {
+          setError('Server error loading categories');
+        } else if (err.response?.status === 404) {
+          setCategories([]); // No categories available
+          setError(null);
+        } else {
+          setError('Failed to load categories');
+        }
       } finally {
         setLoading(false);
       }

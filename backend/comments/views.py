@@ -183,11 +183,18 @@ def article_vote_status(request, article_id):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 @authentication_classes([NoCSRFSessionAuthentication])
 def test_comment_webhook(request):
     """Test the comment webhook configuration"""
     try:
+        # Check if user is staff
+        if not request.user.is_staff:
+            return Response({
+                'success': False,
+                'message': 'Only admin users can test webhook settings',
+            }, status=status.HTTP_403_FORBIDDEN)
+        
         from .webhook_service import CommentWebhookService
         from settings_app.models import SiteSettings
         

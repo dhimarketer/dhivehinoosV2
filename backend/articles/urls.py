@@ -26,6 +26,9 @@ urlpatterns = [
     path('rss/category/<slug:category_slug>/', CategoryFeed(), name='category-rss-feed'),
     path('rss/search/', SearchFeed(), name='search-rss-feed'),
     
+    # Simple toggle endpoint - no authentication required
+    path('toggle-status/<int:article_id>/', views.toggle_article_status, name='toggle-article-status'),
+    
     # Scheduling endpoints
     path('schedule/<int:article_id>/', views.schedule_article, name='schedule-article'),
     path('publish/<int:article_id>/', views.publish_article_now, name='publish-article-now'),

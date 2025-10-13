@@ -23,6 +23,7 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
     const fetchAds = async () => {
       try {
         setLoading(true);
+        setError(null); // Clear previous errors
         const params = placement ? { placement, t: Date.now() } : { t: Date.now() };
         const response = await adsAPI.getActive(params);
         const adsData = response.data.results || response.data;
@@ -32,7 +33,18 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
         setAds(limitedAds);
       } catch (err) {
         console.error('Error fetching ads:', err);
-        setError('Failed to load ads');
+        
+        // Handle different types of errors
+        if (err.code === 'ECONNABORTED') {
+          console.warn('Ads request timed out, skipping ad display');
+          setError(null); // Don't show error for timeouts, just skip ads
+        } else if (err.response?.status >= 500) {
+          setError('Server error loading ads');
+        } else if (err.response?.status === 404) {
+          setError(null); // No ads available, don't show error
+        } else {
+          setError('Failed to load ads');
+        }
       } finally {
         setLoading(false);
       }

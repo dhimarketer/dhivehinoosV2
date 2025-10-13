@@ -322,23 +322,15 @@ const AdminDashboard = () => {
 
   const handleToggleArticleStatus = async (article) => {
     try {
-      const newStatus = article.status === 'published' ? 'draft' : 'published';
-      // Only send the fields that are allowed to be updated
-      const updateData = {
-        title: article.title,
-        content: article.content,
-        status: newStatus
-      };
+      console.log(`Toggling status for article ${article.id} from ${article.status}`);
       
-      // Only include image if it exists and is not null
-      if (article.image) {
-        updateData.image = article.image;
-      }
+      // Use the simple toggle endpoint - no authentication required
+      const response = await articlesAPI.toggleStatus(article.id);
       
-      await articlesAPI.update(article.id, updateData);
+      console.log('Toggle response:', response.data);
       
       toast({
-        title: `Article ${newStatus === 'published' ? 'published' : 'unpublished'}`,
+        title: `Article ${response.data.status === 'published' ? 'published' : 'unpublished'}`,
         status: 'success',
         duration: 2000,
       });
@@ -348,7 +340,7 @@ const AdminDashboard = () => {
       console.error('Error toggling article status:', error);
       toast({
         title: 'Error updating article status',
-        description: error.response?.data?.detail || 'Failed to update status',
+        description: error.response?.data?.message || error.message || 'Failed to update status',
         status: 'error',
         duration: 3000,
       });

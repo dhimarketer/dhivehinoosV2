@@ -101,12 +101,17 @@ def get_csrf_token(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def logout_view(request):
     """
     Logout endpoint
     """
-    logout(request)
-    return Response({'message': 'Logout successful'})
+    try:
+        logout(request)
+        return Response({'message': 'Logout successful'})
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        return Response({'message': 'Logout completed'})  # Always return success for logout
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
