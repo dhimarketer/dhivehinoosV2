@@ -60,7 +60,8 @@ class ArticleViewSet(ModelViewSet):
     """Admin viewset for managing articles"""
     queryset = Article.objects.all()
     serializer_class = ArticleSerializer
-    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    permission_classes = [permissions.IsAdminUser]  # ✅ FIXED: Require admin authentication
+    authentication_classes = [NoCSRFSessionAuthentication]  # ✅ Use custom auth without CSRF
     pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
@@ -138,8 +139,42 @@ class ArticleViewSet(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
     def create(self, request, *args, **kwargs):
-        """Custom create method with cache invalidation"""
+        """Custom create method with cache invalidation and image validation"""
         try:
+            # Validate image file if provided
+            if 'image_file' in request.FILES:
+                image_file = request.FILES['image_file']
+                
+                # Check file size (max 10MB)
+                if image_file.size > 10 * 1024 * 1024:
+                    return Response(
+                        {'error': 'Image file too large. Maximum size is 10MB.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Check file type
+                allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+                if image_file.content_type not in allowed_types:
+                    return Response(
+                        {'error': f'Invalid image type. Allowed types: {", ".join(allowed_types)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Validate image file integrity
+                try:
+                    from PIL import Image
+                    image = Image.open(image_file)
+                    image.verify()  # This will raise an exception if the image is corrupted
+                    image_file.seek(0)  # Reset file pointer after verification
+                except ImportError:
+                    # PIL not available, skip verification
+                    pass
+                except Exception as e:
+                    return Response(
+                        {'error': f'Image file appears to be corrupted: {str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
             serializer = self.get_serializer(data=request.data)
             
             if serializer.is_valid():
@@ -403,7 +438,8 @@ class PublishingScheduleViewSet(ModelViewSet):
     """Admin viewset for managing publishing schedules"""
     queryset = PublishingSchedule.objects.all()
     serializer_class = PublishingScheduleSerializer
-    permission_classes = [permissions.IsAuthenticated]  # Require authentication
+    permission_classes = [permissions.IsAdminUser]  # Require admin authentication
+    authentication_classes = [NoCSRFSessionAuthentication]  # Use custom auth without CSRF
     pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
@@ -626,11 +662,11 @@ def health_check(request):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAdminUser])  # ✅ FIXED: Require admin authentication
 @authentication_classes([NoCSRFSessionAuthentication])
 @csrf_exempt
 def toggle_article_status(request, article_id):
-    """Toggle article status - requires authentication but CSRF exempt for admin convenience"""
+    """Toggle article status - requires admin authentication but CSRF exempt for admin convenience"""
     try:
         # Debug logging
         print(f"🔍 Toggle request: User={request.user}, IsAuthenticated={request.user.is_authenticated}, IsStaff={request.user.is_staff}")

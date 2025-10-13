@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -11,6 +11,8 @@ from .models import SiteSettings
 from .serializers import SiteSettingsSerializer
 import json
 
+@api_view(['PUT'])
+@permission_classes([IsAdminUser])
 @csrf_exempt
 def site_settings_view(request):
     """
@@ -76,6 +78,7 @@ def public_settings_view(request):
     return Response(public_data)
 
 @api_view(['GET'])
+@permission_classes([IsAdminUser])
 def admin_settings_view(request):
     """
     GET: Retrieve all site settings for admin users

@@ -19,7 +19,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Always check authentication status with backend on page load/refresh
+        // Check if we have cached auth data first
+        const cachedAuth = localStorage.getItem('isAuthenticated');
+        const cachedUser = localStorage.getItem('user');
+        
+        if (cachedAuth === 'true' && cachedUser) {
+          // Set cached state immediately for better UX
+          setIsAuthenticated(true);
+          setUser(JSON.parse(cachedUser));
+        }
+        
+        // Always verify with backend to ensure session is still valid
         const isAuth = await authService.checkAuthStatus();
         
         if (isAuth) {
@@ -117,19 +127,7 @@ export const AuthProvider = ({ children }) => {
 
 // Protected Route Component
 export const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading, checkAuthStatus } = useAuth();
-
-  useEffect(() => {
-    // If not authenticated and not loading, try to check auth status once more
-    if (!loading && !isAuthenticated) {
-      checkAuthStatus().then(() => {
-        // After checking, if still not authenticated, redirect to login
-        if (!isAuthenticated) {
-          window.location.href = '/admin/login';
-        }
-      });
-    }
-  }, [isAuthenticated, loading, checkAuthStatus]);
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (

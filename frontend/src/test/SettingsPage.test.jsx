@@ -4,6 +4,7 @@ import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import SettingsPage from '../pages/admin/SettingsPage'
 import { settingsAPI } from '../services/api'
+import { AuthProvider } from '../contexts/AuthContext'
 
 // Mock the API
 vi.mock('../services/api', () => ({
@@ -49,7 +50,9 @@ const renderWithProviders = (component) => {
   return render(
     <ChakraProvider>
       <BrowserRouter>
-        {component}
+        <AuthProvider>
+          {component}
+        </AuthProvider>
       </BrowserRouter>
     </ChakraProvider>
   )

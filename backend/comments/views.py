@@ -28,7 +28,8 @@ class CommentViewSet(ModelViewSet):
     """Admin viewset for managing comments"""
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    permission_classes = [permissions.IsAdminUser]  # ✅ FIXED: Require admin authentication
+    authentication_classes = [NoCSRFSessionAuthentication]  # ✅ Use custom auth without CSRF
     
     def get_queryset(self):
         queryset = Comment.objects.all()

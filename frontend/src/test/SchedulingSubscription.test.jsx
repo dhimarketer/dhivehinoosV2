@@ -5,6 +5,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import NewsletterSubscription from '../components/NewsletterSubscription';
 import SchedulingPage from '../pages/admin/SchedulingPage';
 import SubscriptionManagement from '../pages/admin/SubscriptionManagement';
+import { AuthProvider } from '../contexts/AuthContext';
 
 // Mock the API module
 vi.mock('../services/api', () => ({
@@ -25,7 +26,9 @@ vi.mock('react-helmet-async', () => ({
 const renderWithChakra = (component) => {
   return render(
     <ChakraProvider>
-      {component}
+      <AuthProvider>
+        {component}
+      </AuthProvider>
     </ChakraProvider>
   );
 };

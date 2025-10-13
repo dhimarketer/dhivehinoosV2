@@ -48,22 +48,47 @@ class AuthService {
 
   async checkAuthStatus() {
     try {
-      const response = await api.get('/auth/user/');
-      if (response.status === 200 && response.data.user) {
+      // First try the session validation endpoint
+      const validateResponse = await api.get('/auth/validate-session/');
+      if (validateResponse.status === 200 && validateResponse.data.valid) {
         this.isAuthenticated = true;
         localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('user', JSON.stringify(validateResponse.data.user));
         return true;
+      } else {
+        // Session is not valid, clear local state
+        this.isAuthenticated = false;
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('user');
+        return false;
       }
     } catch (error) {
-      // User is not authenticated (403, 401, or network error)
-      console.log('Auth check failed:', error.response?.status || 'Network error');
-      this.isAuthenticated = false;
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('user');
-      return false;
+      // If validation fails, try the user endpoint as fallback
+      try {
+        const response = await api.get('/auth/user/');
+        if (response.status === 200 && response.data.user) {
+          this.isAuthenticated = true;
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          return true;
+        }
+      } catch (fallbackError) {
+        // User is not authenticated (403, 401, or network error)
+        console.log('Auth check failed:', fallbackError.response?.status || 'Network error');
+        this.isAuthenticated = false;
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('user');
+        return false;
+      }
     }
     return false;
+  }
+
+  // Check if user has valid cached authentication
+  hasCachedAuth() {
+    const cachedAuth = localStorage.getItem('isAuthenticated');
+    const cachedUser = localStorage.getItem('user');
+    return cachedAuth === 'true' && cachedUser && JSON.parse(cachedUser);
   }
 
   getCurrentUser() {

@@ -222,14 +222,28 @@ if not DEBUG:
 
 # Session Configuration
 SESSION_COOKIE_SECURE = False  # Set to False to allow HTTP in production
-SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for debugging
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_COOKIE_NAME = 'sessionid'
 SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request to extend expiry
+SESSION_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests
+
+# Use Redis for session storage for better persistence across restarts
+if os.environ.get('USE_MEMORY_CACHE', 'false').lower() == 'true':
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+else:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+
+# Additional session settings for better persistence
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep session alive across browser restarts
+SESSION_COOKIE_DOMAIN = None  # Allow cookies for all domains
+SESSION_COOKIE_PATH = '/'  # Make cookies available for all paths
 
 # CSRF Configuration
 CSRF_COOKIE_SECURE = False  # Set to False to allow HTTP in production
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access to CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",

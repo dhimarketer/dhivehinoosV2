@@ -128,6 +128,29 @@ def user_view(request):
         }
     })
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def validate_session(request):
+    """
+    Validate if current session is still valid
+    """
+    try:
+        if request.user.is_authenticated and request.user.is_staff:
+            return Response({
+                'valid': True,
+                'user': {
+                    'id': request.user.id,
+                    'username': request.user.username,
+                    'is_staff': request.user.is_staff,
+                    'is_superuser': request.user.is_superuser,
+                }
+            })
+        else:
+            return Response({'valid': False})
+    except Exception as e:
+        logger.error(f"Session validation error: {str(e)}")
+        return Response({'valid': False})
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def create_admin_user(request):

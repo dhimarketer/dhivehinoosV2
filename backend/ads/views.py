@@ -1,12 +1,21 @@
 from rest_framework import permissions
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView
+from rest_framework.authentication import SessionAuthentication
 from django.utils import timezone
 from django.db import models
 from django.http import JsonResponse
 import logging
 from .models import Ad, AdPlacement
 from .serializers import AdSerializer, AdPlacementSerializer
+
+
+class NoCSRFSessionAuthentication(SessionAuthentication):
+    """
+    Custom authentication class that doesn't enforce CSRF tokens
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF enforcement
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +53,8 @@ class AdViewSet(ModelViewSet):
     """Admin viewset for managing ads"""
     queryset = Ad.objects.select_related('placement').all()
     serializer_class = AdSerializer
-    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    permission_classes = [permissions.IsAdminUser]  # ✅ FIXED: Require admin authentication
+    authentication_classes = [NoCSRFSessionAuthentication]  # ✅ Use custom auth without CSRF
 
 
 class ActiveAdsListView(ListAPIView):

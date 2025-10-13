@@ -8,35 +8,48 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Enable cookies for session authentication
-  timeout: 15000, // 15 seconds timeout - reduced from 30s for better UX
-  retry: 2, // Retry failed requests up to 2 times
-  retryDelay: 1000, // Wait 1 second between retries
+  timeout: 30000, // Increased to 30 seconds for production stability
+  retry: 2, // Increased retries for better reliability
+  retryDelay: 1000, // Increased delay between retries
 });
 
 // Request interceptor for session authentication
 api.interceptors.request.use(
   async (config) => {
+    // Debug: Log request details
+    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
+    
     // Session authentication is handled automatically with cookies
     // For state-changing operations (POST, PUT, PATCH, DELETE), get CSRF token only for non-exempt endpoints
     const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
     const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
     
     // Check if this is a CSRF-exempt endpoint (like comments/create, articles admin, toggle-status)
-    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/', '/articles/admin/', '/articles/toggle-status/'];
+    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/', '/articles/admin/', '/articles/toggle-status/', '/articles/schedules/'];
     const isCsrfExempt = csrfExemptEndpoints.some(endpoint => config.url?.includes(endpoint));
     
     if (needsFreshToken && !isCsrfExempt && !config.headers['X-CSRFToken']) {
       try {
+        // Use shorter timeout for CSRF token fetch to prevent delays
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
         const response = await fetch('/api/v1/auth/csrf-token/', {
           method: 'GET',
           credentials: 'include',
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
+        
         if (response.ok) {
           const data = await response.json();
           config.headers['X-CSRFToken'] = data.csrf_token;
+          console.log('CSRF token added to request');
         }
       } catch (error) {
         console.warn('Could not fetch CSRF token:', error);
+        // Continue without CSRF token - let the backend handle it
       }
     }
     
@@ -45,8 +58,12 @@ api.interceptors.request.use(
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
       if (csrfToken) {
         config.headers['X-CSRFToken'] = csrfToken;
+        console.log('CSRF token added from DOM');
       }
     }
+    
+    // Debug: Log headers being sent
+    console.log('Request headers:', config.headers);
     
     return config;
   },
@@ -57,13 +74,22 @@ api.interceptors.request.use(
 
 // Response interceptor to handle auth errors and retries
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`Response received: ${response.status} for ${response.config.url}`);
+    return response;
+  },
   async (error) => {
     const config = error.config;
     
+    // Debug: Log error details
+    console.error(`API Error: ${error.response?.status || 'Network'} for ${config?.url}`);
+    console.error('Error details:', error.response?.data || error.message);
+    
     // Handle authentication errors
     if (error.response?.status === 401 || error.response?.status === 403) {
+      console.log('Authentication error detected, clearing local auth state');
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('user');
       // Don't redirect automatically - let the component handle it
       console.log('Authentication error:', error.response?.status);
       return Promise.reject(error);

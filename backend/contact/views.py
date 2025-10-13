@@ -2,10 +2,19 @@ from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.authentication import SessionAuthentication
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from .models import ContactMessage
 from .serializers import ContactMessageSerializer, ContactMessageCreateSerializer
+
+
+class NoCSRFSessionAuthentication(SessionAuthentication):
+    """
+    Custom authentication class that doesn't enforce CSRF tokens
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF enforcement
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -13,7 +22,8 @@ class ContactMessageViewSet(ModelViewSet):
     """Admin viewset for managing contact messages"""
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
-    permission_classes = [permissions.AllowAny]  # Temporarily allow any for testing
+    permission_classes = [permissions.IsAdminUser]  # ✅ FIXED: Require admin authentication
+    authentication_classes = [NoCSRFSessionAuthentication]  # ✅ Use custom auth without CSRF
     
     def get_queryset(self):
         queryset = ContactMessage.objects.all()
