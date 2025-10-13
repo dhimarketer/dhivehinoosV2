@@ -7,11 +7,12 @@ from django.core.files.storage import default_storage
 from django.db import models
 from django.utils import timezone
 from rest_framework import status, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.authentication import SessionAuthentication
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -28,6 +29,13 @@ from .cache_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+class NoCSRFSessionAuthentication(SessionAuthentication):
+    """
+    Custom authentication class that doesn't enforce CSRF tokens
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF enforcement
 
 
 class CustomPageNumberPagination(PageNumberPagination):
@@ -618,18 +626,38 @@ def health_check(request):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
+@authentication_classes([NoCSRFSessionAuthentication])
 @csrf_exempt
 def toggle_article_status(request, article_id):
-    """Simple endpoint to toggle article status - no authentication required"""
+    """Toggle article status - requires authentication but CSRF exempt for admin convenience"""
     try:
+        # Debug logging
+        print(f"🔍 Toggle request: User={request.user}, IsAuthenticated={request.user.is_authenticated}, IsStaff={request.user.is_staff}")
+        
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            print(f"❌ User not authenticated")
+            return Response(
+                {'error': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Check if user is staff/admin
+        if not request.user.is_staff:
+            print(f"❌ User {request.user.username} is not staff")
+            return Response(
+                {'error': 'Only admin users can toggle article status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         article = get_object_or_404(Article, id=article_id)
         new_status = 'draft' if article.status == 'published' else 'published'
         
         article.status = new_status
         article.save()
         
-        print(f"✅ Article {article_id} status changed to {new_status}")
+        print(f"✅ Article {article_id} status changed to {new_status} by user {request.user.username}")
         
         return Response({
             'id': article.id,

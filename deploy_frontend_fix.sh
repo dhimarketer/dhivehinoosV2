@@ -76,3 +76,4 @@ echo "   - Added 30-second timeout to API requests"
 echo "   - Improved error handling for ads and categories"
 echo "   - Timeout errors will no longer show error messages"
 
+

@@ -8,7 +8,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Enable cookies for session authentication
-  timeout: 30000, // 30 seconds timeout
+  timeout: 15000, // 15 seconds timeout - reduced from 30s for better UX
+  retry: 2, // Retry failed requests up to 2 times
+  retryDelay: 1000, // Wait 1 second between retries
 });
 
 // Request interceptor for session authentication
@@ -19,8 +21,8 @@ api.interceptors.request.use(
     const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
     const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
     
-    // Check if this is a CSRF-exempt endpoint (like comments/create, articles admin)
-    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/', '/articles/admin/'];
+    // Check if this is a CSRF-exempt endpoint (like comments/create, articles admin, toggle-status)
+    const csrfExemptEndpoints = ['/comments/create/', '/comments/vote/', '/comments/admin/', '/articles/admin/', '/articles/toggle-status/'];
     const isCsrfExempt = csrfExemptEndpoints.some(endpoint => config.url?.includes(endpoint));
     
     if (needsFreshToken && !isCsrfExempt && !config.headers['X-CSRFToken']) {
@@ -53,15 +55,34 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and retries
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config;
+    
+    // Handle authentication errors
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('isAuthenticated');
       // Don't redirect automatically - let the component handle it
       console.log('Authentication error:', error.response?.status);
+      return Promise.reject(error);
     }
+    
+    // Handle timeout and network errors with retry logic
+    if ((error.code === 'ECONNABORTED' || error.code === 'NETWORK_ERROR' || !error.response) && 
+        config && !config._retry && config.retry > 0) {
+      config._retry = true;
+      config.retry--;
+      
+      console.log(`Retrying request to ${config.url}, attempts left: ${config.retry}`);
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, config.retryDelay || 1000));
+      
+      return api(config);
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -113,7 +134,7 @@ export const articlesAPI = {
     return api.patch(`/articles/admin/${id}/`, data);
   },
   delete: (id) => api.delete(`/articles/admin/${id}/`),
-  // Simple toggle status - no authentication required
+  // Toggle status - requires authentication but CSRF exempt
   toggleStatus: (id) => api.post(`/articles/toggle-status/${id}/`),
 };
 

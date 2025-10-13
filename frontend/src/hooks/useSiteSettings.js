@@ -15,12 +15,23 @@ export const useSiteSettings = () => {
     const fetchSettings = async () => {
       try {
         setLoading(true);
+        setError(null);
         const response = await settingsAPI.getPublic();
         setSettings(response.data);
-        setError(null);
       } catch (err) {
         console.error('Error fetching site settings:', err);
-        setError('Failed to load site settings');
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to load site settings';
+        if (err.code === 'ECONNABORTED') {
+          errorMessage = 'Request timed out. Please check your connection.';
+        } else if (err.code === 'NETWORK_ERROR' || !err.response) {
+          errorMessage = 'Network error. Please check your connection.';
+        } else if (err.response?.status >= 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+        
+        setError(errorMessage);
         // Keep default settings on error
       } finally {
         setLoading(false);

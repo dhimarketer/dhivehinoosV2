@@ -61,14 +61,21 @@ const SettingsPage = () => {
       setError('');
     } catch (err) {
       console.error('Error fetching settings:', err);
-      setError('Failed to load settings');
       
       let errorMessage = 'Could not load current settings';
-      if (err.response?.status === 403) {
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please check your connection.';
+      } else if (err.code === 'NETWORK_ERROR' || !err.response) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (err.response?.status === 403) {
         errorMessage = 'Authentication required. Please log in again.';
       } else if (err.response?.status === 401) {
         errorMessage = 'Session expired. Please log in again.';
+      } else if (err.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.';
       }
+      
+      setError(errorMessage);
       
       toast({
         title: 'Error loading settings',

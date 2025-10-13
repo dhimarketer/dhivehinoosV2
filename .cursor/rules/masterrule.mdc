@@ -1,4 +1,4 @@
 ---
 alwaysApply: true
 ---
-always assume you are workinging in the local machine. always try to use virtual environment. you cannot access the linode machine, you can only work in local machine cursor ide. your job is to work on the codebase and build and push to dockerhub. user will run the commands in linode. 
+always assume you are workinging in the local machine. always try to use virtual environment. you cannot access the linode machine, you can only work in local machine cursor ide. your job is to work on the codebase and build and push to dockerhub. user will run the commands in linode. do not introduce new libraries or tech without asking user.do not create unneccessary scripts. there will be 2 scripts. one script called build_and_push.sh which pushes the changes to docker container. and deploy_linode.sh script for user to run in linode machine. also tell user to update if you made any change to this script and docker-compose.yml file. do not create other yml files.
