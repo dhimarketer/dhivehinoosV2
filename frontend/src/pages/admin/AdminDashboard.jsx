@@ -83,6 +83,15 @@ const AdminDashboard = () => {
     hasNext: false,
     hasPrevious: false
   });
+  const [commentsPagination, setCommentsPagination] = useState({
+    currentPage: 1,
+    pageSize: 20,
+    totalPages: 1,
+    totalCount: 0,
+    hasNext: false,
+    hasPrevious: false
+  });
+  const [selectedComments, setSelectedComments] = useState([]);
   const [articleForm, setArticleForm] = useState({
     title: '',
     content: '',
@@ -135,7 +144,7 @@ const AdminDashboard = () => {
       
       const [articlesRes, commentsRes, contactRes, adsRes, placementsRes] = await Promise.all([
         api.get(`/articles/admin/?${params.toString()}`),
-        commentsAPI.getAll ? commentsAPI.getAll() : { data: { results: [] } },
+        commentsAPI.getAll(commentsPagination.currentPage, commentsPagination.pageSize),
         contactAPI.getAll(),
         adsAPI.getAll(),
         adsAPI.getPlacements(),
@@ -154,7 +163,17 @@ const AdminDashboard = () => {
         hasPrevious: articlesRes.data.previous !== null
       });
       
-      setComments(commentsRes.data.results || commentsRes.data || []);
+      // Update comments and comments pagination info
+      setComments(commentsRes.data.results || []);
+      setCommentsPagination({
+        currentPage: commentsRes.data.current_page || commentsPagination.currentPage,
+        pageSize: commentsRes.data.page_size || commentsPagination.pageSize,
+        totalPages: commentsRes.data.total_pages || 1,
+        totalCount: commentsRes.data.count || 0,
+        hasNext: commentsRes.data.next !== null,
+        hasPrevious: commentsRes.data.previous !== null
+      });
+      
       setContactMessages(contactRes.data.results || contactRes.data || []);
       setAds(adsRes.data.results || adsRes.data || []);
       setAdPlacements(placementsRes.data.results || placementsRes.data || []);
@@ -463,27 +482,61 @@ const AdminDashboard = () => {
         if (window.confirm(`Are you sure you want to delete ${selectedArticles.length} articles? This action cannot be undone.`)) {
           console.log('Bulk deleting articles:', selectedArticles);
           
-          // Delete articles one by one
-          for (const articleId of selectedArticles) {
-            try {
-              await articlesAPI.delete(articleId);
-              console.log('Successfully deleted article:', articleId);
-            } catch (error) {
-              console.error('Error deleting article:', articleId, error);
-            }
+        // Show progress toast
+        const progressToast = toast({
+          title: 'Deleting articles...',
+          description: `Processing ${selectedArticles.length} articles`,
+          status: 'info',
+          duration: 30000, // 30 seconds - should be enough for most operations
+          isClosable: true,
+        });
+        
+        // Process deletions in parallel with Promise.allSettled
+        const deletePromises = selectedArticles.map(async (articleId, index) => {
+          try {
+            await articlesAPI.delete(articleId);
+            console.log(`Successfully deleted article ${index + 1}/${selectedArticles.length}:`, articleId);
+            return { success: true, id: articleId };
+          } catch (error) {
+            console.error(`Error deleting article ${index + 1}/${selectedArticles.length}:`, articleId, error);
+            return { success: false, id: articleId, error };
           }
+        });
+        
+        // Wait for all deletions to complete
+        const results = await Promise.allSettled(deletePromises);
           
-          // Remove deleted articles from local state immediately
+          // Count successful and failed deletions
+          const successful = results.filter(result => 
+            result.status === 'fulfilled' && result.value.success
+          ).length;
+          const failed = results.length - successful;
+          
+          // Remove successfully deleted articles from local state immediately
+          const successfulIds = results
+            .filter(result => result.status === 'fulfilled' && result.value.success)
+            .map(result => result.value.id);
+          
           setArticles(prevArticles => 
-            prevArticles.filter(article => !selectedArticles.includes(article.id))
+            prevArticles.filter(article => !successfulIds.includes(article.id))
           );
           
-          toast({
-            title: 'Articles deleted',
-            description: `${selectedArticles.length} articles have been deleted`,
-            status: 'success',
-            duration: 3000,
-          });
+          // Show result toast
+          if (failed === 0) {
+            toast({
+              title: 'Articles deleted successfully',
+              description: `Successfully deleted ${successful} article(s)`,
+              status: 'success',
+              duration: 3000,
+            });
+          } else {
+            toast({
+              title: 'Partial success',
+              description: `Deleted ${successful} article(s), ${failed} failed`,
+              status: 'warning',
+              duration: 5000,
+            });
+          }
         } else {
           return;
         }
@@ -651,6 +704,133 @@ const AdminDashboard = () => {
         const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to reject comment';
         toast({
           title: 'Error rejecting comment',
+          description: errorMessage,
+          status: 'error',
+          duration: 3000,
+        });
+      }
+    }
+  };
+
+  const handleCommentsPageChange = async (page) => {
+    setCommentsPagination(prev => ({ ...prev, currentPage: page }));
+    try {
+      const commentsRes = await commentsAPI.getAll(page, commentsPagination.pageSize);
+      setComments(commentsRes.data.results || []);
+      setCommentsPagination({
+        currentPage: commentsRes.data.current_page || page,
+        pageSize: commentsRes.data.page_size || commentsPagination.pageSize,
+        totalPages: commentsRes.data.total_pages || 1,
+        totalCount: commentsRes.data.count || 0,
+        hasNext: commentsRes.data.next !== null,
+        hasPrevious: commentsRes.data.previous !== null
+      });
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      toast({
+        title: 'Error loading comments',
+        description: 'Failed to load comments page',
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleCommentSelection = (commentId, isSelected) => {
+    if (isSelected) {
+      setSelectedComments(prev => [...prev, commentId]);
+    } else {
+      setSelectedComments(prev => prev.filter(id => id !== commentId));
+    }
+  };
+
+  const handleSelectAllComments = (isSelected) => {
+    if (isSelected) {
+      setSelectedComments(comments.map(comment => comment.id));
+    } else {
+      setSelectedComments([]);
+    }
+  };
+
+  const handleBulkDeleteComments = async () => {
+    if (selectedComments.length === 0) {
+      toast({
+        title: 'No comments selected',
+        description: 'Please select comments to delete',
+        status: 'warning',
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete ${selectedComments.length} comment(s)? This action cannot be undone.`)) {
+      try {
+        console.log('Bulk deleting comments:', selectedComments);
+        
+        // Show progress toast
+        const progressToast = toast({
+          title: 'Deleting comments...',
+          description: `Processing ${selectedComments.length} comments`,
+          status: 'info',
+          duration: 30000, // 30 seconds - should be enough for most operations
+          isClosable: true,
+        });
+        
+        // Process deletions in parallel with Promise.allSettled
+        const deletePromises = selectedComments.map(async (commentId, index) => {
+          try {
+            await commentsAPI.delete(commentId);
+            console.log(`Successfully deleted comment ${index + 1}/${selectedComments.length}:`, commentId);
+            return { success: true, id: commentId };
+          } catch (error) {
+            console.error(`Error deleting comment ${index + 1}/${selectedComments.length}:`, commentId, error);
+            return { success: false, id: commentId, error };
+          }
+        });
+        
+        // Wait for all deletions to complete
+        const results = await Promise.allSettled(deletePromises);
+        
+        // Count successful and failed deletions
+        const successful = results.filter(result => 
+          result.status === 'fulfilled' && result.value.success
+        ).length;
+        const failed = results.length - successful;
+        
+        // Remove successfully deleted comments from local state immediately
+        const successfulIds = results
+          .filter(result => result.status === 'fulfilled' && result.value.success)
+          .map(result => result.value.id);
+        
+        setComments(prevComments => 
+          prevComments.filter(comment => !successfulIds.includes(comment.id))
+        );
+        
+        // Show result toast
+        if (failed === 0) {
+          toast({
+            title: 'Comments deleted successfully',
+            description: `Successfully deleted ${successful} comment(s)`,
+            status: 'success',
+            duration: 3000,
+          });
+        } else {
+          toast({
+            title: 'Partial success',
+            description: `Deleted ${successful} comment(s), ${failed} failed`,
+            status: 'warning',
+            duration: 5000,
+          });
+        }
+        
+        setSelectedComments([]);
+        // Refresh comments data
+        await handleCommentsPageChange(commentsPagination.currentPage);
+      } catch (error) {
+        console.error('Error bulk deleting comments:', error);
+        const errorMessage = error.response?.data?.error || 'Failed to delete comments';
+        toast({
+          title: 'Error deleting comments',
           description: errorMessage,
           status: 'error',
           duration: 3000,
@@ -1202,73 +1382,137 @@ const AdminDashboard = () => {
 
   const renderCommentsTab = () => (
     <Box>
-      <Heading size="lg" mb={6}>Comment Moderation</Heading>
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">Comment Moderation</Heading>
+        {selectedComments.length > 0 && (
+          <HStack>
+            <Text fontSize="sm" color="gray.600">
+              {selectedComments.length} selected
+            </Text>
+            <Button 
+              colorScheme="red" 
+              size="sm"
+              onClick={handleBulkDeleteComments}
+            >
+              Delete Selected
+            </Button>
+          </HStack>
+        )}
+      </Flex>
+      
       {loading ? (
         <Box textAlign="center" py={8}>
           <Spinner size="xl" />
         </Box>
       ) : (
-        <Table variant="simple">
-          <Thead>
-            <Tr>
-              <Th>Article</Th>
-              <Th>Author</Th>
-              <Th>Comment</Th>
-              <Th>Status</Th>
-              <Th>Actions</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {comments.map((comment) => (
-              <Tr key={comment.id}>
-                <Td>
-                  <Box>
-                    <Text fontWeight="medium" fontSize="sm">
-                      {comment.article_title || 'N/A'}
-                    </Text>
-                    <Link 
-                      href={`/article/${comment.article_slug}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      color="blue.500"
-                      fontSize="xs"
-                      textDecoration="underline"
-                    >
-                      View Article →
-                    </Link>
-                  </Box>
-                </Td>
-                <Td>{comment.author_name}</Td>
-                <Td maxW="200px" isTruncated>{comment.content}</Td>
-                <Td>
-                  <Badge colorScheme={comment.is_approved ? 'green' : 'yellow'}>
-                    {comment.is_approved ? 'Approved' : 'Pending'}
-                  </Badge>
-                </Td>
-                <Td>
-                  <HStack>
-                    {!comment.is_approved && (
+        <>
+          <Table variant="simple">
+            <Thead>
+              <Tr>
+                <Th>
+                  <Checkbox
+                    isChecked={selectedComments.length === comments.length && comments.length > 0}
+                    isIndeterminate={selectedComments.length > 0 && selectedComments.length < comments.length}
+                    onChange={(e) => handleSelectAllComments(e.target.checked)}
+                  />
+                </Th>
+                <Th>Article</Th>
+                <Th>Author</Th>
+                <Th>Comment</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {comments.map((comment) => (
+                <Tr key={comment.id}>
+                  <Td>
+                    <Checkbox
+                      isChecked={selectedComments.includes(comment.id)}
+                      onChange={(e) => handleCommentSelection(comment.id, e.target.checked)}
+                    />
+                  </Td>
+                  <Td>
+                    <Box>
+                      <Text fontWeight="medium" fontSize="sm">
+                        {comment.article_title || 'N/A'}
+                      </Text>
+                      <Link 
+                        href={`/article/${comment.article_slug}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        color="blue.500"
+                        fontSize="xs"
+                        textDecoration="underline"
+                      >
+                        View Article →
+                      </Link>
+                    </Box>
+                  </Td>
+                  <Td>{comment.author_name}</Td>
+                  <Td maxW="200px" isTruncated>{comment.content}</Td>
+                  <Td>
+                    <Badge colorScheme={comment.is_approved ? 'green' : 'yellow'}>
+                      {comment.is_approved ? 'Approved' : 'Pending'}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <HStack>
+                      {!comment.is_approved && (
+                        <Button 
+                          size="sm" 
+                          colorScheme="green"
+                          onClick={() => handleApproveComment(comment.id)}
+                        >
+                          Approve
+                        </Button>
+                      )}
                       <Button 
                         size="sm" 
-                        colorScheme="green"
-                        onClick={() => handleApproveComment(comment.id)}
+                        colorScheme="red"
+                        onClick={() => handleRejectComment(comment.id)}
                       >
-                        Approve
+                        {comment.is_approved ? 'Unapprove' : 'Reject'}
                       </Button>
-                    )}
-                    <Button 
-                      size="sm" 
-                      colorScheme="red"
-                      onClick={() => handleRejectComment(comment.id)}
-                    >
-                      {comment.is_approved ? 'Unapprove' : 'Reject'}
-                    </Button>
-                  </HStack>
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          
+          {/* Pagination Controls */}
+          {commentsPagination.totalPages > 1 && (
+            <Flex justify="center" mt={6}>
+              <HStack spacing={2}>
+                <Button
+                  size="sm"
+                  isDisabled={!commentsPagination.hasPrevious}
+                  onClick={() => handleCommentsPageChange(commentsPagination.currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                
+                <Text fontSize="sm" color="gray.600">
+                  Page {commentsPagination.currentPage} of {commentsPagination.totalPages}
+                </Text>
+                
+                <Button
+                  size="sm"
+                  isDisabled={!commentsPagination.hasNext}
+                  onClick={() => handleCommentsPageChange(commentsPagination.currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </HStack>
+            </Flex>
+          )}
+          
+          {/* Comments count */}
+          <Text fontSize="sm" color="gray.600" mt={4} textAlign="center">
+            Showing {comments.length} of {commentsPagination.totalCount} comments
+          </Text>
+        </>
       )}
     </Box>
   );
@@ -1457,7 +1701,7 @@ const AdminDashboard = () => {
                 colorScheme={activeTab === 'comments' ? 'blue' : 'gray'}
                 onClick={() => setActiveTab('comments')}
               >
-                Comments ({comments.length})
+                Comments ({commentsPagination.totalCount})
               </Button>
               <Button
                 colorScheme={activeTab === 'contact' ? 'blue' : 'gray'}

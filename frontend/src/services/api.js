@@ -173,7 +173,9 @@ export const articlesAPI = {
     }
     return api.patch(`/articles/admin/${id}/`, data);
   },
-  delete: (id) => api.delete(`/articles/admin/${id}/`),
+  delete: (id) => api.delete(`/articles/admin/${id}/`, {
+    timeout: 5000, // 5 second timeout for delete operations
+  }),
   // Toggle status - requires authentication but CSRF exempt
   toggleStatus: (id) => api.post(`/articles/toggle-status/${id}/`),
 };
@@ -186,12 +188,15 @@ export const categoriesAPI = {
 
 export const commentsAPI = {
   getByArticle: (slug) => api.get(`/comments/article/${slug}/`),
-  getAll: () => api.get(`/comments/admin/?t=${Date.now()}`), // Add cache-busting timestamp
+  getAll: (page = 1, pageSize = 20) => api.get(`/comments/admin/?page=${page}&page_size=${pageSize}&t=${Date.now()}`), // Add pagination support
   create: (data) => api.post('/comments/create/', data, {
     timeout: 10000, // 10 second timeout specifically for comment creation
   }),
   approve: (id) => api.post(`/comments/admin/${id}/approve/`),
   reject: (id) => api.post(`/comments/admin/${id}/reject/`),
+  delete: (id) => api.delete(`/comments/admin/${id}/`, {
+    timeout: 5000, // 5 second timeout for delete operations
+  }),
 };
 
 export const votesAPI = {

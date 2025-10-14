@@ -37,6 +37,39 @@ class CommentViewSet(ModelViewSet):
         if approved_filter is not None:
             queryset = queryset.filter(is_approved=approved_filter.lower() == 'true')
         return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """Override list to add pagination support"""
+        queryset = self.get_queryset()
+        
+        # Get pagination parameters
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        
+        # Calculate pagination
+        total_count = queryset.count()
+        total_pages = (total_count + page_size - 1) // page_size
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        
+        # Get paginated results
+        paginated_queryset = queryset[start_index:end_index]
+        
+        # Serialize the data
+        serializer = self.get_serializer(paginated_queryset, many=True)
+        
+        # Return paginated response
+        return Response({
+            'results': serializer.data,
+            'count': total_count,
+            'current_page': page,
+            'page_size': page_size,
+            'total_pages': total_pages,
+            'next': f"?page={page + 1}&page_size={page_size}" if page < total_pages else None,
+            'previous': f"?page={page - 1}&page_size={page_size}" if page > 1 else None,
+            'has_next': page < total_pages,
+            'has_previous': page > 1
+        })
 
 
 @api_view(['POST'])

@@ -30,13 +30,13 @@ echo "✅ Migrations applied successfully!"
 
 # Build backend image
 echo "🔨 Building backend image..."
-docker build -f ../docker/Dockerfile.backend -t $BACKEND_IMAGE:$VERSION .
+cd ..
+docker build -f docker/Dockerfile.backend -t $BACKEND_IMAGE:$VERSION backend/
 docker tag $BACKEND_IMAGE:$VERSION $BACKEND_IMAGE:latest
 
 # Build frontend image
 echo "🔨 Building frontend image..."
-cd ../frontend
-docker build -f Dockerfile -t $FRONTEND_IMAGE:$VERSION .
+docker build -f frontend/Dockerfile -t $FRONTEND_IMAGE:$VERSION frontend/
 docker tag $FRONTEND_IMAGE:$VERSION $FRONTEND_IMAGE:latest
 
 # Push images to DockerHub
