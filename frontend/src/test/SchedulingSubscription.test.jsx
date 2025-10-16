@@ -61,7 +61,7 @@ describe('NewsletterSubscription Component', () => {
   it('handles email input change', () => {
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     
     expect(emailInput.value).toBe('test@example.com');
@@ -70,7 +70,7 @@ describe('NewsletterSubscription Component', () => {
   it('handles first name input change', () => {
     renderWithChakra(<NewsletterSubscription />);
     
-    const firstNameInput = screen.getByPlaceholderText('First Name (Optional)');
+    const firstNameInput = screen.getByPlaceholderText('First name');
     fireEvent.change(firstNameInput, { target: { value: 'John' } });
     
     expect(firstNameInput.value).toBe('John');
@@ -79,7 +79,7 @@ describe('NewsletterSubscription Component', () => {
   it('handles last name input change', () => {
     renderWithChakra(<NewsletterSubscription />);
     
-    const lastNameInput = screen.getByPlaceholderText('Last Name (Optional)');
+    const lastNameInput = screen.getByPlaceholderText('Last name');
     fireEvent.change(lastNameInput, { target: { value: 'Doe' } });
     
     expect(lastNameInput.value).toBe('Doe');
@@ -88,7 +88,7 @@ describe('NewsletterSubscription Component', () => {
   it('shows validation error for invalid email', async () => {
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     const subscribeButton = screen.getByRole('button', { name: /subscribe/i });
     
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
@@ -118,7 +118,7 @@ describe('NewsletterSubscription Component', () => {
 
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     const subscribeButton = screen.getByRole('button', { name: /subscribe/i });
     
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -137,7 +137,7 @@ describe('NewsletterSubscription Component', () => {
 
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     const subscribeButton = screen.getByRole('button', { name: /subscribe/i });
     
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -154,7 +154,7 @@ describe('NewsletterSubscription Component', () => {
 
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     const subscribeButton = screen.getByRole('button', { name: /subscribe/i });
     
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -293,7 +293,7 @@ describe('Accessibility Tests', () => {
   it('newsletter subscription form has proper labels', () => {
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     expect(emailInput).toHaveAttribute('type', 'email');
   });
 
@@ -325,7 +325,7 @@ describe('Performance Tests', () => {
   it('components handle rapid state changes', async () => {
     renderWithChakra(<NewsletterSubscription />);
     
-    const emailInput = screen.getByPlaceholderText('Enter your email address');
+    const emailInput = screen.getByPlaceholderText('Your email address');
     
     // Rapidly change input value
     for (let i = 0; i < 10; i++) {
