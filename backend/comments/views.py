@@ -148,10 +148,20 @@ class ArticleCommentsListView(ListAPIView):
 @authentication_classes([NoCSRFSessionAuthentication])
 def create_comment(request):
     """Public API for creating comments"""
-    # Check if comments are allowed
+    # Check if comments are allowed (with caching)
     from settings_app.models import SiteSettings
-    settings = SiteSettings.get_settings()
-    if not settings.allow_comments:
+    from django.core.cache import cache
+    
+    # Cache the settings check for 5 minutes to avoid repeated DB queries
+    cache_key = 'site_settings_allow_comments'
+    allow_comments = cache.get(cache_key)
+    
+    if allow_comments is None:
+        settings = SiteSettings.get_settings()
+        allow_comments = settings.allow_comments
+        cache.set(cache_key, allow_comments, 300)  # Cache for 5 minutes
+    
+    if not allow_comments:
         return Response(
             {'error': 'Comments are currently disabled'}, 
             status=status.HTTP_403_FORBIDDEN

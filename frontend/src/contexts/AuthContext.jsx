@@ -101,6 +101,9 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Continue with logout even if the API call fails
     } finally {
       setIsAuthenticated(false);
       setUser(null);

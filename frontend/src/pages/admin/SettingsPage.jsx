@@ -242,7 +242,7 @@ const SettingsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Settings - Admin Dashboard - Dhivehinoos.net</title>
+        <title>Settings - Dhivehinoos.net</title>
       </Helmet>
 
       <Container maxW="container.md" py={8}>
@@ -251,8 +251,8 @@ const SettingsPage = () => {
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Heading size="xl">Site Settings</Heading>
             <HStack spacing={4}>
-              <Button onClick={() => navigate('/admin/dashboard')}>
-                Back to Dashboard
+              <Button onClick={() => navigate('/')}>
+                Back to Home
               </Button>
               <Button colorScheme="red" onClick={handleLogout}>
                 Logout

@@ -55,7 +55,8 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         if article_slug:
             from articles.models import Article
             try:
-                article = Article.objects.get(slug=article_slug, status='published')
+                # Use select_related to optimize the query
+                article = Article.objects.select_related('category').get(slug=article_slug, status='published')
                 validated_data['article'] = article
             except Article.DoesNotExist:
                 raise serializers.ValidationError({'article_slug': 'Article not found or not published'})

@@ -1,6 +1,9 @@
 from django.contrib import admin
 from .models import Article, Category, PublishingSchedule, ScheduledArticle
 
+# Import image reuse admin configurations
+from . import admin_reusable_images
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -67,7 +70,7 @@ class ScheduledArticleAdmin(admin.ModelAdmin):
 
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
-    list_display = ['title', 'category', 'status', 'publishing_mode', 'scheduled_publish_time', 'created_at', 'vote_score', 'approved_comments_count']
+    list_display = ['title', 'category', 'status', 'publishing_mode', 'scheduled_publish_time', 'image_source', 'created_at', 'vote_score', 'approved_comments_count']
     list_filter = ['status', 'publishing_mode', 'category', 'created_at']
     search_fields = ['title', 'content']
     prepopulated_fields = {'slug': ('title',)}
@@ -78,14 +81,14 @@ class ArticleAdmin(admin.ModelAdmin):
             'fields': ('title', 'slug', 'content', 'category')
         }),
         ('Media', {
-            'fields': ('image', 'image_file')
+            'fields': ('image', 'image_file', 'reused_image', 'image_source')
         }),
         ('Publishing', {
             'fields': ('status', 'publishing_mode', 'scheduled_publish_time')
         }),
     )
     
-    actions = ['schedule_for_publishing', 'publish_now']
+    actions = ['schedule_for_publishing', 'publish_now', 'unpublish_articles', 'bulk_delete_articles']
     
     def schedule_for_publishing(self, request, queryset):
         """Action to schedule selected articles for publishing"""
@@ -120,3 +123,31 @@ class ArticleAdmin(admin.ModelAdmin):
             messages.success(request, f"Successfully published {published_count} article(s).")
     
     publish_now.short_description = "Publish selected articles immediately"
+    
+    def unpublish_articles(self, request, queryset):
+        """Action to unpublish selected articles"""
+        from django.contrib import messages
+        
+        unpublished_count = 0
+        for article in queryset.filter(status='published'):
+            try:
+                article.status = 'draft'
+                article.save()
+                unpublished_count += 1
+            except Exception as e:
+                messages.error(request, f"Failed to unpublish '{article.title}': {str(e)}")
+        
+        if unpublished_count > 0:
+            messages.success(request, f"Successfully unpublished {unpublished_count} article(s).")
+    
+    unpublish_articles.short_description = "Unpublish selected articles"
+    
+    def bulk_delete_articles(self, request, queryset):
+        """Action to delete selected articles"""
+        from django.contrib import messages
+        
+        count = queryset.count()
+        queryset.delete()
+        messages.success(request, f'{count} articles deleted.')
+    
+    bulk_delete_articles.short_description = "Delete selected articles"

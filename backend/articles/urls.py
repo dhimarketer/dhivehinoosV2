@@ -4,7 +4,6 @@ from . import views
 from .feeds import LatestArticlesFeed, CategoryFeed, SearchFeed, AtomLatestArticlesFeed
 
 router = DefaultRouter()
-router.register(r'admin', views.ArticleViewSet, basename='article-admin')
 router.register(r'schedules', views.PublishingScheduleViewSet, basename='publishing-schedule')
 router.register(r'scheduled-articles', views.ScheduledArticleViewSet, basename='scheduled-article')
 

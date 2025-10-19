@@ -9,7 +9,7 @@ from .models import NewsletterSubscription, EmailCampaign
 class NewsletterSubscriptionAdmin(admin.ModelAdmin):
     list_display = [
         'email', 'full_name', 'status', 'source', 'subscribed_at', 
-        'confirmed_at', 'unsubscribed_at', 'actions'
+        'confirmed_at', 'unsubscribed_at', 'action_buttons'
     ]
     list_filter = ['status', 'source', 'subscribed_at', 'confirmed_at']
     search_fields = ['email', 'first_name', 'last_name']
@@ -41,7 +41,7 @@ class NewsletterSubscriptionAdmin(admin.ModelAdmin):
         return obj.full_name or '-'
     full_name.short_description = 'Full Name'
     
-    def actions(self, obj):
+    def action_buttons(self, obj):
         """Display action buttons"""
         if obj.status == 'pending':
             confirm_url = reverse('admin:subscriptions_newslettersubscription_confirm', args=[obj.pk])
@@ -56,7 +56,7 @@ class NewsletterSubscriptionAdmin(admin.ModelAdmin):
                 unsubscribe_url
             )
         return '-'
-    actions.short_description = 'Actions'
+    action_buttons.short_description = 'Actions'
     
     def confirm_subscription(self, request, queryset):
         """Admin action to confirm subscriptions"""
@@ -77,7 +77,7 @@ class NewsletterSubscriptionAdmin(admin.ModelAdmin):
 class EmailCampaignAdmin(admin.ModelAdmin):
     list_display = [
         'title', 'subject', 'status', 'total_recipients', 
-        'emails_sent', 'created_at', 'sent_at', 'actions'
+        'emails_sent', 'created_at', 'sent_at', 'action_buttons'
     ]
     list_filter = ['status', 'created_at', 'sent_at']
     search_fields = ['title', 'subject']
@@ -114,7 +114,7 @@ class EmailCampaignAdmin(admin.ModelAdmin):
         }),
     )
     
-    def actions(self, obj):
+    def action_buttons(self, obj):
         """Display action buttons"""
         if obj.status == 'draft':
             send_url = reverse('admin:subscriptions_emailcampaign_send', args=[obj.pk])
@@ -123,7 +123,7 @@ class EmailCampaignAdmin(admin.ModelAdmin):
                 send_url
             )
         return '-'
-    actions.short_description = 'Actions'
+    action_buttons.short_description = 'Actions'
     
     def send_campaign(self, request, queryset):
         """Admin action to send campaigns"""

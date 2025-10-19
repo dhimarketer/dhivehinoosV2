@@ -129,7 +129,7 @@ class CommentWebhookService:
                 url,
                 json=payload,
                 headers=headers,
-                timeout=5,  # Reduced to 5 seconds to prevent blocking comment creation
+                timeout=3,  # Reduced to 3 seconds to prevent blocking comment creation
                 verify=True  # Verify SSL certificates
             )
             
@@ -142,7 +142,7 @@ class CommentWebhookService:
                 return False
                 
         except requests.exceptions.Timeout:
-            logger.error(f"Webhook request timeout for {url} (5s timeout)")
+            logger.error(f"Webhook request timeout for {url} (3s timeout)")
             return False
         except requests.exceptions.ConnectionError:
             logger.error(f"Webhook connection error for {url}")

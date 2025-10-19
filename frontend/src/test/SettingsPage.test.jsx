@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import SettingsPage from '../pages/admin/SettingsPage'
 import { settingsAPI } from '../services/api'
 import { AuthProvider } from '../contexts/AuthContext'
@@ -49,11 +50,13 @@ const mockSettings = {
 const renderWithProviders = (component) => {
   return render(
     <ChakraProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          {component}
-        </AuthProvider>
-      </BrowserRouter>
+      <HelmetProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            {component}
+          </AuthProvider>
+        </BrowserRouter>
+      </HelmetProvider>
     </ChakraProvider>
   )
 }
@@ -84,7 +87,9 @@ describe('SettingsPage', () => {
     renderWithProviders(<SettingsPage />)
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('draft')).toBeInTheDocument()
+      // Check that the select has the correct value by looking at the option
+      const select = screen.getByRole('combobox')
+      expect(select).toHaveValue('draft')
       expect(screen.getByDisplayValue('Dhivehinoos.net')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Test description')).toBeInTheDocument()
     })
@@ -102,11 +107,12 @@ describe('SettingsPage', () => {
     renderWithProviders(<SettingsPage />)
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('draft')).toBeInTheDocument()
+      const select = screen.getByRole('combobox')
+      expect(select).toHaveValue('draft')
     })
 
     // Change the default article status
-    const select = screen.getByDisplayValue('draft')
+    const select = screen.getByRole('combobox')
     fireEvent.change(select, { target: { value: 'published' } })
 
     // Click save button
@@ -127,27 +133,24 @@ describe('SettingsPage', () => {
     renderWithProviders(<SettingsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load settings')).toBeInTheDocument()
+      const errorAlert = screen.getAllByRole('alert').find(alert => 
+        alert.textContent?.includes('Network error. Please check your connection.')
+      )
+      expect(errorAlert).toBeInTheDocument()
     })
   })
 
-  it('redirects to login when not authenticated', async () => {
+  it('shows authentication error when not authenticated', async () => {
     localStorageMock.getItem.mockReturnValue(null) // Not authenticated
-    const mockNavigate = vi.fn()
-    
-    vi.doMock('react-router-dom', () => ({
-      useNavigate: () => mockNavigate,
-    }))
-
-    settingsAPI.get.mockResolvedValue({ data: mockSettings })
+    settingsAPI.get.mockRejectedValue({ response: { status: 401 } })
 
     renderWithProviders(<SettingsPage />)
 
-    const saveButton = screen.getByText('Save Settings')
-    fireEvent.click(saveButton)
-
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/admin/login')
+      const authAlert = screen.getAllByRole('alert').find(alert => 
+        alert.textContent?.includes('Session expired. Please log in again.')
+      )
+      expect(authAlert).toBeInTheDocument()
     })
   })
 
@@ -194,15 +197,17 @@ describe('SettingsPage', () => {
       expect(screen.getByText('Allow Comments')).toBeInTheDocument()
     })
 
-    // Test allow comments toggle
-    const allowCommentsSwitch = screen.getByRole('switch', { name: /allow comments/i })
+    // Test allow comments toggle - find by label text and get the switch
+    const allowCommentsLabel = screen.getByText('Allow Comments')
+    const allowCommentsSwitch = allowCommentsLabel.parentElement.querySelector('input[type="checkbox"]')
     expect(allowCommentsSwitch).toBeChecked()
 
     fireEvent.click(allowCommentsSwitch)
     expect(allowCommentsSwitch).not.toBeChecked()
 
     // Test require approval toggle (should be disabled when comments are off)
-    const requireApprovalSwitch = screen.getByRole('switch', { name: /require comment approval/i })
+    const requireApprovalLabel = screen.getByText('Require Comment Approval')
+    const requireApprovalSwitch = requireApprovalLabel.parentElement.querySelector('input[type="checkbox"]')
     expect(requireApprovalSwitch).toBeDisabled()
   })
 })

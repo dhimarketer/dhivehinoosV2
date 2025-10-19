@@ -24,12 +24,13 @@ class Comment(models.Model):
         is_new_comment = not self.pk
         original_approved_status = self.is_approved
         
-        # Auto-approve if user has commented before from same IP
+        # Auto-approve if user has commented before from same IP (optimized query)
         if is_new_comment:
+            # Use a more efficient query with select_related and limit
             existing_comment = Comment.objects.filter(
                 ip_address=self.ip_address,
                 is_approved=True
-            ).exists()
+            ).select_related('article').first()
             if existing_comment:
                 self.is_approved = True
         
@@ -47,11 +48,11 @@ class Comment(models.Model):
                 
                 def send_webhook_async():
                     try:
-                        # Add a small delay to ensure comment is fully saved
+                        # Reduced delay to minimize blocking time
                         import time
                         import logging
                         logger = logging.getLogger(__name__)
-                        time.sleep(0.1)
+                        time.sleep(0.05)  # Reduced from 0.1s to 0.05s
                         
                         # Send webhook with error handling
                         success = CommentWebhookService.send_approved_comment(self)

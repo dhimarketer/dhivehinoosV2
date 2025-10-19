@@ -73,7 +73,7 @@ export const formatTextToHTML = (text) => {
 
 /**
  * Format text for preview (shorter version)
- * Used in article cards and admin dashboard
+ * Used in article cards
  */
 export const formatTextPreview = (text, maxLength = 150) => {
   if (!text) return '';

@@ -1,22 +1,6 @@
 version: '3'
 
 services:
-  dhivehinoos_redis:
-    image: redis:7-alpine
-    container_name: dhivehinoos_redis
-    restart: unless-stopped
-    ports:
-      - "8054:6379"  # Unique port for dhivehinoos redis
-    volumes:
-      - /opt/dhivehinoos/redis:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
   dhivehinoos_backend:
     image: dhimarketer/backend:latest
     container_name: dhivehinoos_backend
@@ -40,18 +24,12 @@ services:
       - DATABASE_URL=sqlite:////app/database/db.sqlite3
       - SECRET_KEY=${SECRET_KEY}
       - API_INGEST_KEY=${API_INGEST_KEY}
-      - USE_MEMORY_CACHE=false
-      - USE_TLS=true
-      - REDIS_URL=redis://dhivehinoos_redis:6379/0
-    depends_on:
-      dhivehinoos_redis:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/articles/health/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/articles/published/"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 3
+      start_period: 40s
 
   dhivehinoos_frontend:
     image: dhimarketer/frontend:latest

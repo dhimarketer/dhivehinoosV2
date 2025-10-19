@@ -6,8 +6,6 @@ import theme from './theme';
 import HomePage from './pages/HomePage';
 import ArticlePage from './pages/ArticlePage';
 import ContactPage from './pages/ContactPage';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
 import SettingsPage from './pages/admin/SettingsPage';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import { useSiteSettings } from './hooks/useSiteSettings';
@@ -35,16 +33,10 @@ function AppContent() {
         <Route path="/article/:slug" element={<ArticlePage />} />
         <Route path="/contact" element={<ContactPage />} />
         
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
+        {/* Admin Routes - Only Settings Page Remains */}
         <Route path="/admin/settings" element={
           <ProtectedRoute>
             <SettingsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/*" element={
-          <ProtectedRoute>
-            <AdminDashboard />
           </ProtectedRoute>
         } />
       </Routes>

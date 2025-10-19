@@ -23,7 +23,7 @@ echo ""
 
 # Apply migrations locally before building
 echo "🗄️ Applying database migrations locally..."
-cd ../backend
+cd backend
 source venv/bin/activate
 python manage.py migrate
 echo "✅ Migrations applied successfully!"

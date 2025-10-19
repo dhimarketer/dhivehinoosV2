@@ -22,6 +22,7 @@ from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.generic import RedirectView
 from django.views.static import serve
 from settings_app import views as settings_views
+from .admin import admin_site
 import os
 
 def api_info(request):
@@ -34,9 +35,10 @@ def api_info(request):
             'auth': '/api/v1/auth/',
             'articles': '/api/v1/articles/',
             'comments': '/api/v1/comments/',
-            'ads': '/api/v1/ads/',  # Re-enabled ad system
+            'ads': '/api/v1/ads/',
             'contact': '/api/v1/contact/',
             'settings': '/api/v1/settings/',
+            'subscriptions': '/api/v1/subscriptions/',
         },
         'frontend': 'http://localhost:5173',
         'documentation': 'See PROJECT_PLAN.md for API documentation'
@@ -51,7 +53,7 @@ urlpatterns = [
     path('favicon.ico', favicon_view, name='favicon'),
     path('sitemap.xml', settings_views.sitemap_view, name='sitemap'),
     path('robots.txt', settings_views.robots_txt_view, name='robots-txt'),
-    # path('admin/', admin.site.urls),  # Disabled to prevent conflict with React admin dashboard
+    path('admin/', admin_site.urls),  # Custom admin site with enhanced features
     path('api/v1/auth/', include('auth.urls')),
     path('api/v1/articles/', include('articles.urls')),
     path('api/v1/comments/', include('comments.urls')),

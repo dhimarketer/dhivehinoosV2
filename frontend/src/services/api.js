@@ -24,21 +24,17 @@ api.interceptors.request.use(
     const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
     const needsFreshToken = stateChangingMethods.includes(config.method?.toUpperCase());
     
-    // Check if this is a CSRF-exempt endpoint (like comments/create, articles admin, toggle-status)
+    // Check if this is a CSRF-exempt endpoint (like comments/create, articles toggle-status)
     const csrfExemptEndpoints = [
         '/comments/create/', 
         '/comments/vote/', 
-        '/comments/admin/', 
-        '/articles/admin/', 
         '/articles/toggle-status/', 
-        '/articles/schedules/',
         '/auth/login/',
         '/auth/logout/',
         '/auth/create-admin/',
         '/settings/admin/',
         '/contact/create/',
-        '/subscriptions/',
-        '/ads/admin/'
+        '/subscriptions/'
     ];
     const isCsrfExempt = csrfExemptEndpoints.some(endpoint => config.url?.includes(endpoint));
     
@@ -144,40 +140,6 @@ export const articlesAPI = {
     return api.get(`/articles/published/?${params.toString()}`);
   },
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),
-  getAll: (params = '') => {
-    const baseUrl = '/articles/admin/';
-    const separator = params.includes('?') ? '&' : '?';
-    const timestamp = `t=${Date.now()}`;
-    const fullParams = params ? `${params}${separator}${timestamp}` : `?${timestamp}`;
-    return api.get(`${baseUrl}${fullParams}`);
-  }, // Add cache-busting timestamp
-  create: (data) => {
-    // If data is FormData, don't set Content-Type header
-    if (data instanceof FormData) {
-      return api.post('/articles/admin/', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.post('/articles/admin/', data);
-  },
-  update: (id, data) => {
-    // If data is FormData, don't set Content-Type header
-    if (data instanceof FormData) {
-      return api.patch(`/articles/admin/${id}/`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.patch(`/articles/admin/${id}/`, data);
-  },
-  delete: (id) => api.delete(`/articles/admin/${id}/`, {
-    timeout: 5000, // 5 second timeout for delete operations
-  }),
-  // Toggle status - requires authentication but CSRF exempt
-  toggleStatus: (id) => api.post(`/articles/toggle-status/${id}/`),
 };
 
 export const categoriesAPI = {
@@ -188,14 +150,8 @@ export const categoriesAPI = {
 
 export const commentsAPI = {
   getByArticle: (slug) => api.get(`/comments/article/${slug}/`),
-  getAll: (page = 1, pageSize = 20) => api.get(`/comments/admin/?page=${page}&page_size=${pageSize}&t=${Date.now()}`), // Add pagination support
   create: (data) => api.post('/comments/create/', data, {
-    timeout: 10000, // 10 second timeout specifically for comment creation
-  }),
-  approve: (id) => api.post(`/comments/admin/${id}/approve/`),
-  reject: (id) => api.post(`/comments/admin/${id}/reject/`),
-  delete: (id) => api.delete(`/comments/admin/${id}/`, {
-    timeout: 5000, // 5 second timeout for delete operations
+    timeout: 15000, // 15 second timeout specifically for comment creation
   }),
 };
 
@@ -204,46 +160,16 @@ export const votesAPI = {
   getStatus: (articleId) => api.get(`/comments/vote-status/${articleId}/`),
 };
 
-// Ads API - Re-enabled
+// Ads API - Public only
 export const adsAPI = {
   getActive: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     return api.get(`/ads/active/${queryString ? '?' + queryString : ''}`);
   },
-  getAll: () => api.get('/ads/admin/'),
-  getPlacements: () => api.get('/ads/placements/'),
-  create: (data) => {
-    // If data is FormData, don't set Content-Type header
-    if (data instanceof FormData) {
-      return api.post('/ads/admin/', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.post('/ads/admin/', data);
-  },
-  update: (id, data) => {
-    // If data is FormData, don't set Content-Type header
-    if (data instanceof FormData) {
-      return api.put(`/ads/admin/${id}/`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.put(`/ads/admin/${id}/`, data);
-  },
-  delete: (id) => api.delete(`/ads/admin/${id}/`),
 };
 
 export const contactAPI = {
   create: (data) => api.post('/contact/create/', data),
-  getAll: () => api.get(`/contact/admin/?t=${Date.now()}`), // Add cache-busting timestamp
-  markAsRead: (id) => api.patch(`/contact/admin/${id}/`, { is_read: true }),
-  archive: (id) => api.patch(`/contact/admin/${id}/archive/`),
-  unarchive: (id) => api.patch(`/contact/admin/${id}/unarchive/`),
-  delete: (id) => api.delete(`/contact/admin/${id}/delete/`),
 };
 
 export const authAPI = {
@@ -253,7 +179,7 @@ export const authAPI = {
 };
 
 export const settingsAPI = {
-  get: () => api.get('/settings/admin/get/'),
+  get: () => api.get('/settings/public/'),
   update: (data) => api.put('/settings/admin/', data),
   getPublic: () => api.get('/settings/public/'),
 };

@@ -192,15 +192,6 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
       >
         Contact Us
       </Button>
-      <Button 
-        as={Link} 
-        to="/admin/login" 
-        colorScheme="brand" 
-        size="sm"
-        onClick={onLinkClick}
-      >
-        Login
-      </Button>
     </>
   );
 
@@ -214,6 +205,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
       position="sticky"
       top="0"
       zIndex="1000"
+      role="navigation"
     >
       <Container maxW="container.xl" py={4}>
         <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
@@ -281,6 +273,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
           {isMobile && (
             <IconButton
               aria-label="Open menu"
+              aria-expanded={isOpen}
               icon={<HamburgerIcon />}
               variant="ghost"
               onClick={onOpen}

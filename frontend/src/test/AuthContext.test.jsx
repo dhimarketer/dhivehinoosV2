@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider, useAuth, ProtectedRoute } from '../contexts/AuthContext'
 import authService from '../services/auth'
 
@@ -43,11 +44,13 @@ const TestComponent = () => {
 const renderWithProviders = (component) => {
   return render(
     <ChakraProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          {component}
-        </AuthProvider>
-      </BrowserRouter>
+      <HelmetProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            {component}
+          </AuthProvider>
+        </BrowserRouter>
+      </HelmetProvider>
     </ChakraProvider>
   )
 }
