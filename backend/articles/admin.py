@@ -22,7 +22,8 @@ class ArticleAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Make image_source not required since it's set automatically
-        self.fields['image_source'].required = False
+        if 'image_source' in self.fields:
+            self.fields['image_source'].required = False
     
     def save(self, commit=True):
         """Override save to handle reusable image assignment"""
@@ -326,3 +327,23 @@ class ArticleAdmin(admin.ModelAdmin):
             messages.success(request, f"Found matches for {matches_found} article(s). See details above.")
     
     find_reusable_images.short_description = "Find matching reusable images"
+
+    # Capture unexpected admin rendering errors to logs so we can diagnose 500s
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        import logging, traceback
+        logger = logging.getLogger(__name__)
+        try:
+            return super().change_view(request, object_id, form_url, extra_context)
+        except Exception as e:
+            logger.exception("Admin change_view failed for Article id=%s: %s", object_id, str(e))
+            # Re-raise so HTTP status remains accurate, but with stacktrace captured
+            raise
+
+    def add_view(self, request, form_url='', extra_context=None):
+        import logging, traceback
+        logger = logging.getLogger(__name__)
+        try:
+            return super().add_view(request, form_url, extra_context)
+        except Exception as e:
+            logger.exception("Admin add_view failed for Article: %s", str(e))
+            raise
