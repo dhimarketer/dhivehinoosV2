@@ -44,12 +44,24 @@ const HomePage = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
-    pageSize: 10,
+    pageSize: (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3),
     totalPages: 1,
     totalCount: 0,
     hasNext: false,
     hasPrevious: false
   });
+
+  // Update page size when settings change
+  useEffect(() => {
+    const newPageSize = (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3);
+    if (newPageSize !== pagination.pageSize) {
+      setPagination(prev => ({ 
+        ...prev, 
+        pageSize: newPageSize, 
+        currentPage: 1 
+      }));
+    }
+  }, [settings.story_cards_rows, settings.story_cards_columns]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -246,15 +258,17 @@ const HomePage = () => {
             </Flex>
             
             {searchResults.length > 0 ? (
-              /* Search Results Grid - Mobile Optimized */
+              /* Search Results Grid - Dynamic Layout */
               <Grid 
                 templateColumns={{ 
                   base: "1fr", 
-                  sm: "repeat(auto-fill, minmax(300px, 1fr))", 
-                  md: "repeat(auto-fill, minmax(350px, 1fr))" 
+                  sm: `repeat(${Math.min(settings.story_cards_columns || 3, 2)}, 1fr)`, 
+                  md: `repeat(${settings.story_cards_columns || 3}, 1fr)` 
                 }} 
                 gap={{ base: 4, md: 6 }} 
                 justifyItems="center"
+                maxW="1200px"
+                mx="auto"
               >
                 {searchResults.map((article, index) => (
                   <StoryCard key={article.id} article={article} variant="default" />
@@ -296,17 +310,19 @@ const HomePage = () => {
                 More News
               </Heading>
               
-              {/* Responsive Grid Layout - Mobile Optimized */}
+              {/* Dynamic Grid Layout based on settings */}
               <Grid 
                 templateColumns={{ 
                   base: "1fr", 
-                  sm: "repeat(auto-fill, minmax(300px, 1fr))", 
-                  md: "repeat(auto-fill, minmax(350px, 1fr))" 
+                  sm: `repeat(${Math.min(settings.story_cards_columns || 3, 2)}, 1fr)`, 
+                  md: `repeat(${settings.story_cards_columns || 3}, 1fr)` 
                 }} 
                 gap={{ base: 4, md: 6 }} 
                 justifyItems="center"
+                maxW="1200px"
+                mx="auto"
               >
-                {articles.slice(1).map((article, index) => (
+                {articles.slice(1, (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3) + 1).map((article, index) => (
                   <StoryCard key={article.id} article={article} variant="default" />
                 ))}
               </Grid>

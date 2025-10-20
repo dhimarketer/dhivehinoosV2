@@ -28,27 +28,51 @@ class ArticleListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'image', 'image_file', 'image_url', 'status',
+            'id', 'title', 'slug', 'content', 'image', 'image_file', 'image_url', 'status',
             'category', 'created_at', 'vote_score', 'approved_comments_count'
         ]
         read_only_fields = ['slug', 'created_at']
     
     def get_image_url(self, obj):
-        """Return the full image URL with fallback handling"""
-        # Prioritize image_file over image URL for reliability
+        """Simplified image URL logic with error handling"""
+        # If there's a reusable image selected, use it
+        if obj.reused_image and obj.reused_image.image_file:
+            try:
+                # Check if the file actually exists
+                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
+                else:
+                    print(f"⚠️  Warning: ReusableImage file doesn't exist: {obj.reused_image.image_file.name}")
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing reusable image: {e}")
+        
+        # If there's an image_file (from upload), use it
         if obj.image_file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image_file.url)
-            else:
-                # Fallback for when no request context is available
-                return f"http://localhost:8000{obj.image_file.url}"
-        elif obj.image:
-            # Only return external image URL if it's not a placeholder
-            if not obj.image.startswith('https://via.placeholder.com'):
-                return obj.image
-            # If it's a placeholder, return None to trigger fallback
-            return None
+            try:
+                # Check if the file actually exists
+                if obj.image_file.name and obj.image_file.storage.exists(obj.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.image_file.url}"
+                else:
+                    print(f"⚠️  Warning: Article image file doesn't exist: {obj.image_file.name}")
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing article image: {e}")
+        
+        # Fallback to original API image
+        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+            return obj.image
+        
         return None
 
 
@@ -263,21 +287,45 @@ class ArticleSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug', 'created_at', 'updated_at']
     
     def get_image_url(self, obj):
-        """Return the full image URL with fallback handling"""
-        # Prioritize image_file over image URL for reliability
+        """Simplified image URL logic with error handling"""
+        # If there's a reusable image selected, use it
+        if obj.reused_image and obj.reused_image.image_file:
+            try:
+                # Check if the file actually exists
+                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
+                else:
+                    print(f"⚠️  Warning: ReusableImage file doesn't exist: {obj.reused_image.image_file.name}")
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing reusable image: {e}")
+        
+        # If there's an image_file (from upload), use it
         if obj.image_file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image_file.url)
-            else:
-                # Fallback for when no request context is available
-                return f"http://localhost:8000{obj.image_file.url}"
-        elif obj.image:
-            # Only return external image URL if it's not a placeholder
-            if not obj.image.startswith('https://via.placeholder.com'):
-                return obj.image
-            # If it's a placeholder, return None to trigger fallback
-            return None
+            try:
+                # Check if the file actually exists
+                if obj.image_file.name and obj.image_file.storage.exists(obj.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.image_file.url}"
+                else:
+                    print(f"⚠️  Warning: Article image file doesn't exist: {obj.image_file.name}")
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing article image: {e}")
+        
+        # Fallback to original API image
+        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+            return obj.image
+        
         return None
     
     def get_scheduled_publish_info(self, obj):

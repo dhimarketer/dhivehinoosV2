@@ -124,19 +124,19 @@ api.interceptors.response.use(
 );
 
 export const articlesAPI = {
-  getPublished: (category = null, page = 1, pageSize = 10) => {
+  getPublished: (category = null, page = 1, pageSize = null) => {
     const params = new URLSearchParams();
     if (category) params.append('category', category);
     params.append('page', page);
-    params.append('page_size', pageSize);
+    if (pageSize) params.append('page_size', pageSize);
     return api.get(`/articles/published/?${params.toString()}`);
   },
-  search: (query, category = null, page = 1, pageSize = 10) => {
+  search: (query, category = null, page = 1, pageSize = null) => {
     const params = new URLSearchParams();
     params.append('search', query);
     if (category) params.append('category', category);
     params.append('page', page);
-    params.append('page_size', pageSize);
+    if (pageSize) params.append('page_size', pageSize);
     return api.get(`/articles/published/?${params.toString()}`);
   },
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),

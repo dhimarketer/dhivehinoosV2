@@ -14,6 +14,7 @@ services:
       - /opt/dhivehinoos/database:/app/database
       - /opt/dhivehinoos/media/articles:/app/media/articles
       - /opt/dhivehinoos/media/ads:/app/media/ads
+      - /opt/dhivehinoos/media/reusable_images:/app/media/reusable_images
       - /opt/dhivehinoos/static:/app/static
       - /opt/dhivehinoos/logs:/app/logs
     environment:

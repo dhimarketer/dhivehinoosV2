@@ -47,7 +47,12 @@ class ArticleSchedulingService:
         
         # Calculate publish time
         if custom_time:
-            publish_time = custom_time
+            # Ensure custom time is in local timezone
+            if timezone.is_aware(custom_time):
+                publish_time = timezone.localtime(custom_time)
+            else:
+                # Assume it's already in local timezone
+                publish_time = custom_time
         else:
             publish_time = schedule.get_next_publish_time()
         

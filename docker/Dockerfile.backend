@@ -37,11 +37,18 @@ RUN python manage.py collectstatic --noinput
 # Create startup script to ensure proper permissions
 RUN echo '#!/bin/bash\n\
 # Create directories and fix ownership\n\
-mkdir -p /app/media/articles /app/media/ads\n\
+mkdir -p /app/media/articles /app/media/ads /app/media/reusable_images\n\
 mkdir -p /app/database\n\
 chown -R django:django /app/media /app/database /app/logs\n\
 chmod -R 755 /app/media /app/database /app/logs\n\
 chmod 664 /app/database/db.sqlite3 2>/dev/null || true\n\
+# Debug: List media directory contents\n\
+echo "Media directory contents:"\n\
+ls -la /app/media/\n\
+echo "Reusable images directory contents:"\n\
+ls -la /app/media/reusable_images/ || echo "Reusable images directory not found"\n\
+# Run management command to check media directories\n\
+python manage.py check_media_directories\n\
 # Switch to django user and start Gunicorn server\n\
 exec su -s /bin/bash django -c "cd /app && gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 dhivehinoos_backend.wsgi:application"' > /app/start.sh && chmod +x /app/start.sh
 

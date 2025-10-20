@@ -69,32 +69,26 @@ class ReusableImageModelTest(TestCase):
             entity_name="Ibrahim Mohamed Solih",
             entity_type="politician",
             image_file=self.test_image,
-            image_variant="portrait",
-            alternative_names=["Ibu Solih", "President Solih"],
-            name_variations=["އިބްރާހިމް މުހައްމަދު ސޮލިހު"],
-            tags="president, maldives, politics",
-            description="Official portrait of President Ibrahim Mohamed Solih",
-            source="Official Photo"
+            alternative_names="Ibu Solih, President Solih",
+            description="Official portrait of President Ibrahim Mohamed Solih"
         )
         
         self.assertEqual(image.entity_name, "Ibrahim Mohamed Solih")
         self.assertEqual(image.entity_type, "politician")
-        self.assertEqual(image.image_variant, "portrait")
-        self.assertEqual(image.image_sequence, 1)
-        self.assertFalse(image.is_verified)
         self.assertEqual(image.usage_count, 0)
         self.assertTrue(image.is_active)
+        self.assertIsNotNone(image.slug)
+        self.assertIsNotNone(image.display_name)
     
     def test_auto_generate_slug(self):
         """Test automatic slug generation"""
         image = ReusableImage.objects.create(
             entity_name="Ibrahim Mohamed Solih",
             entity_type="politician",
-            image_file=self.test_image,
-            image_variant="portrait"
+            image_file=self.test_image
         )
         
-        expected_slug = "ibrahim-mohamed-solih-portrait-1"
+        expected_slug = "ibrahim-mohamed-solih"
         self.assertEqual(image.slug, expected_slug)
     
     def test_auto_generate_display_name(self):
@@ -102,33 +96,30 @@ class ReusableImageModelTest(TestCase):
         image = ReusableImage.objects.create(
             entity_name="Ibrahim Mohamed Solih",
             entity_type="politician",
-            image_file=self.test_image,
-            image_variant="portrait"
+            image_file=self.test_image
         )
         
-        expected_display_name = "Ibrahim Mohamed Solih - Portrait"
+        expected_display_name = "Ibrahim Mohamed Solih"
         self.assertEqual(image.display_name, expected_display_name)
     
-    def test_unique_together_constraint(self):
-        """Test unique together constraint for entity_name, image_variant, image_sequence"""
+    def test_unique_slug_constraint(self):
+        """Test unique slug constraint"""
         # Create first image
         ReusableImage.objects.create(
             entity_name="Ibrahim Mohamed Solih",
             entity_type="politician",
-            image_file=self.test_image,
-            image_variant="portrait",
-            image_sequence=1
+            image_file=self.test_image
         )
         
-        # Create second image with same entity, variant, and sequence should fail
-        with self.assertRaises(Exception):
-            ReusableImage.objects.create(
-                entity_name="Ibrahim Mohamed Solih",
-                entity_type="politician",
-                image_file=self.test_image,
-                image_variant="portrait",
-                image_sequence=1
-            )
+        # Create second image with same entity name should get different slug
+        image2 = ReusableImage.objects.create(
+            entity_name="Ibrahim Mohamed Solih",
+            entity_type="politician",
+            image_file=self.test_image
+        )
+        
+        # Should have different slugs
+        self.assertNotEqual(ReusableImage.objects.first().slug, image2.slug)
     
     def test_increment_usage(self):
         """Test usage count increment"""
@@ -153,16 +144,14 @@ class ReusableImageModelTest(TestCase):
             entity_name="Ibrahim Mohamed Solih",
             entity_type="politician",
             image_file=self.test_image,
-            alternative_names=["Ibu Solih", "President Solih"],
-            name_variations=["އިބްރާހިމް މުހައްމަދު ސޮލިހު"]
+            alternative_names="Ibu Solih, President Solih"
         )
         
         all_names = image.get_all_names()
         expected_names = [
             "Ibrahim Mohamed Solih",
             "Ibu Solih",
-            "President Solih",
-            "އިބްރާހިމް މުހައްމަދު ސޮލިހު"
+            "President Solih"
         ]
         
         self.assertEqual(set(all_names), set(expected_names))
@@ -172,11 +161,10 @@ class ReusableImageModelTest(TestCase):
         image = ReusableImage.objects.create(
             entity_name="Ibrahim Mohamed Solih",
             entity_type="politician",
-            image_file=self.test_image,
-            image_variant="portrait"
+            image_file=self.test_image
         )
         
-        expected = "Ibrahim Mohamed Solih - Portrait"
+        expected = "Ibrahim Mohamed Solih"
         self.assertEqual(str(image), expected)
 
 

@@ -43,6 +43,8 @@ const mockSettings = {
   allow_comments: true,
   require_comment_approval: true,
   google_analytics_id: '',
+  story_cards_rows: 3,
+  story_cards_columns: 3,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z'
 }
@@ -87,9 +89,9 @@ describe('SettingsPage', () => {
     renderWithProviders(<SettingsPage />)
 
     await waitFor(() => {
-      // Check that the select has the correct value by looking at the option
-      const select = screen.getByRole('combobox')
-      expect(select).toHaveValue('draft')
+      // Check that the article status select has the correct value
+      const articleStatusSelect = screen.getByLabelText('Default Article Status')
+      expect(articleStatusSelect).toHaveValue('draft')
       expect(screen.getByDisplayValue('Dhivehinoos.net')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Test description')).toBeInTheDocument()
     })
@@ -107,13 +109,13 @@ describe('SettingsPage', () => {
     renderWithProviders(<SettingsPage />)
 
     await waitFor(() => {
-      const select = screen.getByRole('combobox')
-      expect(select).toHaveValue('draft')
+      const articleStatusSelect = screen.getByLabelText('Default Article Status')
+      expect(articleStatusSelect).toHaveValue('draft')
     })
 
     // Change the default article status
-    const select = screen.getByRole('combobox')
-    fireEvent.change(select, { target: { value: 'published' } })
+    const articleStatusSelect = screen.getByLabelText('Default Article Status')
+    fireEvent.change(articleStatusSelect, { target: { value: 'published' } })
 
     // Click save button
     const saveButton = screen.getByText('Save Settings')

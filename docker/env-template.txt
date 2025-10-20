@@ -6,6 +6,10 @@ SECRET_KEY=your-secret-key-here-change-this-in-production
 DEBUG=False
 ALLOWED_HOSTS=dhivehinoos.net,www.dhivehinoos.net,localhost,127.0.0.1
 
+# CSRF Settings (for Django admin)
+CSRF_COOKIE_SECURE=False
+CSRF_COOKIE_HTTPONLY=False
+
 # API Configuration
 API_INGEST_KEY=your-n8n-api-key-here
 

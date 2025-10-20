@@ -55,6 +55,48 @@ class CustomPageNumberPagination(PageNumberPagination):
         })
 
 
+class DynamicStoryCardPagination(PageNumberPagination):
+    """Dynamic pagination based on story card layout settings"""
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+    
+    def get_page_size(self, request):
+        """Get page size based on story card layout settings"""
+        from settings_app.models import SiteSettings
+        
+        # Get story card layout settings
+        settings = SiteSettings.get_settings()
+        rows = settings.story_cards_rows
+        columns = settings.story_cards_columns
+        
+        # Calculate total cards per page
+        cards_per_page = rows * columns
+        
+        # Allow override via query parameter
+        if self.page_size_query_param:
+            page_size = request.query_params.get(self.page_size_query_param)
+            if page_size is not None:
+                try:
+                    return min(int(page_size), self.max_page_size)
+                except (KeyError, ValueError):
+                    pass
+        
+        return cards_per_page
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'current_page': self.page.number,
+            'page_size': self.page.paginator.per_page,
+            'total_pages': self.page.paginator.num_pages,
+            'story_cards_rows': getattr(self, '_story_cards_rows', 3),
+            'story_cards_columns': getattr(self, '_story_cards_columns', 3),
+            'results': data
+        })
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ArticleViewSet(ModelViewSet):
     """Admin viewset for managing articles"""
@@ -215,7 +257,7 @@ class PublishedArticleListView(ListAPIView):
     queryset = Article.objects.filter(status='published')
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.AllowAny]
-    pagination_class = CustomPageNumberPagination
+    pagination_class = DynamicStoryCardPagination
     
     def get_queryset(self):
         """Filter articles by category and search if specified"""
@@ -246,8 +288,24 @@ class PublishedArticleListView(ListAPIView):
         return queryset.order_by('-created_at')
     
     def list(self, request, *args, **kwargs):
-        """Override list method - temporarily disable caching for debugging"""
-        # For now, let's disable caching and use regular database query
+        """Override list method with caching for better performance"""
+        from django.core.cache import cache
+        from settings_app.models import SiteSettings
+        
+        # Get story card layout settings for cache key
+        settings = SiteSettings.get_settings()
+        rows = settings.story_cards_rows
+        columns = settings.story_cards_columns
+        
+        # Create cache key based on query parameters and layout settings
+        cache_key = f"published_articles_{request.GET.get('page', 1)}_{request.GET.get('category', 'all')}_{request.GET.get('search', '')}_{rows}x{columns}"
+        
+        # Try to get cached data
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+        
+        # Get fresh data
         queryset = self.get_queryset()
         
         # Apply pagination
@@ -256,11 +314,16 @@ class PublishedArticleListView(ListAPIView):
         
         if page_obj is not None:
             serializer = self.get_serializer(page_obj, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            response_data = paginator.get_paginated_response(serializer.data).data
+        else:
+            # If no pagination, serialize all data
+            serializer = self.get_serializer(queryset, many=True)
+            response_data = serializer.data
         
-        # If no pagination, serialize all data
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        # Cache for 2 minutes
+        cache.set(cache_key, response_data, 120)
+        
+        return Response(response_data)
     
     def get_serializer_context(self):
         """Pass request context to serializer for absolute URL generation"""
@@ -567,10 +630,23 @@ def schedule_article(request, article_id):
         custom_time = None
         
         if custom_time_str:
-            # Parse the datetime string
+            # Parse the datetime string and ensure it's in local timezone
             from datetime import datetime
+            from django.utils.dateparse import parse_datetime
             try:
-                custom_time = datetime.fromisoformat(custom_time_str.replace('Z', '+00:00'))
+                # Try parsing as ISO format first
+                custom_time = parse_datetime(custom_time_str)
+                if custom_time is None:
+                    # Fallback to manual parsing
+                    custom_time = datetime.fromisoformat(custom_time_str.replace('Z', '+00:00'))
+                
+                # Convert to local timezone if it's timezone-aware
+                if timezone.is_aware(custom_time):
+                    custom_time = timezone.localtime(custom_time)
+                else:
+                    # Assume it's already in local timezone
+                    pass
+                    
             except ValueError:
                 return Response(
                     {'error': 'Invalid datetime format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'},

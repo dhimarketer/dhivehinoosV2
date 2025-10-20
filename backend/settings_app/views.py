@@ -45,6 +45,11 @@ def site_settings_view(request):
             if serializer.is_valid():
                 updated_settings = serializer.save()
                 print(f"Settings saved successfully: {SiteSettingsSerializer(updated_settings).data}")
+                
+                # Clear cache when settings are updated
+                from django.core.cache import cache
+                cache.delete('public_site_settings')
+                
                 return JsonResponse(serializer.data)
             
             print(f"Validation errors: {serializer.errors}")
@@ -74,6 +79,15 @@ def public_settings_view(request):
     GET: Retrieve public site settings (no authentication required)
     Returns only settings that are safe to expose publicly
     """
+    from django.core.cache import cache
+    
+    # Cache public settings for 5 minutes to improve performance
+    cache_key = 'public_site_settings'
+    cached_data = cache.get(cache_key)
+    
+    if cached_data is not None:
+        return Response(cached_data)
+    
     settings = SiteSettings.get_settings()
     
     # Only return public-safe settings
@@ -82,7 +96,12 @@ def public_settings_view(request):
         'site_description': settings.site_description,
         'allow_comments': settings.allow_comments,
         'google_analytics_id': settings.google_analytics_id,
+        'story_cards_rows': settings.story_cards_rows,
+        'story_cards_columns': settings.story_cards_columns,
     }
+    
+    # Cache for 5 minutes
+    cache.set(cache_key, public_data, 300)
     
     return Response(public_data)
 

@@ -1,5 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.contrib.auth.models import User
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from .models import SiteSettings
@@ -110,6 +111,14 @@ class SiteSettingsSerializerTest(TestCase):
 class SiteSettingsAPITest(APITestCase):
     def setUp(self):
         self.client = APIClient()
+        # Create admin user for authentication
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='adminpass123',
+            is_staff=True,
+            is_superuser=True
+        )
         # Clean up any existing settings
         SiteSettings.objects.all().delete()
         
@@ -123,7 +132,7 @@ class SiteSettingsAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Should only return public fields
-        expected_fields = {'site_name', 'site_description', 'allow_comments', 'google_analytics_id'}
+        expected_fields = {'site_name', 'site_description', 'allow_comments', 'google_analytics_id', 'story_cards_columns', 'story_cards_rows'}
         self.assertEqual(set(response.data.keys()), expected_fields)
         
         # Should not include admin-only fields
@@ -134,6 +143,9 @@ class SiteSettingsAPITest(APITestCase):
         """Test admin settings endpoint returns all fields"""
         settings = SiteSettings.get_settings()
         
+        # Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
+        
         url = reverse('site-settings-admin-get')
         response = self.client.get(url)
         
@@ -143,6 +155,8 @@ class SiteSettingsAPITest(APITestCase):
         expected_fields = {
             'id', 'default_article_status', 'site_name', 'site_description',
             'allow_comments', 'require_comment_approval', 'google_analytics_id',
+            'story_cards_columns', 'story_cards_rows', 'contact_email',
+            'comment_webhook_url', 'comment_webhook_enabled', 'comment_webhook_secret',
             'created_at', 'updated_at'
         }
         self.assertEqual(set(response.data.keys()), expected_fields)
@@ -154,6 +168,9 @@ class SiteSettingsAPITest(APITestCase):
     def test_update_settings_endpoint(self):
         """Test settings update endpoint"""
         settings = SiteSettings.get_settings()
+        
+        # Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
         
         update_data = {
             'default_article_status': 'published',
@@ -187,6 +204,9 @@ class SiteSettingsAPITest(APITestCase):
         settings = SiteSettings.get_settings()
         original_name = settings.site_name
         
+        # Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
+        
         # Only update default_article_status
         update_data = {
             'default_article_status': 'published'
@@ -208,6 +228,9 @@ class SiteSettingsAPITest(APITestCase):
         
     def test_update_settings_invalid_data(self):
         """Test settings update with invalid data"""
+        # Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
+        
         update_data = {
             'default_article_status': 'invalid_status',
             'google_analytics_id': 'invalid-ga-id'
@@ -228,6 +251,9 @@ class SiteSettingsAPITest(APITestCase):
         
     def test_update_settings_invalid_json(self):
         """Test settings update with invalid JSON"""
+        # Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
+        
         url = reverse('site-settings-admin')
         response = self.client.put(
             url,
@@ -243,6 +269,9 @@ class SiteSettingsAPITest(APITestCase):
     def test_settings_persistence(self):
         """Test that settings persist across multiple requests"""
         # This test specifically addresses the bug we just fixed
+        
+        # Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
         
         # First, update settings
         update_data = {
@@ -291,11 +320,18 @@ class SiteSettingsAPITest(APITestCase):
         self.assertEqual(response.data['site_name'], 'Another Update')
 
 
-class SiteSettingsIntegrationTest(TestCase):
+class SiteSettingsIntegrationTest(APITestCase):
     """Integration tests for settings functionality"""
     
     def setUp(self):
-        self.client = Client()
+        # Create admin user for authentication
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='adminpass123',
+            is_staff=True,
+            is_superuser=True
+        )
         # Clean up any existing settings
         SiteSettings.objects.all().delete()
         
@@ -305,7 +341,10 @@ class SiteSettingsIntegrationTest(TestCase):
         settings = SiteSettings.get_settings()
         self.assertEqual(settings.default_article_status, 'draft')
         
-        # 2. Update settings via API
+        # 2. Authenticate as admin user
+        self.client.force_authenticate(user=self.admin_user)
+        
+        # 3. Update settings via API
         update_data = {
             'default_article_status': 'published',
             'site_name': 'Integration Test Site',
@@ -320,13 +359,13 @@ class SiteSettingsIntegrationTest(TestCase):
         
         self.assertEqual(response.status_code, 200)
         
-        # 3. Verify settings were updated
+        # 4. Verify settings were updated
         updated_settings = SiteSettings.get_settings()
         self.assertEqual(updated_settings.default_article_status, 'published')
         self.assertEqual(updated_settings.site_name, 'Integration Test Site')
         self.assertFalse(updated_settings.allow_comments)
         
-        # 4. Test that settings persist across model calls
+        # 5. Test that settings persist across model calls
         settings_again = SiteSettings.get_settings()
         self.assertEqual(settings_again.id, updated_settings.id)
         self.assertEqual(settings_again.default_article_status, 'published')

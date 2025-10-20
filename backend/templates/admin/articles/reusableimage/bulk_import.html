@@ -1,0 +1,108 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='articles' %}">Articles</a>
+&rsaquo; <a href="{% url 'admin:articles_reusableimage_changelist' %}">Reusable images</a>
+&rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="module aligned">
+    <h2>Bulk Import Images</h2>
+    <p>Upload a ZIP file containing images to import them in bulk. Images will be automatically named based on their filenames.</p>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <fieldset class="module aligned">
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.zip_file.id_for_label }}" class="required">{{ form.zip_file.label }}:</label>
+                    {{ form.zip_file }}
+                    <p class="help">{{ form.zip_file.help_text }}</p>
+                    {% if form.zip_file.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.zip_file.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.entity_type.id_for_label }}" class="required">{{ form.entity_type.label }}:</label>
+                    {{ form.entity_type }}
+                    <p class="help">{{ form.entity_type.help_text }}</p>
+                    {% if form.entity_type.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.entity_type.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.prefix.id_for_label }}">{{ form.prefix.label }}:</label>
+                    {{ form.prefix }}
+                    <p class="help">{{ form.prefix.help_text }}</p>
+                    {% if form.prefix.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.prefix.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+        
+        <div class="submit-row">
+            <input type="submit" value="Import Images" class="default" />
+            <a href="{% url 'admin:articles_reusableimage_changelist' %}" class="button">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="module">
+    <h2>Import Instructions</h2>
+    <ul>
+        <li><strong>ZIP File:</strong> Create a ZIP file containing only image files (.jpg, .jpeg, .png, .gif, .bmp, .webp)</li>
+        <li><strong>Naming:</strong> Images will be named based on their filename (without extension)</li>
+        <li><strong>Examples:</strong>
+            <ul>
+                <li><code>ibrahim_solih.jpg</code> → "Ibrahim Solih"</li>
+                <li><code>president-mohamed.jpg</code> → "President Mohamed"</li>
+                <li><code>police_service.png</code> → "Police Service"</li>
+            </ul>
+        </li>
+        <li><strong>Prefix:</strong> Optional prefix to add to all names (e.g., "President" → "President Ibrahim Solih")</li>
+        <li><strong>Entity Type:</strong> Default type for all imported images</li>
+        <li><strong>Alternative Names:</strong> Can be added later by editing individual images</li>
+    </ul>
+</div>
+
+<div class="module">
+    <h2>After Import</h2>
+    <p>After importing, you can:</p>
+    <ul>
+        <li>Edit individual images to add alternative names</li>
+        <li>Change entity types if needed</li>
+        <li>Add descriptions</li>
+        <li>Activate/deactivate images as needed</li>
+    </ul>
+</div>
+
+{% endblock %}

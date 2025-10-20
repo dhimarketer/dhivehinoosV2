@@ -42,7 +42,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
   const titleColor = useColorModeValue('gray.800', 'white');
   const hoverShadow = useColorModeValue('lg', 'dark-lg');
 
-  // Format date like Times of Addu
+  // Format date like Times of Addu with consistent timezone handling
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -57,6 +57,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
       const weeks = Math.floor(diffDays / 7);
       return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
     } else {
+      // Always use Maldives timezone for consistent display
       return date.toLocaleDateString('en-US', { 
         timeZone: 'Indian/Maldives',
         month: 'long', 
@@ -150,15 +151,18 @@ const StoryCard = ({ article, variant = 'default' }) => {
             </Box>
           )}
           {/* Content Preview */}
-          <FormattedText 
-            content={article.content} 
-            preview={true} 
-            maxLength={100}
-            fontSize="sm"
-            color="gray.600"
-            mb={3}
-            noOfLines={3}
-          />
+          {article.content && (
+            <FormattedText 
+              content={article.content} 
+              preview={true} 
+              maxLength={150}
+              fontSize="md"
+              color="gray.600"
+              mb={3}
+              noOfLines={4}
+              lineHeight="1.5"
+            />
+          )}
           <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
             <Text>{formatDate(article.created_at)}</Text>
             <Flex gap={4} align="center">
@@ -219,7 +223,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
           <Heading
             size="sm"
             className="news-title"
-            mb={2}
+            mb={1}
             lineHeight="1.3"
             noOfLines={2}
             color={titleColor}
@@ -229,6 +233,21 @@ const StoryCard = ({ article, variant = 'default' }) => {
           >
             {article.title}
           </Heading>
+          {article.content && (
+            <Text 
+              fontSize="xs" 
+              color={textColor}
+              mb={1}
+              noOfLines={2}
+              lineHeight="1.3"
+            >
+              <FormattedText 
+                content={article.content} 
+                preview={true} 
+                maxLength={60}
+              />
+            </Text>
+          )}
           <Text 
             fontSize="xs" 
             className="news-meta" 
@@ -323,15 +342,18 @@ const StoryCard = ({ article, variant = 'default' }) => {
           </Box>
         )}
         {/* Content Preview */}
-        <FormattedText 
-          content={article.content} 
-          preview={true} 
-          maxLength={80}
-          fontSize="sm"
-          color="gray.600"
-          mb={3}
-          noOfLines={2}
-        />
+        {article.content && (
+          <FormattedText 
+            content={article.content} 
+            preview={true} 
+            maxLength={120}
+            fontSize="sm"
+            color="gray.600"
+            mb={3}
+            noOfLines={3}
+            lineHeight="1.4"
+          />
+        )}
         <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
           <Text fontWeight="medium">Read More</Text>
           <Flex gap={3} align="center">

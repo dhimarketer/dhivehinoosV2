@@ -112,11 +112,6 @@ class ImageMatchingService:
         """
         image = match['image']
         
-        # Check if the reusable image has an actual image file
-        if not image.image_file or not image.image_file.name:
-            print(f"⚠️  Warning: ReusableImage '{image.entity_name}' has no image file, skipping image reuse")
-            return False
-        
         # Set the reused image
         article.reused_image = image
         article.image_source = 'reused'
@@ -129,15 +124,6 @@ class ImageMatchingService:
         
         # Increment usage count
         image.increment_usage()
-        
-        # Invalidate cache for this article
-        try:
-            from .cache_utils import invalidate_article_cache
-            invalidate_article_cache(article_id=article.id)
-        except Exception as e:
-            print(f"⚠️  Warning: Failed to invalidate cache for article {article.id}: {e}")
-        
-        return True
     
     def process_article_for_image_reuse(self, article: Article) -> bool:
         """
@@ -162,4 +148,6 @@ class ImageMatchingService:
             return False
         
         # Apply the image to the article
-        return self.apply_image_to_article(article, best_match)
+        self.apply_image_to_article(article, best_match)
+        
+        return True

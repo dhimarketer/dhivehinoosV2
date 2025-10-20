@@ -38,6 +38,8 @@ const SettingsPage = () => {
     contact_email: 'emaildym@proton.me',
     allow_comments: true,
     require_comment_approval: true,
+    story_cards_rows: 3,
+    story_cards_columns: 3,
     google_analytics_id: '',
     comment_webhook_enabled: false,
     comment_webhook_url: '',
@@ -354,6 +356,52 @@ const SettingsPage = () => {
                 <Text fontSize="sm" color="gray.600">
                   When comment approval is required, comments will need admin approval before being visible to users.
                 </Text>
+              </VStack>
+            </CardBody>
+          </Card>
+
+          {/* Story Card Layout Settings */}
+          <Card>
+            <CardHeader>
+              <Heading size="md">Story Card Layout Settings</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={6} align="stretch">
+                <FormControl>
+                  <FormLabel>Number of Rows</FormLabel>
+                  <Select
+                    value={settings.story_cards_rows}
+                    onChange={(e) => handleChange('story_cards_rows', parseInt(e.target.value))}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                      <option key={num} value={num}>{num} row{num !== 1 ? 's' : ''}</option>
+                    ))}
+                  </Select>
+                  <Text fontSize="sm" color="gray.600" mt={2}>
+                    Number of rows to display story cards on the homepage. Currently set to: <strong>{settings.story_cards_rows}</strong>
+                  </Text>
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Number of Columns</FormLabel>
+                  <Select
+                    value={settings.story_cards_columns}
+                    onChange={(e) => handleChange('story_cards_columns', parseInt(e.target.value))}
+                  >
+                    {[1, 2, 3, 4, 5, 6].map(num => (
+                      <option key={num} value={num}>{num} column{num !== 1 ? 's' : ''}</option>
+                    ))}
+                  </Select>
+                  <Text fontSize="sm" color="gray.600" mt={2}>
+                    Number of columns to display story cards on the homepage. Currently set to: <strong>{settings.story_cards_columns}</strong>
+                  </Text>
+                </FormControl>
+
+                <Box p={4} bg="blue.50" borderRadius="md" border="1px solid" borderColor="blue.200">
+                  <Text fontSize="sm" color="blue.700" fontWeight="medium">
+                    Layout Preview: {settings.story_cards_rows} row{settings.story_cards_rows !== 1 ? 's' : ''} × {settings.story_cards_columns} column{settings.story_cards_columns !== 1 ? 's' : ''} = {settings.story_cards_rows * settings.story_cards_columns} story cards
+                  </Text>
+                </Box>
               </VStack>
             </CardBody>
           </Card>

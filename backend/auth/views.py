@@ -137,7 +137,7 @@ def user_view(request):
         }
     })
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def validate_session(request):
     """
@@ -145,14 +145,25 @@ def validate_session(request):
     """
     try:
         if request.user.is_authenticated and request.user.is_staff:
-            return Response({
-                'valid': True,
-                'user': {
+            # Cache user data for 30 seconds to reduce database hits
+            from django.core.cache import cache
+            cache_key = f"user_session_{request.user.id}"
+            cached_user = cache.get(cache_key)
+            
+            if cached_user is None:
+                user_data = {
                     'id': request.user.id,
                     'username': request.user.username,
                     'is_staff': request.user.is_staff,
                     'is_superuser': request.user.is_superuser,
                 }
+                cache.set(cache_key, user_data, 30)
+            else:
+                user_data = cached_user
+            
+            return Response({
+                'valid': True,
+                'user': user_data
             })
         else:
             return Response({'valid': False})

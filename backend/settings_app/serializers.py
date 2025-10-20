@@ -13,6 +13,8 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'contact_email',
             'allow_comments',
             'require_comment_approval',
+            'story_cards_rows',
+            'story_cards_columns',
             'google_analytics_id',
             'comment_webhook_url',
             'comment_webhook_enabled',
@@ -40,6 +42,18 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Google Analytics ID must be in GA4 format (e.g., G-XXXXXXXXXX)"
             )
+        return value
+    
+    def validate_story_cards_rows(self, value):
+        """Validate story cards rows"""
+        if value < 1 or value > 10:
+            raise serializers.ValidationError("Number of rows must be between 1 and 10")
+        return value
+    
+    def validate_story_cards_columns(self, value):
+        """Validate story cards columns"""
+        if value < 1 or value > 6:
+            raise serializers.ValidationError("Number of columns must be between 1 and 6")
         return value
     
     def validate_comment_webhook_url(self, value):

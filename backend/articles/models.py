@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 import re
 import json
+import os
 
 # Reusable image models will be defined in this file
 
@@ -119,7 +120,12 @@ class PublishingSchedule(models.Model):
             return True
         
         if datetime_obj is None:
-            datetime_obj = timezone.now()
+            # Ensure we get local timezone
+            datetime_obj = timezone.localtime(timezone.now())
+        else:
+            # Convert to local timezone if it's timezone-aware
+            if timezone.is_aware(datetime_obj):
+                datetime_obj = timezone.localtime(datetime_obj)
         
         current_time = datetime_obj.time()
         
@@ -135,7 +141,12 @@ class PublishingSchedule(models.Model):
             return timezone.now()
         
         if last_publish_time is None:
-            last_publish_time = timezone.now()
+            # Ensure we get local timezone
+            last_publish_time = timezone.localtime(timezone.now())
+        else:
+            # Convert to local timezone if it's timezone-aware
+            if timezone.is_aware(last_publish_time):
+                last_publish_time = timezone.localtime(last_publish_time)
         
         interval_minutes = self.get_interval_minutes()
         next_time = last_publish_time + timezone.timedelta(minutes=interval_minutes)
@@ -326,10 +337,14 @@ class ScheduledArticle(models.Model):
     
     def can_publish_now(self):
         """Check if this article can be published now"""
+        # Ensure we're working with local timezone
+        now = timezone.localtime(timezone.now())
+        scheduled_time = timezone.localtime(self.scheduled_publish_time) if timezone.is_aware(self.scheduled_publish_time) else self.scheduled_publish_time
+        
         return (
             self.status in ['queued', 'scheduled'] and
-            timezone.now() >= self.scheduled_publish_time and
-            self.schedule.is_time_allowed(timezone.now())
+            now >= scheduled_time and
+            self.schedule.is_time_allowed(now)
         )
     
     def publish(self):
@@ -424,10 +439,23 @@ class Article(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             base_slug = slugify(self.title)
+            # Ensure slug doesn't exceed Django's SlugField max_length (50)
+            if len(base_slug) > 50:
+                base_slug = base_slug[:50]
+                # Remove trailing hyphens if any
+                base_slug = base_slug.rstrip('-')
+            
             slug = base_slug
             counter = 1
             while Article.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
+                # Ensure counter addition doesn't exceed max_length
+                counter_slug = f"{base_slug}-{counter}"
+                if len(counter_slug) > 50:
+                    # Truncate base_slug further to accommodate counter
+                    available_length = 50 - len(f"-{counter}")
+                    base_slug = base_slug[:available_length].rstrip('-')
+                    counter_slug = f"{base_slug}-{counter}"
+                slug = counter_slug
                 counter += 1
             self.slug = slug
         
@@ -622,7 +650,7 @@ class ImageReuseSettings(models.Model):
 
 
 class ReusableImage(models.Model):
-    """Model for storing reusable images with metadata"""
+    """Simplified model for storing reusable images with easy admin management"""
     
     ENTITY_TYPE_CHOICES = [
         ('politician', 'Politician'),
@@ -632,106 +660,46 @@ class ReusableImage(models.Model):
         ('other', 'Other'),
     ]
     
-    IMAGE_VARIANT_CHOICES = [
-        ('portrait', 'Portrait'),
-        ('official', 'Official'),
-        ('casual', 'Casual'),
-        ('group', 'Group'),
-        ('exterior', 'Exterior'),
-        ('interior', 'Interior'),
-        ('logo', 'Logo'),
-        ('banner', 'Banner'),
-        ('default', 'Default'),
-    ]
-    
-    # Core identification
+    # Core identification - Admin just needs to provide this
     entity_name = models.CharField(
         max_length=255,
-        help_text="Primary name of the person or entity"
+        blank=True,
+        help_text="Optional: Identifiable name (e.g., 'President Ibrahim Mohamed Solih'). If empty, will be generated from filename."
     )
     entity_type = models.CharField(
         max_length=50,
         choices=ENTITY_TYPE_CHOICES,
+        default='other',
         help_text="Type of entity this image represents"
     )
     
     # Image management
     image_file = models.ImageField(
         upload_to='reusable_images/',
-        help_text="The actual image file"
-    )
-    image_url = models.URLField(
-        blank=True, 
-        null=True,
-        help_text="Original URL if image was downloaded from external source"
-    )
-    image_variant = models.CharField(
-        max_length=50,
-        choices=IMAGE_VARIANT_CHOICES,
-        default='default',
-        help_text="Type/variant of the image"
-    )
-    image_sequence = models.PositiveIntegerField(
-        default=1,
-        help_text="Sequence number for multiple images of same entity/variant"
+        help_text="Upload the image file"
     )
     
-    # Naming scheme
+    # Auto-generated fields (admin doesn't need to worry about these)
     slug = models.SlugField(
         unique=True,
         help_text="Auto-generated unique identifier"
     )
     display_name = models.CharField(
         max_length=255,
-        help_text="Human-readable display name"
+        help_text="Auto-generated display name"
     )
     
-    # Alternative names and variations
-    alternative_names = models.JSONField(
-        default=list,
-        help_text="Alternative names, nicknames, titles"
-    )
-    name_variations = models.JSONField(
-        default=list,
-        help_text="Name variations in different languages"
-    )
-    
-    # Metadata
-    tags = models.TextField(
+    # Alternative names for matching (optional - admin can add common variations)
+    alternative_names = models.TextField(
         blank=True,
-        help_text="Comma-separated tags for searching"
+        null=True,
+        help_text="Optional: Alternative names separated by commas (e.g., 'Ibu Solih, President Solih, Ibrahim Solih')"
     )
+    
+    # Simple metadata
     description = models.TextField(
         blank=True,
-        help_text="Description of the image"
-    )
-    source = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Source of the image (AI Generated, Official Photo, etc.)"
-    )
-    
-    # Admin verification
-    is_verified = models.BooleanField(
-        default=False,
-        help_text="Whether this image has been verified by admin"
-    )
-    verified_by = models.ForeignKey(
-        'auth.User',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='verified_images',
-        help_text="Admin user who verified this image"
-    )
-    verified_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When this image was verified"
-    )
-    verification_notes = models.TextField(
-        blank=True,
-        help_text="Admin notes about verification"
+        help_text="Optional description of the image"
     )
     
     # Usage tracking
@@ -754,8 +722,7 @@ class ReusableImage(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['entity_name', 'image_sequence']
-        unique_together = ['entity_name', 'image_variant', 'image_sequence']
+        ordering = ['entity_name']
         verbose_name = 'Reusable Image'
         verbose_name_plural = 'Reusable Images'
     
@@ -763,21 +730,29 @@ class ReusableImage(models.Model):
         return self.display_name
     
     def save(self, *args, **kwargs):
+        # Generate entity_name from filename if not provided
+        if not self.entity_name and self.image_file:
+            filename = self.image_file.name
+            name, ext = os.path.splitext(os.path.basename(filename))
+            self.entity_name = name.replace('_', ' ').replace('-', ' ').title()
+        
         if not self.slug:
             self.slug = self.generate_slug()
         if not self.display_name:
-            self.display_name = self.generate_display_name()
+            self.display_name = self.entity_name
         super().save(*args, **kwargs)
     
     def generate_slug(self):
-        """Generate slug: entity-name-variant-sequence"""
+        """Generate simple slug from entity name"""
+        from django.utils.text import slugify
         base_slug = slugify(self.entity_name)
-        variant_slug = slugify(self.image_variant)
-        return f"{base_slug}-{variant_slug}-{self.image_sequence}"
-    
-    def generate_display_name(self):
-        """Generate display name: Entity Name - Variant"""
-        return f"{self.entity_name} - {self.image_variant.title()}"
+        # Ensure uniqueness
+        counter = 1
+        slug = base_slug
+        while ReusableImage.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
     
     def increment_usage(self):
         """Increment usage count and update last used timestamp"""
@@ -788,9 +763,11 @@ class ReusableImage(models.Model):
     def get_all_names(self):
         """Get all possible names for this image"""
         names = [self.entity_name]
-        names.extend(self.alternative_names)
-        names.extend(self.name_variations)
-        return [name.strip() for name in names if name.strip()]
+        if self.alternative_names:
+            # Split by comma and clean up
+            alt_names = [name.strip() for name in self.alternative_names.split(',') if name.strip()]
+            names.extend(alt_names)
+        return names
 
 
 class ImageVerification(models.Model):

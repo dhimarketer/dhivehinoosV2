@@ -3,8 +3,8 @@ from .models import SiteSettings
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ['site_name', 'default_article_status', 'allow_comments', 'require_comment_approval', 'comment_webhook_enabled', 'updated_at']
-    list_editable = ['default_article_status', 'allow_comments', 'require_comment_approval', 'comment_webhook_enabled']
+    list_display = ['site_name', 'default_article_status', 'allow_comments', 'require_comment_approval', 'story_cards_rows', 'story_cards_columns', 'comment_webhook_enabled', 'updated_at']
+    list_editable = ['default_article_status', 'allow_comments', 'require_comment_approval', 'story_cards_rows', 'story_cards_columns', 'comment_webhook_enabled']
     readonly_fields = ['id', 'created_at', 'updated_at']
     
     fieldsets = (
@@ -16,6 +16,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         }),
         ('Comment Settings', {
             'fields': ('allow_comments', 'require_comment_approval')
+        }),
+        ('Story Card Layout', {
+            'fields': ('story_cards_rows', 'story_cards_columns'),
+            'description': 'Configure the number of rows and columns for story cards display'
         }),
         ('Webhook Settings', {
             'fields': ('comment_webhook_enabled', 'comment_webhook_url', 'comment_webhook_secret'),

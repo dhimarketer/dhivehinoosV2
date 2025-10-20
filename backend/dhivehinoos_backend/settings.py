@@ -173,6 +173,28 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Additional CORS settings for production
+CORS_ALLOW_ALL_ORIGINS = False  # Keep this False for security
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOWED_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 # Cache Configuration - Use Redis by default, fallback to memory cache
 if os.environ.get('USE_MEMORY_CACHE', 'false').lower() == 'true':
     CACHES = {

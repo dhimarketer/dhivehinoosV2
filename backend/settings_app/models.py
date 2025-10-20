@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 class SiteSettings(models.Model):
     """Site-wide settings that can be configured by admin users"""
@@ -37,6 +38,17 @@ class SiteSettings(models.Model):
         help_text="Whether comments need admin approval before being visible"
     )
     
+    # Story card layout settings
+    story_cards_rows = models.PositiveIntegerField(
+        default=3,
+        help_text="Number of rows to display story cards (1-10)"
+    )
+    
+    story_cards_columns = models.PositiveIntegerField(
+        default=3,
+        help_text="Number of columns to display story cards (1-6)"
+    )
+    
     # Analytics settings
     google_analytics_id = models.CharField(
         max_length=50,
@@ -71,6 +83,14 @@ class SiteSettings(models.Model):
     class Meta:
         verbose_name = 'Site Settings'
         verbose_name_plural = 'Site Settings'
+    
+    def clean(self):
+        """Validate story card layout settings"""
+        if self.story_cards_rows < 1 or self.story_cards_rows > 10:
+            raise ValidationError({'story_cards_rows': 'Number of rows must be between 1 and 10'})
+        
+        if self.story_cards_columns < 1 or self.story_cards_columns > 6:
+            raise ValidationError({'story_cards_columns': 'Number of columns must be between 1 and 6'})
     
     def __str__(self):
         return f'Site Settings (Updated: {self.updated_at.strftime("%Y-%m-%d %H:%M")})'

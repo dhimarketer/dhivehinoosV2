@@ -1,14 +1,36 @@
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
-from django.urls import reverse
-from django.shortcuts import redirect
+from django.urls import reverse, path
+from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils.safestring import mark_safe
+from django.http import HttpResponseRedirect
+from django import forms
+import zipfile
+import os
+from django.core.files.base import ContentFile
 
 from .models import ReusableImage, ImageVerification, ImageReuseSettings
 from .models import Article
+
+
+class BulkImportForm(forms.Form):
+    """Form for bulk importing images"""
+    zip_file = forms.FileField(
+        help_text="Upload a ZIP file containing images. Images will be named based on filename (without extension)."
+    )
+    entity_type = forms.ChoiceField(
+        choices=ReusableImage.ENTITY_TYPE_CHOICES,
+        initial='other',
+        help_text="Default entity type for all imported images"
+    )
+    prefix = forms.CharField(
+        max_length=100,
+        required=False,
+        help_text="Optional prefix to add to all entity names (e.g., 'President')"
+    )
 
 
 @admin.register(ImageReuseSettings)
@@ -60,15 +82,13 @@ class ImageReuseSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(ReusableImage)
 class ReusableImageAdmin(admin.ModelAdmin):
-    """Admin interface for ReusableImage"""
+    """Simplified admin interface for ReusableImage"""
     
     list_display = [
         'image_thumbnail',
-        'display_name',
         'entity_name',
         'entity_type',
-        'image_variant',
-        'is_verified',
+        'is_active',
         'usage_count',
         'last_used',
         'created_at'
@@ -76,8 +96,6 @@ class ReusableImageAdmin(admin.ModelAdmin):
     
     list_filter = [
         'entity_type',
-        'image_variant',
-        'is_verified',
         'is_active',
         'created_at'
     ]
@@ -85,13 +103,12 @@ class ReusableImageAdmin(admin.ModelAdmin):
     search_fields = [
         'entity_name',
         'alternative_names',
-        'name_variations',
-        'tags',
         'description'
     ]
     
     readonly_fields = [
         'slug',
+        'display_name',
         'usage_count',
         'last_used',
         'created_at',
@@ -106,40 +123,35 @@ class ReusableImageAdmin(admin.ModelAdmin):
                 'entity_type',
                 'display_name',
                 'slug'
-            )
+            ),
+            'description': 'Optional: Enter the identifiable name (e.g., "President Ibrahim Mohamed Solih"). If empty, will be generated from filename.'
         }),
-        ('Image Details', {
+        ('Image Upload', {
             'fields': (
                 'image_file',
-                'image_url',
                 'image_thumbnail',
-                'image_variant',
-                'image_sequence'
-            )
+            ),
+            'description': 'Upload the image file. The system will automatically generate a unique identifier.'
         }),
-        ('Names & Variations', {
+        ('Name Matching', {
             'fields': (
                 'alternative_names',
-                'name_variations',
-                'tags',
-                'description'
-            )
+            ),
+            'description': 'Optional: Add alternative names separated by commas (e.g., "Ibu Solih, President Solih, Ibrahim Solih")'
         }),
-        ('Verification', {
+        ('Optional Details', {
             'fields': (
-                'is_verified',
-                'verified_by',
-                'verified_at',
-                'verification_notes'
-            )
+                'description',
+            ),
+            'classes': ('collapse',)
         }),
-        ('Usage & Status', {
+        ('Status & Usage', {
             'fields': (
                 'is_active',
                 'usage_count',
                 'last_used',
-                'source'
-            )
+            ),
+            'classes': ('collapse',)
         }),
         ('Timestamps', {
             'fields': (
@@ -151,42 +163,42 @@ class ReusableImageAdmin(admin.ModelAdmin):
     )
     
     actions = [
-        'verify_images',
-        'unverify_images',
         'activate_images',
         'deactivate_images',
-        'export_usage_stats'
+        'reset_usage_count'
     ]
     
+    def get_urls(self):
+        """Add custom URLs for bulk import"""
+        urls = super().get_urls()
+        custom_urls = [
+            path('bulk-import/', self.admin_site.admin_view(self.bulk_import_view), name='articles_reusableimage_bulk_import'),
+        ]
+        return custom_urls + urls
+    
     def image_thumbnail(self, obj):
-        """Display image thumbnail"""
+        """Display image thumbnail with error handling"""
         if obj.image_file:
-            return format_html(
-                '<img src="{}" width="50" height="50" style="object-fit: cover; border-radius: 4px;" />',
-                obj.image_file.url
-            )
+            try:
+                # Check if file actually exists
+                import os
+                from django.conf import settings
+                file_path = os.path.join(settings.MEDIA_ROOT, obj.image_file.name)
+                if os.path.exists(file_path):
+                    return format_html(
+                        '<img src="{}" width="50" height="50" style="object-fit: cover; border-radius: 4px;" />',
+                        obj.image_file.url
+                    )
+                else:
+                    return format_html(
+                        '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">File Missing</div>'
+                    )
+            except Exception as e:
+                return format_html(
+                    '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">Error</div>'
+                )
         return "No Image"
     image_thumbnail.short_description = "Image"
-    
-    def verify_images(self, request, queryset):
-        """Bulk verify images"""
-        count = queryset.update(
-            is_verified=True,
-            verified_by=request.user,
-            verified_at=timezone.now()
-        )
-        self.message_user(request, f"{count} images verified.")
-    verify_images.short_description = "Verify selected images"
-    
-    def unverify_images(self, request, queryset):
-        """Bulk unverify images"""
-        count = queryset.update(
-            is_verified=False,
-            verified_by=None,
-            verified_at=None
-        )
-        self.message_user(request, f"{count} images unverified.")
-    unverify_images.short_description = "Unverify selected images"
     
     def activate_images(self, request, queryset):
         """Bulk activate images"""
@@ -200,17 +212,86 @@ class ReusableImageAdmin(admin.ModelAdmin):
         self.message_user(request, f"{count} images deactivated.")
     deactivate_images.short_description = "Deactivate selected images"
     
-    def export_usage_stats(self, request, queryset):
-        """Export usage statistics"""
-        # This would typically generate a CSV or Excel file
-        # For now, just show a message
-        total_usage = queryset.aggregate(total=Count('usage_count'))['total']
-        self.message_user(request, f"Total usage count: {total_usage}")
-    export_usage_stats.short_description = "Export usage statistics"
+    def reset_usage_count(self, request, queryset):
+        """Reset usage count for selected images"""
+        count = queryset.update(usage_count=0, last_used=None)
+        self.message_user(request, f"Usage count reset for {count} images.")
+    reset_usage_count.short_description = "Reset usage count"
     
-    def get_queryset(self, request):
-        """Optimize queryset with select_related"""
-        return super().get_queryset(request).select_related('verified_by')
+    def bulk_import_view(self, request):
+        """Bulk import images from ZIP file"""
+        if request.method == 'POST':
+            form = BulkImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                zip_file = form.cleaned_data['zip_file']
+                entity_type = form.cleaned_data['entity_type']
+                prefix = form.cleaned_data['prefix']
+                
+                try:
+                    imported_count = self._process_zip_file(zip_file, entity_type, prefix)
+                    messages.success(request, f"Successfully imported {imported_count} images.")
+                    return HttpResponseRedirect(reverse('admin:articles_reusableimage_changelist'))
+                except Exception as e:
+                    messages.error(request, f"Error importing images: {str(e)}")
+        else:
+            form = BulkImportForm()
+        
+        context = {
+            'form': form,
+            'title': 'Bulk Import Images',
+            'has_permission': True,
+        }
+        return render(request, 'admin/articles/reusableimage/bulk_import.html', context)
+    
+    def _process_zip_file(self, zip_file, entity_type, prefix):
+        """Process ZIP file and create ReusableImage objects"""
+        imported_count = 0
+        
+        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+            for file_info in zip_ref.filelist:
+                if not file_info.is_dir():
+                    # Get file extension
+                    filename = file_info.filename
+                    name, ext = os.path.splitext(filename)
+                    
+                    # Skip non-image files
+                    if ext.lower() not in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                        continue
+                    
+                    # Create entity name
+                    entity_name = name.replace('_', ' ').replace('-', ' ').title()
+                    if prefix:
+                        entity_name = f"{prefix} {entity_name}"
+                    
+                    # Check if image already exists
+                    if ReusableImage.objects.filter(entity_name=entity_name).exists():
+                        continue
+                    
+                    # Read image data
+                    image_data = zip_ref.read(filename)
+                    
+                    # Create ReusableImage
+                    reusable_image = ReusableImage(
+                        entity_name=entity_name,
+                        entity_type=entity_type,
+                        is_active=True
+                    )
+                    
+                    # Save image file
+                    image_file = ContentFile(image_data, name=filename)
+                    reusable_image.image_file = image_file
+                    reusable_image.save()
+                    
+                    imported_count += 1
+        
+        return imported_count
+    
+    def changelist_view(self, request, extra_context=None):
+        """Add bulk import link to changelist"""
+        extra_context = extra_context or {}
+        extra_context['bulk_import_url'] = reverse('admin:articles_reusableimage_bulk_import')
+        extra_context['show_bulk_import'] = True
+        return super().changelist_view(request, extra_context)
 
 
 @admin.register(ImageVerification)
