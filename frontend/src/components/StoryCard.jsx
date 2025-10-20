@@ -117,27 +117,28 @@ const StoryCard = ({ article, variant = 'default' }) => {
         </CardHeader>
         <CardBody flex="1" display="flex" flexDirection="column">
           {article.image_url && (
-            <Box position="relative" mb={3}>
+            <Box position="relative" mb={3} w="100%" borderRadius="md" overflow="hidden">
+              {/* Maintain 16:9 aspect ratio for featured images */}
+              <Box paddingTop={{ base: "56.25%", md: "37.5%" }} />
               {imageLoading && (
                 <Skeleton
-                  h="300px"
-                  w="100%"
-                  borderRadius="md"
                   position="absolute"
-                  top={0}
-                  left={0}
+                  inset={0}
+                  borderRadius="md"
                   zIndex={1}
                 />
               )}
               <Image
                 src={article.image_url}
                 alt={article.title}
-                borderRadius="md"
-                objectFit="cover"
-                h={{ base: "200px", md: "300px" }}
+                position="absolute"
+                inset={0}
                 w="100%"
+                h="100%"
+                objectFit="cover"
+                objectPosition="center"
                 className="news-card-image"
-                fallbackSrc="https://via.placeholder.com/800x300/cccccc/666666?text=Featured+Article"
+                fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Featured+Article"
                 onLoad={() => {
                   setImageLoading(false);
                   console.log('Featured article image loaded:', article.image_url);
@@ -308,25 +309,26 @@ const StoryCard = ({ article, variant = 'default' }) => {
       </CardHeader>
       <CardBody flex="1" display="flex" flexDirection="column">
         {article.image_url && (
-          <Box position="relative" mb={3}>
+          <Box position="relative" mb={3} w="100%" borderRadius="md" overflow="hidden">
+            {/* Maintain 16:9 aspect ratio for standard cards */}
+            <Box paddingTop={{ base: "57%", md: "57%" }} />
             {imageLoading && (
               <Skeleton
-                h="200px"
-                w="100%"
-                borderRadius="md"
                 position="absolute"
-                top={0}
-                left={0}
+                inset={0}
+                borderRadius="md"
                 zIndex={1}
               />
             )}
             <Image
               src={article.image_url}
               alt={article.title}
-              borderRadius="md"
-              objectFit="cover"
-              h={{ base: "150px", md: "200px" }}
+              position="absolute"
+              inset={0}
               w="100%"
+              h="100%"
+              objectFit="cover"
+              objectPosition="center"
               className="news-card-image"
               fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
               onLoad={() => {

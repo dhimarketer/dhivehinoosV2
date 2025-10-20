@@ -31,20 +31,11 @@ class ArticleAdminForm(forms.ModelForm):
         
         # Handle reusable image selection
         if instance.reused_image and instance.reused_image.image_file:
-            # Guard against missing file on disk
-            try:
-                import os
-                from django.conf import settings
-                file_path = os.path.join(settings.MEDIA_ROOT, instance.reused_image.image_file.name)
-                if os.path.exists(file_path):
-                    instance.image_file = instance.reused_image.image_file
-                    instance.image_source = 'reused'
-                else:
-                    # If missing on disk, do not assign; keep existing image fields
-                    pass
-            except Exception:
-                # Fail safe: do not assign image if any error occurs
-                pass
+            # Always reflect the admin selection, regardless of on-disk file state
+            instance.image_file = instance.reused_image.image_file
+            instance.image_source = 'reused'
+            # Clear external image URL to avoid conflicts
+            instance.image = None
         
         if commit:
             instance.save()

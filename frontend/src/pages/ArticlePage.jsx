@@ -236,19 +236,63 @@ const ArticlePage = () => {
           {/* Article Header Ad */}
           <AdComponent placement="article_header" maxAds={1} />
           
-          {/* Article Header */}
+          {/* Article Header with dual images when available */}
           <Card>
             <CardBody>
-              <ChakraImage
-                src={article.image_url}
-                alt={article.title}
-                borderRadius={{ base: "md", md: "lg" }}
-                objectFit="cover"
-                h={{ base: "250px", md: "400px" }}
-                w="100%"
-                mb={4}
-                fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
-              />
+              {article.image_url ? (
+                <HStack spacing={4} align="stretch" mb={4} flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+                  {/* Reused/selected image (portrait-friendly) */}
+                  <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
+                    <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
+                      {/* Portrait-friendly 4:5 ratio */}
+                      <Box paddingTop={{ base: '125%', md: '125%' }} />
+                      <ChakraImage
+                        src={article.image_url}
+                        alt={`${article.title} - selected image`}
+                        position="absolute"
+                        inset={0}
+                        w="100%"
+                        h="100%"
+                        objectFit="cover"
+                        objectPosition="center"
+                        fallbackSrc="https://via.placeholder.com/600x750/cccccc/666666?text=Selected+Image"
+                      />
+                    </Box>
+                  </Box>
+
+                  {/* Original API image (if different from selected) */}
+                  {article.image && (
+                    <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
+                      <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
+                        {/* Landscape-friendly 16:9 ratio */}
+                        <Box paddingTop={{ base: '56.25%', md: '56.25%' }} />
+                        <ChakraImage
+                          src={article.image}
+                          alt={`${article.title} - original image`}
+                          position="absolute"
+                          inset={0}
+                          w="100%"
+                          h="100%"
+                          objectFit="cover"
+                          objectPosition="center"
+                          fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"
+                        />
+                      </Box>
+                    </Box>
+                  )}
+                </HStack>
+              ) : (
+                <ChakraImage
+                  src={article.image}
+                  alt={article.title}
+                  borderRadius={{ base: "md", md: "lg" }}
+                  objectFit="cover"
+                  h={{ base: "250px", md: "400px" }}
+                  w="100%"
+                  mb={4}
+                  fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
+                />
+              )}
               <Heading size="xl" mb={4}>
                 {article.title}
               </Heading>
