@@ -16,6 +16,7 @@ import {
   Textarea,
   Input,
   Divider,
+  SimpleGrid,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
@@ -236,61 +237,102 @@ const ArticlePage = () => {
           {/* Article Header Ad */}
           <AdComponent placement="article_header" maxAds={1} />
           
-          {/* Article Header with dual images when available */}
+          {/* Article Header with Images */}
           <Card>
             <CardBody>
-              {article.image_url ? (
-                <HStack spacing={4} align="stretch" mb={4} flexWrap={{ base: 'wrap', md: 'nowrap' }}>
-                  {/* Reused/selected image (portrait-friendly) */}
-                  <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
-                    <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
-                      {/* Portrait-friendly 4:5 ratio */}
-                      <Box paddingTop={{ base: '125%', md: '125%' }} />
-                      <ChakraImage
-                        src={article.image_url}
-                        alt={`${article.title} - selected image`}
-                        position="absolute"
-                        inset={0}
-                        w="100%"
-                        h="100%"
-                        objectFit="cover"
-                        objectPosition="center"
-                        fallbackSrc="https://via.placeholder.com/600x750/cccccc/666666?text=Selected+Image"
-                      />
-                    </Box>
-                  </Box>
-
-                  {/* Original API image (if different from selected) */}
-                  {article.image && (
+              {article.identified_entities && article.identified_entities.length > 0 ? (
+                // Show multiple images when entities are identified
+                <VStack spacing={4} mb={4} align="stretch">
+                  {/* Top row: Story image and Reused image side by side */}
+                  <HStack spacing={4} align="stretch" flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+                    {/* Story image (original API image) */}
                     <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
                       <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
-                        {/* Landscape-friendly 16:9 ratio */}
-                        <Box paddingTop={{ base: '56.25%', md: '56.25%' }} />
+                        <Box paddingTop="56.25%" /> {/* 16:9 aspect ratio */}
                         <ChakraImage
-                          src={article.image}
-                          alt={`${article.title} - original image`}
+                          src={article.image_url || "https://via.placeholder.com/800x450/cccccc/666666?text=Story+Image"}
+                          alt={`${article.title} - story image`}
                           position="absolute"
                           inset={0}
                           w="100%"
                           h="100%"
                           objectFit="cover"
                           objectPosition="center"
-                          fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"
+                          fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Story+Image"
                         />
                       </Box>
                     </Box>
-                  )}
-                </HStack>
+
+                    {/* Reused image (if available) */}
+                    {article.reused_image_url && (
+                      <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
+                        <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
+                          <Box paddingTop="56.25%" /> {/* Same height as story image */}
+                          <ChakraImage
+                            src={article.reused_image_url}
+                            alt={`${article.title} - reused image`}
+                            position="absolute"
+                            inset={0}
+                            w="100%"
+                            h="100%"
+                            objectFit="cover"
+                            objectPosition="center"
+                            fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Reused+Image"
+                          />
+                        </Box>
+                      </Box>
+                    )}
+                  </HStack>
+                  
+                  {/* Identified entities section */}
+                  <Box>
+                    <Heading size="md" mb={3} color="gray.700">
+                      Related Public Figures & Institutions
+                    </Heading>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+                      {article.identified_entities.map((entity, index) => (
+                        <Box key={index} textAlign="center">
+                          <Box 
+                            position="relative" 
+                            pb="125%" 
+                            height="0" 
+                            overflow="hidden" 
+                            borderRadius="md"
+                            mb={2}
+                          >
+                            <ChakraImage
+                              src={entity.image_url}
+                              alt={entity.name}
+                              objectFit="cover"
+                              position="absolute"
+                              top="0"
+                              left="0"
+                              width="100%"
+                              height="100%"
+                              fallbackSrc="https://via.placeholder.com/200x250/cccccc/666666?text=Entity+Image"
+                            />
+                          </Box>
+                          <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                            {entity.name}
+                          </Text>
+                          <Text fontSize="xs" color="gray.500">
+                            {entity.type}
+                          </Text>
+                        </Box>
+                      ))}
+                    </SimpleGrid>
+                  </Box>
+                </VStack>
               ) : (
+                // Default single image display
                 <ChakraImage
-                  src={article.image}
+                  src={article.image_url || "https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"}
                   alt={article.title}
                   borderRadius={{ base: "md", md: "lg" }}
                   objectFit="cover"
                   h={{ base: "250px", md: "400px" }}
                   w="100%"
                   mb={4}
-                  fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
                 />
               )}
               <Heading size="xl" mb={4}>

@@ -31,11 +31,22 @@ class ArticleAdminForm(forms.ModelForm):
         
         # Handle reusable image selection
         if instance.reused_image and instance.reused_image.image_file:
-            # Always reflect the admin selection, regardless of on-disk file state
-            instance.image_file = instance.reused_image.image_file
-            instance.image_source = 'reused'
-            # Clear external image URL to avoid conflicts
-            instance.image = None
+            # Guard against missing file on disk
+            try:
+                import os
+                from django.conf import settings
+                file_path = os.path.join(settings.MEDIA_ROOT, instance.reused_image.image_file.name)
+                if os.path.exists(file_path):
+                    instance.image_file = instance.reused_image.image_file
+                    instance.image_source = 'reused'
+                    # DO NOT clear the original API image - keep it as fallback
+                    # instance.image = None  # REMOVED: Keep original API image as fallback
+                else:
+                    # If missing on disk, do not assign; keep existing image fields
+                    pass
+            except Exception:
+                # Fail safe: do not assign image if any error occurs
+                pass
         
         if commit:
             instance.save()
@@ -148,6 +159,8 @@ class ArticleAdmin(admin.ModelAdmin):
                 obj.reused_image = reusable_image
                 obj.image_file = reusable_image.image_file
                 obj.image_source = 'reused'
+                # DO NOT clear the original API image - keep it as fallback
+                # obj.image = None  # REMOVED: Keep original API image as fallback
                 print(f"✅ Created reusable image: {reusable_image.image_file.url}")
         
         # The form's clean method handles reusable image selection

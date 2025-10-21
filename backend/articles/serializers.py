@@ -271,18 +271,22 @@ class ArticleSerializer(serializers.ModelSerializer):
     vote_score = serializers.ReadOnlyField()
     approved_comments_count = serializers.ReadOnlyField()
     image_url = serializers.SerializerMethodField()
+    reused_image_url = serializers.SerializerMethodField()
+    original_image_url = serializers.SerializerMethodField()
     article_url = serializers.ReadOnlyField()
     category = CategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     scheduled_publish_info = serializers.SerializerMethodField()
     social_metadata = serializers.SerializerMethodField()
+    identified_entities = serializers.SerializerMethodField()
     
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'proposed_url', 'article_url', 'content', 'image', 'image_file', 'image_url', 'status',
+            'id', 'title', 'slug', 'proposed_url', 'article_url', 'content', 'image', 'image_file', 
+            'image_url', 'reused_image_url', 'original_image_url', 'status',
             'category', 'category_id', 'publishing_mode', 'scheduled_publish_time',
-            'scheduled_publish_info', 'social_metadata', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
+            'scheduled_publish_info', 'social_metadata', 'identified_entities', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at']
     
@@ -327,6 +331,48 @@ class ArticleSerializer(serializers.ModelSerializer):
             return obj.image
         
         return None
+    
+    def get_reused_image_url(self, obj):
+        """Return the URL of the reused image if available and exists"""
+        if obj.reused_image and obj.reused_image.image_file:
+            try:
+                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing reused image file: {e}")
+        return None
+    
+    def get_original_image_url(self, obj):
+        """Return the URL of the original API image if available"""
+        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+            return obj.image
+        return None
+    
+    def get_identified_entities(self, obj):
+        """Return a list of identified public figures or institutions with their image URLs"""
+        from articles.image_matching_service import ImageMatchingService
+        service = ImageMatchingService()
+        matches = service.find_matching_images(obj.content, obj.title)
+        
+        entities_info = []
+        for match in matches:
+            image = match['image']
+            if image.image_file and image.image_file.name and image.image_file.storage.exists(image.image_file.name):
+                request = self.context.get('request')
+                image_url = request.build_absolute_uri(image.image_file.url) if request else f"https://dhivehinoos.net{image.image_file.url}"
+                entities_info.append({
+                    'name': image.entity_name,
+                    'type': image.entity_type,
+                    'image_url': image_url,
+                    'confidence': match['confidence']
+                })
+        return entities_info
     
     def get_scheduled_publish_info(self, obj):
         """Return scheduling information if article is scheduled"""
@@ -381,6 +427,40 @@ class ArticleSerializer(serializers.ModelSerializer):
             'author': 'Dhivehinoos.net',
             'category': obj.category.name if obj.category else None,
         }
+
+    def get_matched_images(self, obj):
+        """Return up to 4 matched reusable images (entities) detected for this article."""
+        try:
+            from .image_matching_service import ImageMatchingService
+            service = ImageMatchingService()
+            matches = service.find_matching_images(obj.content or '', obj.title or '')
+            results = []
+            request = self.context.get('request')
+            base = 'https://dhivehinoos.net'
+            for match in (matches or [])[:4]:
+                image = match.get('image')
+                if not image or not getattr(image, 'image_file', None):
+                    continue
+                try:
+                    if image.image_file.name and image.image_file.storage.exists(image.image_file.name):
+                        url = image.image_file.url
+                        if request:
+                            url = request.build_absolute_uri(url)
+                        else:
+                            from django.conf import settings
+                            protocol = 'https' if not settings.DEBUG else 'http'
+                            url = f"{protocol}://dhivehinoos.net{url}"
+                        results.append({
+                            'entity_name': image.entity_name,
+                            'entity_type': image.entity_type,
+                            'image_url': url,
+                            'confidence': float(match.get('confidence', 0.0)),
+                        })
+                except Exception:
+                    continue
+            return results
+        except Exception:
+            return []
     
     def update(self, instance, validated_data):
         """Custom update method to handle image updates properly"""
