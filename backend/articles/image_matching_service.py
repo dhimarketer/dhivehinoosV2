@@ -102,33 +102,61 @@ class ImageMatchingService:
         # Return the highest confidence match
         return matches[0]
     
-    def apply_image_to_article(self, article: Article, match: Dict):
+    def apply_images_to_article(self, article: Article, matches: List[Dict]) -> bool:
         """
-        Apply a matched image to an article
+        Apply multiple matched images to an article (max 4)
         
         Args:
             article: The Article object
-            match: The matching image data
+            matches: List of matching image data (max 4)
+            
+        Returns:
+            True if images were applied, False otherwise
         """
-        image = match['image']
-        
-        # Check if the reusable image has an actual image file
-        if not image.image_file or not image.image_file.name:
-            print(f"⚠️  Warning: ReusableImage '{image.entity_name}' has no image file, skipping image reuse")
+        if not matches:
             return False
         
-        # Set the reused image
-        article.reused_image = image
-        article.image_source = 'reused'
+        # Limit to maximum 4 images
+        matches = matches[:4]
         
-        # Use the image file
-        article.image_file = image.image_file
-        article.image = image.image_file.url  # Use the file URL
+        # Clear existing reuse images
+        article.reuse_images.clear()
+        
+        # Add all matching images to the many-to-many field
+        valid_images = []
+        for match in matches:
+            image = match['image']
+            
+            # Check if the reusable image has an actual image file
+            if not image.image_file or not image.image_file.name:
+                print(f"⚠️  Warning: ReusableImage '{image.entity_name}' has no image file, skipping")
+                continue
+            
+            valid_images.append(image)
+        
+        if not valid_images:
+            return False
+        
+        # Add images to the many-to-many field
+        article.reuse_images.set(valid_images)
+        
+        # Set the primary reused image (first one) for backward compatibility
+        article.reused_image = valid_images[0]
+        # DO NOT change image_source - keep it as 'external' to preserve original API image
+        # article.image_source = 'reused'  # REMOVED: Keep original API image as primary
+        
+        # NEVER replace the original API image - it should always remain as the primary image
+        # Only set image_file if there's no original image AND no image_file already
+        if not article.image and not article.image_file:
+            article.image_file = valid_images[0].image_file
+            # DO NOT replace article.image with reuse image URL - keep original API image
+            # article.image = valid_images[0].image_file.url  # REMOVED: This was replacing original API image
         
         article.save()
         
-        # Increment usage count
-        image.increment_usage()
+        # Increment usage count for all images
+        for image in valid_images:
+            image.increment_usage()
         
         # Invalidate cache for this article
         try:
@@ -137,7 +165,18 @@ class ImageMatchingService:
         except Exception as e:
             print(f"⚠️  Warning: Failed to invalidate cache for article {article.id}: {e}")
         
+        print(f"✅ Applied {len(valid_images)} reuse images to article '{article.title}'")
         return True
+    
+    def apply_image_to_article(self, article: Article, match: Dict):
+        """
+        Apply a single matched image to an article (legacy method for backward compatibility)
+        
+        Args:
+            article: The Article object
+            match: The matching image data
+        """
+        return self.apply_images_to_article(article, [match])
     
     def process_article_for_image_reuse(self, article: Article) -> bool:
         """
@@ -147,7 +186,7 @@ class ImageMatchingService:
             article: The Article object to process
             
         Returns:
-            True if image was reused, False otherwise
+            True if images were reused, False otherwise
         """
         # Find matching images
         matches = self.find_matching_images(article.content, article.title)
@@ -155,11 +194,5 @@ class ImageMatchingService:
         if not matches:
             return False
         
-        # Select best image
-        best_match = self.select_best_image(matches)
-        
-        if not best_match:
-            return False
-        
-        # Apply the image to the article
-        return self.apply_image_to_article(article, best_match)
+        # Apply all matching images (up to 4)
+        return self.apply_images_to_article(article, matches)

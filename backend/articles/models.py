@@ -371,6 +371,296 @@ class ScheduledArticle(models.Model):
             return False
 
 
+class ImageSettings(models.Model):
+    """Settings for how images are displayed in articles"""
+    
+    IMAGE_FIT_CHOICES = [
+        ('cover', 'Cover (crop to fit)'),
+        ('contain', 'Contain (fit within bounds)'),
+        ('fill', 'Fill (stretch to fit)'),
+        ('scale-down', 'Scale Down (shrink if needed)'),
+        ('none', 'None (original size)'),
+    ]
+    
+    IMAGE_POSITION_CHOICES = [
+        ('top', 'Top'),
+        ('center', 'Center'),
+        ('bottom', 'Bottom'),
+        ('left', 'Left'),
+        ('right', 'Right'),
+        ('top-left', 'Top Left'),
+        ('top-right', 'Top Right'),
+        ('bottom-left', 'Bottom Left'),
+        ('bottom-right', 'Bottom Right'),
+    ]
+    
+    IMAGE_ORIENTATION_CHOICES = [
+        ('auto', 'Auto-detect'),
+        ('landscape', 'Landscape'),
+        ('portrait', 'Portrait'),
+        ('square', 'Square'),
+    ]
+    
+    ASPECT_RATIO_CHOICES = [
+        ('16:9', '16:9 (Widescreen)'),
+        ('4:3', '4:3 (Standard)'),
+        ('3:2', '3:2 (Classic)'),
+        ('1:1', '1:1 (Square)'),
+        ('21:9', '21:9 (Ultrawide)'),
+        ('9:16', '9:16 (Portrait)'),
+        ('custom', 'Custom'),
+    ]
+    
+    QUALITY_CHOICES = [
+        ('high', 'High Quality'),
+        ('medium', 'Medium Quality'),
+        ('low', 'Low Quality (Fast Loading)'),
+    ]
+    
+    # Display settings
+    image_fit = models.CharField(
+        max_length=20,
+        choices=IMAGE_FIT_CHOICES,
+        default='cover',
+        help_text="How images should fit within their containers"
+    )
+    
+    image_position = models.CharField(
+        max_length=20,
+        choices=IMAGE_POSITION_CHOICES,
+        default='top',
+        help_text="Which part of the image should be visible when cropped"
+    )
+    
+    image_orientation = models.CharField(
+        max_length=20,
+        choices=IMAGE_ORIENTATION_CHOICES,
+        default='auto',
+        help_text="Force specific orientation for all images"
+    )
+    
+    # Size settings
+    main_image_height = models.PositiveIntegerField(
+        default=400,
+        help_text="Height in pixels for main article images"
+    )
+    
+    reuse_image_height = models.PositiveIntegerField(
+        default=300,
+        help_text="Height in pixels for reuse images"
+    )
+    
+    thumbnail_height = models.PositiveIntegerField(
+        default=150,
+        help_text="Height in pixels for thumbnail images"
+    )
+    
+    # Aspect ratio settings
+    main_image_aspect_ratio = models.CharField(
+        max_length=10,
+        choices=ASPECT_RATIO_CHOICES,
+        default='16:9',
+        help_text="Aspect ratio for main images (e.g., 16:9, 4:3, 1:1)"
+    )
+    
+    reuse_image_aspect_ratio = models.CharField(
+        max_length=10,
+        choices=ASPECT_RATIO_CHOICES,
+        default='4:3',
+        help_text="Aspect ratio for reuse images (e.g., 16:9, 4:3, 1:1)"
+    )
+    
+    # Custom aspect ratio settings
+    custom_main_width = models.PositiveIntegerField(
+        default=16,
+        help_text="Custom width for main image aspect ratio"
+    )
+    custom_main_height = models.PositiveIntegerField(
+        default=9,
+        help_text="Custom height for main image aspect ratio"
+    )
+    custom_reuse_width = models.PositiveIntegerField(
+        default=4,
+        help_text="Custom width for reuse image aspect ratio"
+    )
+    custom_reuse_height = models.PositiveIntegerField(
+        default=3,
+        help_text="Custom height for reuse image aspect ratio"
+    )
+    
+    # Quality and performance settings
+    image_quality = models.CharField(
+        max_length=10,
+        choices=QUALITY_CHOICES,
+        default='medium',
+        help_text="Image quality vs loading speed trade-off"
+    )
+    
+    enable_lazy_loading = models.BooleanField(
+        default=True,
+        help_text="Enable lazy loading for better performance"
+    )
+    
+    enable_webp_conversion = models.BooleanField(
+        default=True,
+        help_text="Convert images to WebP format for better compression"
+    )
+    
+    # Responsive settings
+    mobile_image_height = models.PositiveIntegerField(
+        default=250,
+        help_text="Height in pixels for mobile devices"
+    )
+    
+    tablet_image_height = models.PositiveIntegerField(
+        default=350,
+        help_text="Height in pixels for tablet devices"
+    )
+    
+    desktop_image_height = models.PositiveIntegerField(
+        default=400,
+        help_text="Height in pixels for desktop devices"
+    )
+    
+    # Border and styling settings
+    image_border_radius = models.PositiveIntegerField(
+        default=8,
+        help_text="Border radius in pixels for rounded corners"
+    )
+    
+    image_shadow = models.BooleanField(
+        default=True,
+        help_text="Add shadow effect to images"
+    )
+    
+    image_hover_effect = models.BooleanField(
+        default=True,
+        help_text="Add hover effects to images"
+    )
+    
+    # Global settings
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether these settings are currently active"
+    )
+    
+    settings_name = models.CharField(
+        max_length=100,
+        default="Default Image Settings",
+        help_text="Name for this settings configuration"
+    )
+    
+    description = models.TextField(
+        blank=True,
+        help_text="Description of this settings configuration"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Image Display Settings'
+        verbose_name_plural = 'Image Display Settings'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.settings_name} ({self.image_fit}, {self.image_position})"
+    
+    @classmethod
+    def get_active_settings(cls):
+        """Get the currently active image display settings"""
+        try:
+            return cls.objects.filter(is_active=True).latest('created_at')
+        except cls.DoesNotExist:
+            # Return default settings if none exist
+            return cls.objects.create(
+                settings_name="Default Image Settings",
+                description="Default image display settings",
+                image_fit='cover',
+                image_position='top',
+                image_orientation='auto',
+                main_image_height=400,
+                reuse_image_height=300,
+                thumbnail_height=150,
+                main_image_aspect_ratio='16:9',
+                reuse_image_aspect_ratio='4:3',
+                custom_main_width=16,
+                custom_main_height=9,
+                custom_reuse_width=4,
+                custom_reuse_height=3,
+                image_quality='medium',
+                enable_lazy_loading=True,
+                enable_webp_conversion=True,
+                mobile_image_height=250,
+                tablet_image_height=350,
+                desktop_image_height=400,
+                image_border_radius=8,
+                image_shadow=True,
+                image_hover_effect=True,
+                is_active=True
+            )
+    
+    def get_aspect_ratio_percentage(self, aspect_ratio):
+        """Convert aspect ratio string to CSS percentage"""
+        try:
+            if aspect_ratio == 'custom':
+                # Use custom dimensions
+                return None
+            width, height = aspect_ratio.split(':')
+            return (int(height) / int(width)) * 100
+        except (ValueError, ZeroDivisionError):
+            return 56.25  # Default 16:9 ratio
+    
+    def get_main_image_padding(self):
+        """Get CSS padding-top percentage for main images"""
+        if self.main_image_aspect_ratio == 'custom':
+            return (self.custom_main_height / self.custom_main_width) * 100
+        return self.get_aspect_ratio_percentage(self.main_image_aspect_ratio)
+    
+    def get_reuse_image_padding(self):
+        """Get CSS padding-top percentage for reuse images"""
+        if self.reuse_image_aspect_ratio == 'custom':
+            return (self.custom_reuse_height / self.custom_reuse_width) * 100
+        return self.get_aspect_ratio_percentage(self.reuse_image_aspect_ratio)
+    
+    def get_responsive_height(self, device_type='desktop'):
+        """Get height based on device type"""
+        height_map = {
+            'mobile': self.mobile_image_height,
+            'tablet': self.tablet_image_height,
+            'desktop': self.desktop_image_height,
+        }
+        return height_map.get(device_type, self.desktop_image_height)
+    
+    def get_css_classes(self):
+        """Get CSS classes for image styling"""
+        classes = []
+        
+        if self.image_shadow:
+            classes.append('image-shadow')
+        
+        if self.image_hover_effect:
+            classes.append('image-hover')
+        
+        if self.enable_lazy_loading:
+            classes.append('lazy-load')
+        
+        return ' '.join(classes)
+    
+    def get_image_styles(self):
+        """Get inline CSS styles for images"""
+        styles = {
+            'border-radius': f'{self.image_border_radius}px',
+            'object-fit': self.image_fit,
+            'object-position': self.image_position,
+        }
+        
+        if self.image_shadow:
+            styles['box-shadow'] = '0 4px 8px rgba(0,0,0,0.1)'
+        
+        return styles
+
+
 class Article(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
@@ -397,7 +687,13 @@ class Article(models.Model):
         blank=True, 
         on_delete=models.SET_NULL,
         related_name='used_in_articles',
-        help_text="Reusable image used for this article"
+        help_text="Primary reusable image used for this article (for backward compatibility)"
+    )
+    reuse_images = models.ManyToManyField(
+        'ReusableImage',
+        blank=True,
+        related_name='articles_using_image',
+        help_text="Multiple reusable images that match this article content (max 4)"
     )
     image_source = models.CharField(
         max_length=20, 

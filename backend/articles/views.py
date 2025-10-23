@@ -1,7 +1,7 @@
 import requests
 import os
 from urllib.parse import urlparse
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import models
@@ -332,6 +332,26 @@ class PublishedArticleListView(ListAPIView):
         return context
 
 
+class ArticleDetailView(RetrieveAPIView):
+    """General API for retrieving any article by ID (regardless of status)"""
+    queryset = Article.objects.all()
+    serializer_class = ArticleSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'pk'
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve article by ID"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    
+    def get_serializer_context(self):
+        """Pass request context to serializer for absolute URL generation"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+
 class PublishedArticleDetailView(RetrieveAPIView):
     """Public API for retrieving a published article with Redis caching"""
     queryset = Article.objects.filter(status='published')
@@ -360,8 +380,8 @@ def ingest_article(request):
     """n8n webhook endpoint for article ingestion"""
     # Check API key (temporarily disabled for debugging)
     api_key = request.headers.get('X-API-Key')
-    if api_key != settings.API_INGEST_KEY:
-        print(f"API Key mismatch. Expected: {settings.API_INGEST_KEY}, Got: {api_key}")
+    if api_key != django_settings.API_INGEST_KEY:
+        print(f"API Key mismatch. Expected: {django_settings.API_INGEST_KEY}, Got: {api_key}")
         # Temporarily allow any API key for debugging
         # return Response(
         #     {'error': 'Invalid API key'}, 
@@ -375,17 +395,24 @@ def ingest_article(request):
             article = serializer.save()
             print(f"Article created successfully with ID: {article.id}")
             
-            # Try image reuse first
-            from .image_matching_service import ImageMatchingService
-            image_reuse_service = ImageMatchingService()
+            # Try image reuse first (only if enabled in settings)
+            from settings_app.models import SiteSettings
+            site_settings = SiteSettings.get_settings()
             
-            print(f"🔄 Attempting image reuse for article: {article.title}")
-            image_reused = image_reuse_service.process_article_for_image_reuse(article)
-            
-            if image_reused:
-                print(f"✅ Image reused successfully from library")
+            if site_settings.enable_image_matching:
+                from .image_matching_service import ImageMatchingService
+                image_reuse_service = ImageMatchingService()
+                
+                print(f"🔄 Attempting image reuse for article: {article.title}")
+                image_reused = image_reuse_service.process_article_for_image_reuse(article)
+                
+                if image_reused:
+                    print(f"✅ Image reused successfully from library")
+                else:
+                    print(f"ℹ️  No matching image found in library, proceeding with external image")
             else:
-                print(f"ℹ️  No matching image found in library, proceeding with external image")
+                print(f"ℹ️  Image matching is disabled in settings, skipping reuse image matching")
+                image_reused = False
                 
                 # Handle image download if image_url is provided
                 image_url = getattr(article, '_image_url', None) or request.data.get('image_url')
@@ -439,10 +466,11 @@ def ingest_article(request):
                             article.image_file.save(filename, ContentFile(content), save=True)
                             print(f"✅ Image saved successfully: {filename} ({len(content):,} bytes)")
                             
-                            # Also store the original URL for reference
-                            article.image = image_url
-                            article.image_source = 'external'
-                            article.save()
+                            # Store the original URL for reference (only if not already set)
+                            if not article.image:
+                                article.image = image_url
+                                article.image_source = 'external'
+                                article.save()
                             
                     except requests.exceptions.Timeout:
                         print(f"⏰ Timeout downloading image from {image_url}")
@@ -853,3 +881,42 @@ def process_scheduled_articles(request):
             {'error': 'Processing failed', 'details': str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_image_display_settings(request):
+    """Get current image display settings"""
+    from .models import ImageSettings
+    
+    settings = ImageSettings.get_active_settings()
+    
+    return Response({
+        'settings_name': settings.settings_name,
+        'description': settings.description,
+        'image_fit': settings.image_fit,
+        'image_position': settings.image_position,
+        'image_orientation': settings.image_orientation,
+        'main_image_height': settings.main_image_height,
+        'reuse_image_height': settings.reuse_image_height,
+        'thumbnail_height': settings.thumbnail_height,
+        'main_image_aspect_ratio': settings.main_image_aspect_ratio,
+        'reuse_image_aspect_ratio': settings.reuse_image_aspect_ratio,
+        'custom_main_width': settings.custom_main_width,
+        'custom_main_height': settings.custom_main_height,
+        'custom_reuse_width': settings.custom_reuse_width,
+        'custom_reuse_height': settings.custom_reuse_height,
+        'image_quality': settings.image_quality,
+        'enable_lazy_loading': settings.enable_lazy_loading,
+        'enable_webp_conversion': settings.enable_webp_conversion,
+        'mobile_image_height': settings.mobile_image_height,
+        'tablet_image_height': settings.tablet_image_height,
+        'desktop_image_height': settings.desktop_image_height,
+        'image_border_radius': settings.image_border_radius,
+        'image_shadow': settings.image_shadow,
+        'image_hover_effect': settings.image_hover_effect,
+        'main_image_padding': settings.get_main_image_padding(),
+        'reuse_image_padding': settings.get_reuse_image_padding(),
+        'css_classes': settings.get_css_classes(),
+        'image_styles': settings.get_image_styles(),
+    })

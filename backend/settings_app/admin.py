@@ -3,13 +3,14 @@ from .models import SiteSettings
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ['site_name', 'default_article_status', 'allow_comments', 'require_comment_approval', 'story_cards_rows', 'story_cards_columns', 'comment_webhook_enabled', 'updated_at']
-    list_editable = ['default_article_status', 'allow_comments', 'require_comment_approval', 'story_cards_rows', 'story_cards_columns', 'comment_webhook_enabled']
+    list_display = ['site_name', 'default_article_status', 'allow_comments', 'require_comment_approval', 'enable_image_matching', 'story_cards_rows', 'story_cards_columns', 'comment_webhook_enabled', 'updated_at']
+    list_editable = ['default_article_status', 'allow_comments', 'require_comment_approval', 'enable_image_matching', 'story_cards_rows', 'story_cards_columns', 'comment_webhook_enabled']
     readonly_fields = ['id', 'created_at', 'updated_at']
     
     fieldsets = (
         ('Article Settings', {
-            'fields': ('default_article_status',)
+            'fields': ('default_article_status', 'enable_image_matching'),
+            'description': 'Configure default article behavior and image matching settings'
         }),
         ('Site Information', {
             'fields': ('site_name', 'site_description', 'contact_email')

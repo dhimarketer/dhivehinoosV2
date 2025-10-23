@@ -38,6 +38,12 @@ class SiteSettings(models.Model):
         help_text="Whether comments need admin approval before being visible"
     )
     
+    # Image matching settings
+    enable_image_matching = models.BooleanField(
+        default=True,
+        help_text="Whether to automatically match articles with reusable images of prominent people and institutions"
+    )
+    
     # Story card layout settings
     story_cards_rows = models.PositiveIntegerField(
         default=3,

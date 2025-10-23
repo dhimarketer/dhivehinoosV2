@@ -2,43 +2,155 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django import forms
-from .models import Article, Category, PublishingSchedule, ScheduledArticle, ReusableImage, ImageVerification, ImageReuseSettings
+from .models import Article, Category, PublishingSchedule, ScheduledArticle, ReusableImage, ImageVerification, ImageReuseSettings, ImageSettings
+from .admin_widgets import ImageGalleryWidget
 
 # Import image reuse admin configurations
 from . import admin_reusable_images
 
 
 class ArticleAdminForm(forms.ModelForm):
-    """Custom form for Article admin with simplified image handling"""
+    """Custom form for Article admin with enhanced image management"""
     upload_new_image = forms.ImageField(
         required=False,
-        help_text="Upload a new image to add to the reusable library and use for this article"
+        help_text="📤 Upload a new image to replace existing images. This will add the image to the reusable library and use it for this article.",
+        widget=forms.FileInput(attrs={'accept': 'image/*', 'style': 'border: 2px dashed #007bff; padding: 10px; border-radius: 4px; background: #f8f9fa;'})
+    )
+    
+    # Image management fields
+    use_original_api_image = forms.BooleanField(
+        required=False,
+        initial=True,
+        help_text="Use the original API image as the primary image"
+    )
+    disable_reuse_images = forms.BooleanField(
+        required=False,
+        initial=False,
+        help_text="Disable all reuse images (keep original API image only)"
+    )
+    
+    # Image gallery field
+    image_gallery_selection = forms.CharField(
+        required=False,
+        widget=ImageGalleryWidget(),
+        help_text="Select images from the gallery below"
     )
     
     class Meta:
         model = Article
         fields = '__all__'
+        widgets = {
+            'reuse_images': forms.CheckboxSelectMultiple(attrs={'style': 'max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;'}),
+        }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
         # Make image_source not required since it's set automatically
-        if 'image_source' in self.fields:
-            self.fields['image_source'].required = False
+        # Use getattr to safely access the field
+        try:
+            if hasattr(self, 'fields') and 'image_source' in self.fields:
+                self.fields['image_source'].required = False
+        except (KeyError, AttributeError):
+            # Field might not be available yet, skip this configuration
+            pass
+        
+        # Add help text for reuse_images field
+        try:
+            if hasattr(self, 'fields') and 'reuse_images' in self.fields:
+                self.fields['reuse_images'].help_text = "✅ Select up to 4 reusable images that match this article content. Check/uncheck to enable/disable images."
+        except (KeyError, AttributeError):
+            # Field might not be available yet, skip this configuration
+            pass
+    
+    def clean_reuse_images(self):
+        """Validate that no more than 4 reuse images are selected"""
+        reuse_images = self.cleaned_data.get('reuse_images')
+        if reuse_images and len(reuse_images) > 4:
+            raise forms.ValidationError("You can select a maximum of 4 reuse images.")
+        return reuse_images
     
     def save(self, commit=True):
-        """Override save to handle reusable image assignment"""
+        """Override save to handle enhanced image management"""
         instance = super().save(commit=False)
         
-        # Handle reusable image selection
-        if instance.reused_image and instance.reused_image.image_file:
+        # Handle image management options
+        use_original_api = self.cleaned_data.get('use_original_api_image', True)
+        disable_reuse = self.cleaned_data.get('disable_reuse_images', False)
+        gallery_selection = self.cleaned_data.get('image_gallery_selection', '')
+        
+        # Handle image gallery selection
+        if gallery_selection:
+            try:
+                image_id, image_type, image_url = gallery_selection.split('|')
+                
+                if image_type == 'reusable':
+                    # Select from reusable images
+                    try:
+                        reusable_image = ReusableImage.objects.get(id=image_id)
+                        instance.reused_image = reusable_image
+                        # Add to reuse_images many-to-many field (only if not already added)
+                        if not instance.reuse_images.filter(id=reusable_image.id).exists():
+                            instance.reuse_images.add(reusable_image)
+                        print(f"✅ Added reusable image: {reusable_image.entity_name}")
+                    except ReusableImage.DoesNotExist:
+                        print(f"⚠️  Warning: ReusableImage with ID {image_id} not found")
+                    except Exception as e:
+                        print(f"⚠️  Error adding reusable image: {e}")
+                        
+                elif image_type == 'api':
+                    # Use API image from another article
+                    try:
+                        source_article = Article.objects.get(id=image_id)
+                        
+                        # Prioritize local file over external URL
+                        if source_article.image_file and source_article.image_file.name:
+                            # Copy the local file
+                            instance.image_file = source_article.image_file
+                            instance.image_source = 'external'
+                            # Keep the original external URL if available
+                            if source_article.image:
+                                instance.image = source_article.image
+                        elif source_article.image:
+                            # Use external URL
+                            instance.image = source_article.image
+                            instance.image_source = 'external'
+                        print(f"✅ Added API image from article: {source_article.title}")
+                    except Article.DoesNotExist:
+                        print(f"⚠️  Warning: Article with ID {image_id} not found")
+                    except Exception as e:
+                        print(f"⚠️  Error adding API image: {e}")
+                        
+            except (ValueError, IndexError) as e:
+                # Invalid gallery selection format
+                print(f"⚠️  Warning: Invalid gallery selection format: {gallery_selection} - {e}")
+            except Exception as e:
+                print(f"⚠️  Error processing gallery selection: {e}")
+        
+        if disable_reuse:
+            # Clear all reuse images
+            instance.reuse_images.clear()
+            instance.reused_image = None
+            instance.image_source = 'external'
+        
+        if use_original_api:
+            # Ensure original API image is used as primary
+            instance.image_source = 'external'
+            # Don't replace the original API image
+        
+        # Handle reusable image selection (only if not disabled)
+        if not disable_reuse and instance.reused_image and instance.reused_image.image_file:
             # Guard against missing file on disk
             try:
                 import os
                 from django.conf import settings
                 file_path = os.path.join(settings.MEDIA_ROOT, instance.reused_image.image_file.name)
                 if os.path.exists(file_path):
-                    instance.image_file = instance.reused_image.image_file
-                    instance.image_source = 'reused'
+                    # Only set image_file if there's no original API image
+                    if not instance.image:
+                        instance.image_file = instance.reused_image.image_file
+                    # DO NOT change image_source - keep original API image as primary
+                    # instance.image_source = 'reused'  # REMOVED: Keep original API image as primary
                     # DO NOT clear the original API image - keep it as fallback
                     # instance.image = None  # REMOVED: Keep original API image as fallback
                 else:
@@ -48,8 +160,35 @@ class ArticleAdminForm(forms.ModelForm):
                 # Fail safe: do not assign image if any error occurs
                 pass
         
+        # Handle image upload
+        uploaded_image = self.cleaned_data.get('upload_new_image')
+        if uploaded_image:
+            # Save the uploaded image to the article
+            instance.image_file = uploaded_image
+            # DO NOT change image_source to 'uploaded' - keep original API image as primary
+            # instance.image_source = 'uploaded'  # REMOVED: Keep original API image as primary
+        
         if commit:
             instance.save()
+            # Save many-to-many fields after the instance is saved
+            self.save_m2m()
+            
+            # Handle reusable image creation after instance is saved
+            if uploaded_image:
+                try:
+                    from .models import ReusableImage
+                    reusable_image = ReusableImage.objects.create(
+                        entity_name=f"Uploaded Image {instance.id}",
+                        entity_type='other',
+                        image_file=uploaded_image,
+                        image_variant='default',
+                        slug=f"uploaded-{instance.id}",
+                        display_name=f"Uploaded Image for {instance.title[:50]}",
+                        is_active=True
+                    )
+                    print(f"✅ Created reusable image: {reusable_image.slug}")
+                except Exception as e:
+                    print(f"⚠️  Warning: Could not create reusable image: {e}")
         
         return instance
 
@@ -117,30 +256,160 @@ class ScheduledArticleAdmin(admin.ModelAdmin):
     )
 
 
+# Register ImageSettings using admin.site.register instead of decorator
+class ImageSettingsAdmin(admin.ModelAdmin):
+    """Admin interface for image display settings"""
+    
+    list_display = ['settings_name', 'image_fit', 'image_position', 'image_orientation', 'is_active', 'created_at']
+    list_filter = ['image_fit', 'image_position', 'image_orientation', 'image_quality', 'is_active', 'enable_lazy_loading', 'enable_webp_conversion']
+    search_fields = ['settings_name', 'description', 'image_fit', 'image_position']
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Settings Information', {
+            'fields': ('settings_name', 'description', 'is_active'),
+            'description': 'Basic information about this settings configuration'
+        }),
+        ('Image Display', {
+            'fields': ('image_fit', 'image_position', 'image_orientation'),
+            'description': 'How images should be displayed and positioned'
+        }),
+        ('Size Settings', {
+            'fields': ('main_image_height', 'reuse_image_height', 'thumbnail_height'),
+            'description': 'Height settings for different image types'
+        }),
+        ('Aspect Ratios', {
+            'fields': ('main_image_aspect_ratio', 'reuse_image_aspect_ratio'),
+            'description': 'Aspect ratios for different image containers'
+        }),
+        ('Custom Aspect Ratios', {
+            'fields': ('custom_main_width', 'custom_main_height', 'custom_reuse_width', 'custom_reuse_height'),
+            'description': 'Custom aspect ratio dimensions (used when aspect ratio is set to "Custom")',
+            'classes': ('collapse',)
+        }),
+        ('Quality & Performance', {
+            'fields': ('image_quality', 'enable_lazy_loading', 'enable_webp_conversion'),
+            'description': 'Image quality and performance settings'
+        }),
+        ('Responsive Settings', {
+            'fields': ('mobile_image_height', 'tablet_image_height', 'desktop_image_height'),
+            'description': 'Height settings for different device types'
+        }),
+        ('Styling & Effects', {
+            'fields': ('image_border_radius', 'image_shadow', 'image_hover_effect'),
+            'description': 'Visual styling and effects for images'
+        }),
+    )
+    
+    actions = ['activate_settings', 'deactivate_settings', 'duplicate_settings']
+    
+    def activate_settings(self, request, queryset):
+        """Activate selected settings and deactivate others"""
+        from django.contrib import messages
+        
+        if queryset.count() > 1:
+            messages.error(request, "Please select only one settings configuration to activate.")
+            return
+        
+        # Deactivate all other settings
+        ImageSettings.objects.filter(is_active=True).update(is_active=False)
+        
+        # Activate selected settings
+        queryset.update(is_active=True)
+        
+        messages.success(request, f"Activated image display settings: {queryset.first().settings_name}")
+    
+    activate_settings.short_description = "Activate selected settings"
+    
+    def deactivate_settings(self, request, queryset):
+        """Deactivate selected settings"""
+        from django.contrib import messages
+        
+        count = queryset.update(is_active=False)
+        messages.success(request, f"Deactivated {count} settings configuration(s).")
+    
+    deactivate_settings.short_description = "Deactivate selected settings"
+    
+    def duplicate_settings(self, request, queryset):
+        """Duplicate selected settings"""
+        from django.contrib import messages
+        
+        if queryset.count() > 1:
+            messages.error(request, "Please select only one settings configuration to duplicate.")
+            return
+        
+        original = queryset.first()
+        duplicate = ImageSettings.objects.create(
+            settings_name=f"{original.settings_name} (Copy)",
+            description=f"Copy of {original.settings_name}",
+            image_fit=original.image_fit,
+            image_position=original.image_position,
+            image_orientation=original.image_orientation,
+            main_image_height=original.main_image_height,
+            reuse_image_height=original.reuse_image_height,
+            thumbnail_height=original.thumbnail_height,
+            main_image_aspect_ratio=original.main_image_aspect_ratio,
+            reuse_image_aspect_ratio=original.reuse_image_aspect_ratio,
+            custom_main_width=original.custom_main_width,
+            custom_main_height=original.custom_main_height,
+            custom_reuse_width=original.custom_reuse_width,
+            custom_reuse_height=original.custom_reuse_height,
+            image_quality=original.image_quality,
+            enable_lazy_loading=original.enable_lazy_loading,
+            enable_webp_conversion=original.enable_webp_conversion,
+            mobile_image_height=original.mobile_image_height,
+            tablet_image_height=original.tablet_image_height,
+            desktop_image_height=original.desktop_image_height,
+            image_border_radius=original.image_border_radius,
+            image_shadow=original.image_shadow,
+            image_hover_effect=original.image_hover_effect,
+            is_active=False  # Duplicates are inactive by default
+        )
+        
+        messages.success(request, f"Duplicated settings as: {duplicate.settings_name}")
+    
+    duplicate_settings.short_description = "Duplicate selected settings"
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Make certain fields readonly for active settings"""
+        if obj and obj.is_active:
+            return ['is_active']  # Prevent deactivating active settings directly
+        return []
+    
+    def save_model(self, request, obj, form, change):
+        """Override save to handle activation logic"""
+        if obj.is_active:
+            # Deactivate all other settings when activating this one
+            ImageSettings.objects.filter(is_active=True).exclude(pk=obj.pk).update(is_active=False)
+        super().save_model(request, obj, form, change)
+
+# ImageSettings is now registered with the custom admin site in dhivehinoos_backend/admin.py
+
+
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
     form = ArticleAdminForm
-    list_display = ['title', 'category', 'status', 'publishing_mode', 'scheduled_publish_time', 'image_preview', 'image_source', 'created_at', 'vote_score', 'approved_comments_count']
+    list_display = ['title', 'category', 'status', 'publishing_mode', 'scheduled_publish_time', 'frontend_preview', 'image_matching_status', 'image_source', 'created_at', 'vote_score', 'approved_comments_count']
     list_filter = ['status', 'publishing_mode', 'category', 'image_source', 'created_at']
     search_fields = ['title', 'content']
     prepopulated_fields = {'slug': ('title',)}
     ordering = ['-created_at']
-    readonly_fields = ['image_preview', 'original_image_url']
+    readonly_fields = ['frontend_preview']
     
     fieldsets = (
         ('Basic Information', {
             'fields': ('title', 'slug', 'content', 'category')
         }),
         ('Image Management', {
-            'fields': ('image_preview', 'original_image_url', 'reused_image', 'upload_new_image'),
-            'description': 'Simple image management: Select from reusable library OR upload new image (adds to library). Original API image is always kept as fallback.'
+            'fields': ('frontend_preview', 'image_gallery_selection', 'reused_image', 'reuse_images', 'upload_new_image'),
+            'description': 'Enhanced image management: Preview shows exactly what visitors will see. Use controls to enable/disable images. Upload new images to replace existing ones.'
         }),
         ('Publishing', {
             'fields': ('status', 'publishing_mode', 'scheduled_publish_time')
         }),
     )
     
-    actions = ['schedule_for_publishing', 'publish_now', 'unpublish_articles', 'bulk_delete_articles', 'use_original_image', 'find_reusable_images']
+    actions = ['schedule_for_publishing', 'publish_now', 'unpublish_articles', 'bulk_delete_articles', 'use_original_image', 'clear_reuse_images', 'find_reusable_images']
     
     def save_model(self, request, obj, form, change):
         """Simplified save logic for image management"""
@@ -158,7 +427,8 @@ class ArticleAdmin(admin.ModelAdmin):
                 # Use this image for the article
                 obj.reused_image = reusable_image
                 obj.image_file = reusable_image.image_file
-                obj.image_source = 'reused'
+                # DO NOT change image_source to 'reused' - keep original API image as primary
+                # obj.image_source = 'reused'  # REMOVED: Keep original API image as primary
                 # DO NOT clear the original API image - keep it as fallback
                 # obj.image = None  # REMOVED: Keep original API image as fallback
                 print(f"✅ Created reusable image: {reusable_image.image_file.url}")
@@ -247,33 +517,267 @@ class ArticleAdmin(admin.ModelAdmin):
     bulk_delete_articles.short_description = "Delete selected articles"
     
     def image_preview(self, obj):
-        """Display a preview of the current image"""
+        """Display a preview of the current primary image - ALWAYS prioritize original API image"""
         try:
             import os
             from django.conf import settings
             from PIL import Image, UnidentifiedImageError
+            
+            # ALWAYS show original API image first if available - NEVER replace it
+            if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+                return format_html(
+                    '<div style="border: 2px solid #6c757d; padding: 2px; border-radius: 4px;">'
+                    '<img src="{}" style="max-width: 100px; max-height: 60px; object-fit: cover;" />'
+                    '<div style="font-size: 10px; color: #6c757d; text-align: center; margin-top: 2px;">ORIGINAL API</div>'
+                    '</div>', 
+                    obj.image
+                )
+            
+            # Show uploaded image file if available (only if no original API image)
             if obj.image_file and obj.image_file.name:
                 file_path = os.path.join(settings.MEDIA_ROOT, obj.image_file.name)
                 if os.path.exists(file_path):
-                    # Verify image is not corrupted
                     try:
                         with Image.open(file_path) as im:
                             im.verify()
-                        return format_html('<img src="{}" style="max-width: 100px; max-height: 60px; object-fit: cover;" />', obj.image_file.url)
+                        return format_html(
+                            '<div style="border: 2px solid #007bff; padding: 2px; border-radius: 4px;">'
+                            '<img src="{}" style="max-width: 100px; max-height: 60px; object-fit: cover;" />'
+                            '<div style="font-size: 10px; color: #007bff; text-align: center; margin-top: 2px;">UPLOADED</div>'
+                            '</div>', 
+                            obj.image_file.url
+                        )
                     except (UnidentifiedImageError, OSError):
-                        return format_html('<div style="max-width:100px;max-height:60px;background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:4px;border-radius:4px;">Corrupt image</div>')
-            if obj.image:
-                return format_html('<img src="{}" style="max-width: 100px; max-height: 60px; object-fit: cover;" />', obj.image)
+                        return format_html('<div style="max-width:100px;max-height:60px;background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:4px;border-radius:4px;">Corrupt uploaded image</div>')
+            
+            # Show reuse image if available (only if no original API image or uploaded image)
+            if obj.reused_image and obj.reused_image.image_file and obj.reused_image.image_file.name:
+                file_path = os.path.join(settings.MEDIA_ROOT, obj.reused_image.image_file.name)
+                if os.path.exists(file_path):
+                    try:
+                        with Image.open(file_path) as im:
+                            im.verify()
+                        return format_html(
+                            '<div style="border: 2px solid #28a745; padding: 2px; border-radius: 4px;">'
+                            '<img src="{}" style="max-width: 100px; max-height: 60px; object-fit: cover;" />'
+                            '<div style="font-size: 10px; color: #28a745; text-align: center; margin-top: 2px;">REUSE</div>'
+                            '</div>', 
+                            obj.reused_image.image_file.url
+                        )
+                    except (UnidentifiedImageError, OSError):
+                        return format_html('<div style="max-width:100px;max-height:60px;background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:4px;border-radius:4px;">Corrupt reuse image</div>')
         except Exception:
             # Silent fail; show placeholder text to avoid admin 500
             pass
         return "No image"
-    image_preview.short_description = "Image Preview"
+    image_preview.short_description = "Primary Image Preview"
+    
+    def original_api_image_preview(self, obj):
+        """Display a preview of the original API image"""
+        try:
+            # Check if there's an image URL (external or local)
+            if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+                # Handle both external URLs and local file paths
+                if obj.image.startswith('http'):
+                    # External URL
+                    image_url = obj.image
+                elif obj.image.startswith('/media/'):
+                    # Local file path - convert to full URL
+                    image_url = f"https://dhivehinoos.net{obj.image}"
+                else:
+                    # Other local path
+                    image_url = f"https://dhivehinoos.net/media/{obj.image}"
+                
+                return format_html(
+                    '<div style="border: 2px solid #6c757d; padding: 2px; border-radius: 4px;">'
+                    '<img src="{}" style="max-width: 100px; max-height: 60px; object-fit: cover;" />'
+                    '<div style="font-size: 10px; color: #6c757d; text-align: center; margin-top: 2px;">ORIGINAL API</div>'
+                    '</div>', 
+                    image_url
+                )
+        except Exception as e:
+            print(f"Error in original_api_image_preview: {e}")
+            pass
+        return "No original API image"
+    original_api_image_preview.short_description = "Original API Image"
+    
+    def frontend_preview(self, obj):
+        """Display both images as they will appear on the frontend"""
+        try:
+            images_html = []
+            
+            # Original API Image (always first)
+            if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+                # Handle both external URLs and local file paths
+                if obj.image.startswith('http'):
+                    api_image_url = obj.image
+                elif obj.image.startswith('/media/'):
+                    api_image_url = f"https://dhivehinoos.net{obj.image}"
+                else:
+                    api_image_url = f"https://dhivehinoos.net/media/{obj.image}"
+                
+                images_html.append(format_html(
+                    '<div style="border: 2px solid #28a745; padding: 2px; border-radius: 4px; margin-bottom: 4px;">'
+                    '<img src="{}" style="max-width: 120px; max-height: 70px; object-fit: cover;" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';" />'
+                    '<div style="display: none; background: #f8f9fa; padding: 10px; text-align: center; font-size: 10px; color: #6c757d;">⚠️ Image Error</div>'
+                    '<div style="font-size: 10px; color: #28a745; text-align: center; margin-top: 2px; font-weight: bold;">ORIGINAL API IMAGE</div>'
+                    '</div>', 
+                    api_image_url
+                ))
+            
+            # Reuse Images (if any)
+            if obj.reuse_images.exists():
+                for reuse_image in obj.reuse_images.all()[:2]:  # Show max 2 reuse images
+                    if reuse_image.image_file and reuse_image.image_file.name:
+                        try:
+                            # Check if the image file exists and is valid
+                            if reuse_image.image_file.storage.exists(reuse_image.image_file.name):
+                                reuse_image_url = f"https://dhivehinoos.net{reuse_image.image_file.url}"
+                                images_html.append(format_html(
+                                    '<div style="border: 2px solid #007bff; padding: 2px; border-radius: 4px; margin-bottom: 4px;">'
+                                    '<img src="{}" style="max-width: 120px; max-height: 70px; object-fit: cover;" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';" />'
+                                    '<div style="display: none; background: #f8f9fa; padding: 10px; text-align: center; font-size: 10px; color: #6c757d;">⚠️ Corrupted Image</div>'
+                                    '<div style="font-size: 10px; color: #007bff; text-align: center; margin-top: 2px; font-weight: bold;">REUSE: {}</div>'
+                                    '</div>', 
+                                    reuse_image_url,
+                                    reuse_image.entity_name
+                                ))
+                            else:
+                                # Image file doesn't exist
+                                images_html.append(format_html(
+                                    '<div style="border: 2px solid #dc3545; padding: 2px; border-radius: 4px; margin-bottom: 4px;">'
+                                    '<div style="background: #f8d7da; padding: 10px; text-align: center; font-size: 10px; color: #721c24;">❌ Missing Image File</div>'
+                                    '<div style="font-size: 10px; color: #dc3545; text-align: center; margin-top: 2px; font-weight: bold;">REUSE: {}</div>'
+                                    '</div>',
+                                    reuse_image.entity_name
+                                ))
+                        except Exception as e:
+                            print(f"Error loading reuse image {reuse_image.id}: {e}")
+                            # Show error placeholder
+                            images_html.append(format_html(
+                                '<div style="border: 2px solid #dc3545; padding: 2px; border-radius: 4px; margin-bottom: 4px;">'
+                                '<div style="background: #f8d7da; padding: 10px; text-align: center; font-size: 10px; color: #721c24;">❌ Error Loading Image</div>'
+                                '<div style="font-size: 10px; color: #dc3545; text-align: center; margin-top: 2px; font-weight: bold;">REUSE: {}</div>'
+                                '</div>',
+                                reuse_image.entity_name
+                            ))
+                            continue
+            
+            if images_html:
+                return format_html('<div style="display: flex; flex-direction: column; gap: 4px;">{}</div>', 
+                                 format_html(''.join(images_html)))
+            else:
+                return "No images"
+                
+        except Exception as e:
+            print(f"Error in frontend_preview: {e}")
+            return format_html('<div style="color: #dc3545; font-weight: bold;">⚠️ Error loading preview</div>')
+    frontend_preview.short_description = "Frontend Preview (Both Images)"
+    
+    def image_matching_status(self, obj):
+        """Show the current image matching setting status"""
+        from settings_app.models import SiteSettings
+        settings = SiteSettings.get_settings()
+        
+        if settings.enable_image_matching:
+            return format_html(
+                '<span style="color: #28a745; font-weight: bold;">✅ Enabled</span>'
+            )
+        else:
+            return format_html(
+                '<span style="color: #dc3545; font-weight: bold;">❌ Disabled</span>'
+            )
+    image_matching_status.short_description = "Image Matching"
+    
+    def image_controls(self, obj):
+        """Interactive controls for image management"""
+        try:
+            from settings_app.models import SiteSettings
+            settings = SiteSettings.get_settings()
+            
+            controls_html = []
+            
+            # Original API Image Controls
+            if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+                controls_html.append(format_html(
+                    '<div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px; background: #f8f9fa;">'
+                    '<h4 style="margin: 0 0 8px 0; color: #28a745;">🟢 Original API Image</h4>'
+                    '<p style="margin: 0; font-size: 12px; color: #666;">This image comes from the original API and is always preserved.</p>'
+                    '<p style="margin: 5px 0 0 0; font-size: 11px;"><strong>URL:</strong> <a href="{}" target="_blank" style="color: #007bff;">{}</a></p>'
+                    '</div>',
+                    obj.image,
+                    obj.image[:50] + "..." if len(obj.image) > 50 else obj.image
+                ))
+            else:
+                controls_html.append(format_html(
+                    '<div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px; background: #fff3cd;">'
+                    '<h4 style="margin: 0 0 8px 0; color: #856404;">⚠️ No Original API Image</h4>'
+                    '<p style="margin: 0; font-size: 12px; color: #666;">This article has no original API image.</p>'
+                    '</div>'
+                ))
+            
+            # Reuse Images Controls
+            if obj.reuse_images.exists():
+                controls_html.append(format_html(
+                    '<div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px; background: #e7f3ff;">'
+                    '<h4 style="margin: 0 0 8px 0; color: #007bff;">🔵 Reuse Images ({})</h4>',
+                    obj.reuse_images.count()
+                ))
+                
+                for reuse_image in obj.reuse_images.all():
+                    controls_html.append(format_html(
+                        '<div style="margin: 5px 0; padding: 5px; background: white; border-radius: 3px;">'
+                        '<strong>{}</strong> ({}) - <a href="{}" target="_blank" style="color: #007bff;">View Image</a>'
+                        '</div>',
+                        reuse_image.entity_name,
+                        reuse_image.entity_type,
+                        f"https://dhivehinoos.net{reuse_image.image_file.url}" if reuse_image.image_file else "#"
+                    ))
+                
+                controls_html.append('</div>')
+            else:
+                controls_html.append(format_html(
+                    '<div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px; background: #f8f9fa;">'
+                    '<h4 style="margin: 0 0 8px 0; color: #6c757d;">🔵 No Reuse Images</h4>'
+                    '<p style="margin: 0; font-size: 12px; color: #666;">No reusable images have been matched for this article.</p>'
+                    '</div>'
+                ))
+            
+            # Action buttons
+            controls_html.append(format_html(
+                '<div style="margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;">'
+                '<h4 style="margin: 0 0 10px 0;">Quick Actions:</h4>'
+                '<p style="margin: 5px 0; font-size: 12px;">• Use the Image Gallery below to select/deselect reuse images</p>'
+                '<p style="margin: 5px 0; font-size: 12px;">• Upload new images to replace existing ones</p>'
+                '<p style="margin: 5px 0; font-size: 12px;">• Changes are saved automatically when you save the article</p>'
+                '<p style="margin: 5px 0; font-size: 12px;">• <strong>Image Matching:</strong> {} - <a href="/admin/settings_app/sitesettings/" target="_blank" style="color: #007bff;">Change Setting</a></p>'
+                '</div>',
+                "✅ Enabled" if settings.enable_image_matching else "❌ Disabled"
+            ))
+            
+            return format_html('<div style="max-width: 400px;">{}</div>', 
+                             format_html(''.join(controls_html)))
+                
+        except Exception as e:
+            print(f"Error in image_controls: {e}")
+            return "Error loading controls"
+    image_controls.short_description = "Image Controls & Info"
     
     def original_image_url(self, obj):
         """Display the original API image URL"""
         if obj.image:
-            return format_html('<a href="{}" target="_blank">Original API Image (Fallback)</a>', obj.image)
+            # Handle both external URLs and local file paths
+            if obj.image.startswith('http'):
+                # External URL
+                image_url = obj.image
+            elif obj.image.startswith('/media/'):
+                # Local file path - convert to full URL
+                image_url = f"https://dhivehinoos.net{obj.image}"
+            else:
+                # Other local path
+                image_url = f"https://dhivehinoos.net/media/{obj.image}"
+            
+            return format_html('<a href="{}" target="_blank">Original API Image (Fallback)</a>', image_url)
         return "No original image"
     original_image_url.short_description = "Original API Image"
     
@@ -281,6 +785,23 @@ class ArticleAdmin(admin.ModelAdmin):
         """Custom field for uploading new images"""
         return None  # This is handled in the form
     upload_new_image.short_description = "Upload New Image (Adds to Library)"
+    
+    def use_original_api_image(self, obj):
+        """Custom field for using original API image"""
+        return obj.image_source == 'external' and bool(obj.image)
+    use_original_api_image.short_description = "Use Original API Image"
+    use_original_api_image.boolean = True
+    
+    def disable_reuse_images(self, obj):
+        """Custom field for disabling reuse images"""
+        return not bool(obj.reuse_images.exists()) and not bool(obj.reused_image)
+    disable_reuse_images.short_description = "Disable Reuse Images"
+    disable_reuse_images.boolean = True
+    
+    def image_gallery_selection(self, obj):
+        """Custom field for image gallery selection"""
+        return None  # This is handled by the widget
+    image_gallery_selection.short_description = "Image Gallery"
     
     def use_original_image(self, request, queryset):
         """Action to switch selected articles back to their original API image"""
@@ -306,6 +827,31 @@ class ArticleAdmin(admin.ModelAdmin):
             messages.info(request, "No articles were switched. Only articles with original images can be switched back.")
     
     use_original_image.short_description = "Use original API image"
+    
+    def clear_reuse_images(self, request, queryset):
+        """Action to clear all reuse images from selected articles"""
+        from django.contrib import messages
+        from .cache_utils import invalidate_article_cache
+        
+        cleared_count = 0
+        for article in queryset:
+            try:
+                # Clear all reuse images but keep original API image
+                article.reuse_images.clear()
+                article.reused_image = None
+                article.image_source = 'external'
+                article.save()
+                
+                # Invalidate cache for this article
+                invalidate_article_cache(article_id=article.id)
+                cleared_count += 1
+            except Exception as e:
+                messages.error(request, f"Failed to clear reuse images for '{article.title}': {str(e)}")
+        
+        if cleared_count > 0:
+            messages.success(request, f"Successfully cleared reuse images from {cleared_count} article(s).")
+    
+    clear_reuse_images.short_description = "Clear all reuse images"
     
     def find_reusable_images(self, request, queryset):
         """Action to show which reusable images match the selected articles"""

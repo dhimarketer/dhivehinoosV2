@@ -105,13 +105,15 @@ admin_site.register(SiteSettings, SiteSettingsAdmin)
 
 # Import and register image management models
 try:
-    from articles.models import ReusableImage, ImageVerification, ImageReuseSettings
+    from articles.models import ReusableImage, ImageVerification, ImageReuseSettings, ImageSettings
     from articles import admin_reusable_images
     from articles.admin_reusable_images import ReusableImageAdmin, ImageVerificationAdmin, ImageReuseSettingsAdmin
+    from articles.admin import ImageSettingsAdmin
     
     admin_site.register(ReusableImage, ReusableImageAdmin)
     admin_site.register(ImageVerification, ImageVerificationAdmin)
     admin_site.register(ImageReuseSettings, ImageReuseSettingsAdmin)
+    admin_site.register(ImageSettings, ImageSettingsAdmin)
 except ImportError:
     # Image management models might not be available yet
     pass

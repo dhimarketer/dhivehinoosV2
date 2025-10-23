@@ -34,25 +34,12 @@ class ArticleListSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug', 'created_at']
     
     def get_image_url(self, obj):
-        """Simplified image URL logic with error handling"""
-        # If there's a reusable image selected, use it
-        if obj.reused_image and obj.reused_image.image_file:
-            try:
-                # Check if the file actually exists
-                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
-                    request = self.context.get('request')
-                    if request:
-                        return request.build_absolute_uri(obj.reused_image.image_file.url)
-                    else:
-                        from django.conf import settings
-                        protocol = 'https' if not settings.DEBUG else 'http'
-                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
-                else:
-                    print(f"⚠️  Warning: ReusableImage file doesn't exist: {obj.reused_image.image_file.name}")
-            except Exception as e:
-                print(f"⚠️  Warning: Error accessing reusable image: {e}")
+        """Always prioritize the original API image URL first, then fallback to other sources"""
+        # ALWAYS prioritize the original API image first
+        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+            return obj.image
         
-        # If there's an image_file (from upload), use it
+        # If there's an image_file (from upload), use it as fallback
         if obj.image_file:
             try:
                 # Check if the file actually exists
@@ -69,15 +56,38 @@ class ArticleListSerializer(serializers.ModelSerializer):
             except Exception as e:
                 print(f"⚠️  Warning: Error accessing article image: {e}")
         
-        # Fallback to original API image
-        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
-            return obj.image
+        # Last resort: if there's a reusable image selected, use it
+        if obj.reused_image and obj.reused_image.image_file:
+            try:
+                # Check if the file actually exists
+                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
+                else:
+                    print(f"⚠️  Warning: ReusableImage file doesn't exist: {obj.reused_image.image_file.name}")
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing reusable image: {e}")
         
         return None
 
 
 class ArticleIngestSerializer(serializers.ModelSerializer):
     """Serializer for n8n article ingestion"""
+    # Support both n8n format and direct format
+    headline = serializers.CharField(write_only=True, required=False, help_text="n8n format: article headline")
+    main_post = serializers.CharField(write_only=True, required=False, help_text="n8n format: article content")
+    synopsis = serializers.CharField(write_only=True, required=False, help_text="n8n format: article synopsis")
+    
+    # Direct format fields
+    title = serializers.CharField(required=False, help_text="Direct format: article title")
+    content = serializers.CharField(required=False, help_text="Direct format: article content")
+    
+    # Common fields
     image_url = serializers.URLField(write_only=True, required=False)
     proposed_url = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=500)
     category_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
@@ -92,9 +102,26 @@ class ArticleIngestSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Article
-        fields = ['title', 'content', 'image_url', 'proposed_url', 'category_id', 'publishing_mode', 'scheduled_publish_time', 'schedule_id']
+        fields = ['title', 'content', 'headline', 'main_post', 'synopsis', 'image_url', 'proposed_url', 'category_id', 'publishing_mode', 'scheduled_publish_time', 'schedule_id']
     
     def create(self, validated_data):
+        # Handle field mapping from n8n format to model format
+        headline = validated_data.pop('headline', None)
+        main_post = validated_data.pop('main_post', None)
+        synopsis = validated_data.pop('synopsis', None)
+        
+        # Map n8n fields to model fields
+        if headline and not validated_data.get('title'):
+            validated_data['title'] = headline
+        if main_post and not validated_data.get('content'):
+            validated_data['content'] = main_post
+        
+        # Ensure required fields are present
+        if not validated_data.get('title'):
+            raise serializers.ValidationError({'title': 'This field is required (or provide headline)'})
+        if not validated_data.get('content'):
+            raise serializers.ValidationError({'content': 'This field is required (or provide main_post)'})
+        
         # Remove fields that are not model fields
         image_url = validated_data.pop('image_url', None)
         proposed_url = validated_data.pop('proposed_url', None)
@@ -155,6 +182,10 @@ class ArticleIngestSerializer(serializers.ModelSerializer):
         # Store image_url in the article instance for the view to use
         if image_url:
             article._image_url = image_url
+            # Also store the original API image URL in the database
+            article.image = image_url
+            article.image_source = 'external'
+            article.save()
         
         return article
 
@@ -272,6 +303,7 @@ class ArticleSerializer(serializers.ModelSerializer):
     approved_comments_count = serializers.ReadOnlyField()
     image_url = serializers.SerializerMethodField()
     reused_image_url = serializers.SerializerMethodField()
+    reuse_images = serializers.SerializerMethodField()
     original_image_url = serializers.SerializerMethodField()
     article_url = serializers.ReadOnlyField()
     category = CategorySerializer(read_only=True)
@@ -284,32 +316,19 @@ class ArticleSerializer(serializers.ModelSerializer):
         model = Article
         fields = [
             'id', 'title', 'slug', 'proposed_url', 'article_url', 'content', 'image', 'image_file', 
-            'image_url', 'reused_image_url', 'original_image_url', 'status',
+            'image_url', 'reused_image_url', 'reuse_images', 'original_image_url', 'status',
             'category', 'category_id', 'publishing_mode', 'scheduled_publish_time',
             'scheduled_publish_info', 'social_metadata', 'identified_entities', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at']
     
     def get_image_url(self, obj):
-        """Simplified image URL logic with error handling"""
-        # If there's a reusable image selected, use it
-        if obj.reused_image and obj.reused_image.image_file:
-            try:
-                # Check if the file actually exists
-                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
-                    request = self.context.get('request')
-                    if request:
-                        return request.build_absolute_uri(obj.reused_image.image_file.url)
-                    else:
-                        from django.conf import settings
-                        protocol = 'https' if not settings.DEBUG else 'http'
-                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
-                else:
-                    print(f"⚠️  Warning: ReusableImage file doesn't exist: {obj.reused_image.image_file.name}")
-            except Exception as e:
-                print(f"⚠️  Warning: Error accessing reusable image: {e}")
+        """Always return the original API image URL first, then fallback to other sources"""
+        # Always prioritize the original API image
+        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
+            return obj.image
         
-        # If there's an image_file (from upload), use it
+        # If there's an image_file (from upload), use it as fallback
         if obj.image_file:
             try:
                 # Check if the file actually exists
@@ -326,14 +345,27 @@ class ArticleSerializer(serializers.ModelSerializer):
             except Exception as e:
                 print(f"⚠️  Warning: Error accessing article image: {e}")
         
-        # Fallback to original API image
-        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
-            return obj.image
+        # Last resort: if there's a reusable image selected, use it
+        if obj.reused_image and obj.reused_image.image_file:
+            try:
+                # Check if the file actually exists
+                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
+                else:
+                    print(f"⚠️  Warning: ReusableImage file doesn't exist: {obj.reused_image.image_file.name}")
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing reusable image: {e}")
         
         return None
     
     def get_reused_image_url(self, obj):
-        """Return the URL of the reused image if available and exists"""
+        """Return the URL of the primary reused image if available and exists"""
         if obj.reused_image and obj.reused_image.image_file:
             try:
                 if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
@@ -347,6 +379,32 @@ class ArticleSerializer(serializers.ModelSerializer):
             except Exception as e:
                 print(f"⚠️  Warning: Error accessing reused image file: {e}")
         return None
+    
+    def get_reuse_images(self, obj):
+        """Return all reuse images with their URLs and metadata"""
+        reuse_images = []
+        for image in obj.reuse_images.all():
+            if image.image_file and image.image_file.name and image.image_file.storage.exists(image.image_file.name):
+                try:
+                    request = self.context.get('request')
+                    if request:
+                        image_url = request.build_absolute_uri(image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        image_url = f"{protocol}://dhivehinoos.net{image.image_file.url}"
+                    
+                    reuse_images.append({
+                        'id': image.id,
+                        'entity_name': image.entity_name,
+                        'entity_type': image.entity_type,
+                        'image_url': image_url,
+                        'description': image.description,
+                        'usage_count': image.usage_count
+                    })
+                except Exception as e:
+                    print(f"⚠️  Warning: Error accessing reuse image {image.id}: {e}")
+        return reuse_images
     
     def get_original_image_url(self, obj):
         """Return the URL of the original API image if available"""

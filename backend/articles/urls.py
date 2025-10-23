@@ -11,6 +11,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('published/', views.PublishedArticleListView.as_view(), name='published-articles'),
     path('published/<slug:slug>/', views.PublishedArticleDetailView.as_view(), name='published-article-detail'),
+    path('<int:pk>/', views.ArticleDetailView.as_view(), name='article-detail'),
     path('ingest/', views.ingest_article, name='ingest-article'),
     path('categories/', views.CategoryListView.as_view(), name='category-list'),
     path('categories/<slug:slug>/', views.CategoryDetailView.as_view(), name='category-detail'),
@@ -35,4 +36,5 @@ urlpatterns = [
     path('cancel/<int:scheduled_article_id>/', views.cancel_scheduled_article, name='cancel-scheduled-article'),
     path('schedule-stats/', views.schedule_stats, name='schedule-stats'),
     path('process-scheduled/', views.process_scheduled_articles, name='process-scheduled-articles'),
+    path('image-display-settings/', views.get_image_display_settings, name='image-display-settings'),
 ]

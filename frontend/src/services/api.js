@@ -184,4 +184,8 @@ export const settingsAPI = {
   getPublic: () => api.get('/settings/public/'),
 };
 
+export const imageSettingsAPI = {
+  get: () => api.get('/articles/image-display-settings/'),
+};
+
 export default api;

@@ -26,11 +26,26 @@ import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
 import SocialShare from '../components/SocialShare';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useImageSettings } from '../hooks/useImageSettings';
 
 const ArticlePage = () => {
   const { slug } = useParams();
   const { settings } = useSiteSettings();
+  const { settings: imageSettings } = useImageSettings();
   const [article, setArticle] = useState(null);
+
+  // Helper function to get aspect ratio padding
+  const getAspectRatioPadding = (aspectRatio) => {
+    const ratios = {
+      '16:9': '56.25%',
+      '4:3': '75%',
+      '3:2': '66.67%',
+      '1:1': '100%',
+      '21:9': '42.86%',
+      '9:16': '177.78%',
+    };
+    return ratios[aspectRatio] || '56.25%'; // Default to 16:9
+  };
   const [comments, setComments] = useState([]);
   const [voteStatus, setVoteStatus] = useState({ has_voted: false, vote_type: null, vote_score: 0 });
   const [loading, setLoading] = useState(true);
@@ -240,100 +255,146 @@ const ArticlePage = () => {
           {/* Article Header with Images */}
           <Card>
             <CardBody>
-              {article.identified_entities && article.identified_entities.length > 0 ? (
-                // Show multiple images when entities are identified
+              {article.reuse_images && article.reuse_images.length > 0 ? (
+                // Show original image + reuse images symmetrically
                 <VStack spacing={4} mb={4} align="stretch">
-                  {/* Top row: Story image and Reused image side by side */}
-                  <HStack spacing={4} align="stretch" flexWrap={{ base: 'wrap', md: 'nowrap' }}>
-                    {/* Story image (original API image) */}
-                    <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
-                      <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
-                        <Box paddingTop="56.25%" /> {/* 16:9 aspect ratio */}
-                        <ChakraImage
-                          src={article.image_url || "https://via.placeholder.com/800x450/cccccc/666666?text=Story+Image"}
-                          alt={`${article.title} - story image`}
-                          position="absolute"
-                          inset={0}
-                          w="100%"
-                          h="100%"
-                          objectFit="cover"
-                          objectPosition="center"
-                          fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Story+Image"
-                        />
-                      </Box>
-                    </Box>
-
-                    {/* Reused image (if available) */}
-                    {article.reused_image_url && (
+                  {/* Main images row: Original + Reuse images */}
+                  <Box>
+                    <HStack spacing={4} align="stretch" flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+                      {/* Original API image */}
                       <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
-                        <Box position="relative" w="100%" borderRadius={{ base: 'md', md: 'lg' }} overflow="hidden">
-                          <Box paddingTop="56.25%" /> {/* Same height as story image */}
+                        <Box 
+                          position="relative" 
+                          w="100%" 
+                          borderRadius={imageSettings.image_border_radius || 8} 
+                          overflow="hidden"
+                          boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
+                          transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
+                          _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
+                        >
+                          <Box paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)} />
                           <ChakraImage
-                            src={article.reused_image_url}
-                            alt={`${article.title} - reused image`}
+                            src={article.original_image_url || article.image_url || "https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"}
+                            alt={`${article.title} - original image`}
                             position="absolute"
                             inset={0}
                             w="100%"
                             h="100%"
-                            objectFit="cover"
-                            objectPosition="center"
-                            fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Reused+Image"
+                            objectFit={imageSettings.image_fit || 'cover'}
+                            objectPosition={imageSettings.image_position || 'top'}
+                            fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"
                           />
                         </Box>
+                        <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
+                          Original Story Image
+                        </Text>
                       </Box>
-                    )}
-                  </HStack>
-                  
-                  {/* Identified entities section */}
-                  <Box>
-                    <Heading size="md" mb={3} color="gray.700">
-                      Related Public Figures & Institutions
-                    </Heading>
-                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
-                      {article.identified_entities.map((entity, index) => (
-                        <Box key={index} textAlign="center">
+
+                      {/* First reuse image - scaled to match API image height */}
+                      {article.reuse_images[0] && (
+                        <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
                           <Box 
                             position="relative" 
-                            pb="125%" 
-                            height="0" 
-                            overflow="hidden" 
-                            borderRadius="md"
-                            mb={2}
+                            w="100%" 
+                            borderRadius={imageSettings.image_border_radius || 8} 
+                            overflow="hidden"
+                            boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
+                            transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
+                            _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
                           >
+                            <Box paddingTop={getAspectRatioPadding(imageSettings.reuse_image_aspect_ratio)} />
                             <ChakraImage
-                              src={entity.image_url}
-                              alt={entity.name}
-                              objectFit="cover"
+                              src={article.reuse_images[0].image_url}
+                              alt={`${article.title} - ${article.reuse_images[0].entity_name}`}
                               position="absolute"
-                              top="0"
-                              left="0"
-                              width="100%"
-                              height="100%"
-                              fallbackSrc="https://via.placeholder.com/200x250/cccccc/666666?text=Entity+Image"
+                              inset={0}
+                              w="100%"
+                              h="100%"
+                              objectFit={imageSettings.image_fit || 'contain'}
+                              objectPosition={imageSettings.image_position || 'center'}
+                              bg="gray.100"
+                              fallbackSrc="https://via.placeholder.com/400x600/cccccc/666666?text=Reuse+Image"
                             />
                           </Box>
-                          <Text fontSize="sm" fontWeight="medium" color="gray.600">
-                            {entity.name}
-                          </Text>
-                          <Text fontSize="xs" color="gray.500">
-                            {entity.type}
+                          <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
+                            {article.reuse_images[0].entity_name}
                           </Text>
                         </Box>
-                      ))}
-                    </SimpleGrid>
+                      )}
+                    </HStack>
                   </Box>
+
+                  {/* Additional reuse images (2x2 grid if more than 2 total) */}
+                  {article.reuse_images.length > 1 && (
+                    <Box>
+                      <Heading size="md" mb={3} color="gray.700">
+                        Related Public Figures & Institutions
+                      </Heading>
+                      <SimpleGrid columns={{ base: 1, sm: 2, md: Math.min(article.reuse_images.length - 1, 2) }} spacing={4}>
+                        {article.reuse_images.slice(1).map((image, index) => (
+                          <Box key={image.id} textAlign="center">
+                            <Box 
+                              position="relative" 
+                              pb="125%" 
+                              height="0" 
+                              overflow="hidden" 
+                              borderRadius={imageSettings.image_border_radius || 8}
+                              mb={2}
+                              bg="gray.100"
+                              boxShadow={imageSettings.image_shadow ? 'md' : 'none'}
+                              transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
+                              _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.05)' } : {}}
+                            >
+                              <ChakraImage
+                                src={image.image_url}
+                                alt={image.entity_name}
+                                objectFit={imageSettings.image_fit || 'contain'}
+                                objectPosition={imageSettings.image_position || 'center'}
+                                position="absolute"
+                                top="0"
+                                left="0"
+                                width="100%"
+                                height="100%"
+                                fallbackSrc="https://via.placeholder.com/200x250/cccccc/666666?text=Entity+Image"
+                              />
+                            </Box>
+                            <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                              {image.entity_name}
+                            </Text>
+                            <Text fontSize="xs" color="gray.500">
+                              {image.entity_type}
+                            </Text>
+                          </Box>
+                        ))}
+                      </SimpleGrid>
+                    </Box>
+                  )}
                 </VStack>
               ) : (
                 // Default single image display
-                <ChakraImage
-                  src={article.image_url || "https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"}
-                  alt={article.title}
-                  borderRadius={{ base: "md", md: "lg" }}
-                  objectFit="cover"
-                  h={{ base: "250px", md: "400px" }}
-                  w="100%"
+                <Box 
+                  position="relative" 
+                  w="100%" 
+                  borderRadius={imageSettings.image_border_radius || 8} 
+                  overflow="hidden"
+                  boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
+                  transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
+                  _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
                   mb={4}
-                />
+                >
+                  <Box paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)} />
+                  <ChakraImage
+                    src={article.image_url || "https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"}
+                    alt={article.title}
+                    position="absolute"
+                    inset={0}
+                    w="100%"
+                    h="100%"
+                    objectFit={imageSettings.image_fit || 'cover'}
+                    objectPosition={imageSettings.image_position || 'top'}
+                    fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
+                  />
+                </Box>
               )}
               <Heading size="xl" mb={4}>
                 {article.title}
