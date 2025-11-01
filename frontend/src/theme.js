@@ -16,8 +16,8 @@ const theme = extendTheme({
     },
   },
   fonts: {
-    heading: '"Inter", sans-serif',
-    body: '"Inter", sans-serif',
+    heading: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    body: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
   breakpoints: {
     base: '0px',

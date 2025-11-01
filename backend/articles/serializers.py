@@ -28,7 +28,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'content', 'image', 'image_file', 'image_url', 'status',
+            'id', 'title', 'slug', 'content', 'source_fragments', 'image', 'image_file', 'image_url', 'status',
             'category', 'created_at', 'vote_score', 'approved_comments_count'
         ]
         read_only_fields = ['slug', 'created_at']
@@ -315,7 +315,7 @@ class ArticleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'proposed_url', 'article_url', 'content', 'image', 'image_file', 
+            'id', 'title', 'slug', 'proposed_url', 'article_url', 'content', 'source_fragments', 'image', 'image_file', 
             'image_url', 'reused_image_url', 'reuse_images', 'original_image_url', 'status',
             'category', 'category_id', 'publishing_mode', 'scheduled_publish_time',
             'scheduled_publish_info', 'social_metadata', 'identified_entities', 'created_at', 'updated_at', 'vote_score', 'approved_comments_count'

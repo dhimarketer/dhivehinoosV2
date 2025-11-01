@@ -398,7 +398,7 @@ class ArticleAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'slug', 'content', 'category')
+            'fields': ('title', 'slug', 'content', 'source_fragments', 'category')
         }),
         ('Image Management', {
             'fields': ('frontend_preview', 'image_gallery_selection', 'reused_image', 'reuse_images', 'upload_new_image'),

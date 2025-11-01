@@ -1,63 +1,47 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# Backend Docker ignore
+# These files won't be copied into the backend Docker image
 
-# Virtual environments
-venv/
-env/
-ENV/
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+database/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Git
-.git/
-.gitignore
+# Media files (mounted as volumes)
+media/
 
 # Logs
 *.log
 logs/
 
-# Database
-*.sqlite3
-*.db
-
-# Media files (will be mounted as volumes)
-media/
-
-# Static files (will be collected during build)
-static/
-
-# Testing
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 .pytest_cache/
-.coverage
-htmlcov/
 
-# Documentation
-README.md
-*.md
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Cookies and test files
+cookies.txt
+test_cookies.txt
+
+# Temporary files
+*.tmp
+*.temp

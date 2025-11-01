@@ -24,9 +24,10 @@ COPY --from=build /app/dist /usr/local/apache2/htdocs/
 # Copy Apache configuration
 COPY apache.conf /usr/local/apache2/conf/extra/httpd-vhosts.conf
 
-# Enable mod_rewrite and mod_headers
+# Enable mod_rewrite, mod_headers, and mod_deflate for performance
 RUN sed -i 's/#LoadModule rewrite_module/LoadModule rewrite_module/' /usr/local/apache2/conf/httpd.conf && \
     sed -i 's/#LoadModule headers_module/LoadModule headers_module/' /usr/local/apache2/conf/httpd.conf && \
+    sed -i 's/#LoadModule deflate_module/LoadModule deflate_module/' /usr/local/apache2/conf/httpd.conf && \
     echo "Include conf/extra/httpd-vhosts.conf" >> /usr/local/apache2/conf/httpd.conf
 
 # Expose port

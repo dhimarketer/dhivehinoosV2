@@ -139,9 +139,11 @@ const StoryCard = ({ article, variant = 'default' }) => {
                 objectPosition="center"
                 className="news-card-image"
                 fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Featured+Article"
+                loading={variant === 'featured' ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchpriority={variant === 'featured' ? 'high' : 'auto'}
                 onLoad={() => {
                   setImageLoading(false);
-                  console.log('Featured article image loaded:', article.image_url);
                 }}
                 onError={handleImageError}
                 style={{ 
@@ -331,9 +333,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
               objectPosition="center"
               className="news-card-image"
               fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
+              loading="lazy"
+              decoding="async"
               onLoad={() => {
                 setImageLoading(false);
-                console.log('Article image loaded:', article.image_url);
               }}
               onError={handleImageError}
               style={{ 

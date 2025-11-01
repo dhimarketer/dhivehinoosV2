@@ -677,6 +677,7 @@ class Article(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     proposed_url = models.CharField(max_length=500, blank=True, null=True, help_text="Custom URL path for this article (optional)")
     content = models.TextField()  # HTML allowed
+    source_fragments = models.TextField(blank=True, null=True, help_text="Source fragments providing context for the story (will be displayed in italics)")
     image = models.URLField(blank=True, null=True, help_text="External image URL (optional)")
     image_file = models.ImageField(blank=True, null=True, upload_to='articles/', help_text="Uploaded image file (optional)")
     

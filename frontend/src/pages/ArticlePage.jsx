@@ -283,6 +283,9 @@ const ArticlePage = () => {
                             objectFit={imageSettings.image_fit || 'cover'}
                             objectPosition={imageSettings.image_position || 'top'}
                             fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"
+                            loading="eager"
+                            decoding="async"
+                            fetchpriority="high"
                           />
                         </Box>
                         <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
@@ -314,6 +317,8 @@ const ArticlePage = () => {
                               objectPosition={imageSettings.image_position || 'center'}
                               bg="gray.100"
                               fallbackSrc="https://via.placeholder.com/400x600/cccccc/666666?text=Reuse+Image"
+                              loading="lazy"
+                              decoding="async"
                             />
                           </Box>
                           <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
@@ -356,6 +361,8 @@ const ArticlePage = () => {
                                 width="100%"
                                 height="100%"
                                 fallbackSrc="https://via.placeholder.com/200x250/cccccc/666666?text=Entity+Image"
+                                loading="lazy"
+                                decoding="async"
                               />
                             </Box>
                             <Text fontSize="sm" fontWeight="medium" color="gray.600">
@@ -393,6 +400,9 @@ const ArticlePage = () => {
                     objectFit={imageSettings.image_fit || 'cover'}
                     objectPosition={imageSettings.image_position || 'top'}
                     fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
+                    loading="eager"
+                    decoding="async"
+                    fetchpriority="high"
                   />
                 </Box>
               )}
@@ -437,6 +447,24 @@ const ArticlePage = () => {
 
               {/* Article Content */}
               <FormattedText content={article.content} />
+              
+              {/* Source Fragments - Displayed as italics for context */}
+              {article.source_fragments && (
+                <Box mt={6} pt={6} borderTop="1px solid" borderColor="gray.200">
+                  <Heading size="sm" mb={3} color="gray.600">
+                    Source Fragments
+                  </Heading>
+                  <Box fontStyle="italic" color="gray.600" fontSize="md" lineHeight="1.7">
+                    {article.source_fragments.split('\n').map((line, index) => 
+                      line.trim() ? (
+                        <Text key={index} mb={3}>
+                          {line.trim()}
+                        </Text>
+                      ) : null
+                    )}
+                  </Box>
+                </Box>
+              )}
               
               {/* Social Sharing */}
               <Box mt={6} p={4} bg="gray.50" borderRadius="md">

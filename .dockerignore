@@ -1,0 +1,48 @@
+# Docker ignore file - prevents files from being included in Docker build context
+
+# Server-specific Apache configurations (these are for Linode server, not Docker)
+docker/dhivehinoos-optimized.conf
+docker/dhivehinoos.net.conf
+docker/APACHE_UPDATE_INSTRUCTIONS.md
+docker/LINODE_APACHE_CONFIG.md
+docker/LINODE_FILES_TO_UPDATE.md
+
+# Git files
+.git
+.gitignore
+
+# Documentation that shouldn't be in images
+*.md
+!README.md
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Node modules (will be installed in container)
+node_modules/
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+

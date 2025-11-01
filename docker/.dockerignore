@@ -1,0 +1,7 @@
+# Exclude all server-specific configs from Docker builds
+dhivehinoos-optimized.conf
+dhivehinoos.net.conf
+APACHE_UPDATE_INSTRUCTIONS.md
+LINODE_APACHE_CONFIG.md
+LINODE_FILES_TO_UPDATE.md
+
