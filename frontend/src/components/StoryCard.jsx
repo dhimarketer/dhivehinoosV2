@@ -23,7 +23,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
   // Enhanced image error handling
   const handleImageError = (e) => {
     setImageLoading(false);
-    console.log('Image failed to load:', article.image_url);
+    // Silent fail - don't log in production
     
     // Use a more reliable fallback image
     const fallbackImages = {
@@ -129,7 +129,11 @@ const StoryCard = ({ article, variant = 'default' }) => {
               )}
               <Image
                 as="img"
-                src={getOptimizedImageUrlBySize(article.image_url, 1200, 675)}
+                // For featured images, use 800w as src (optimal for LCP, matches preload)
+                // Browser will choose from srcSet for responsive loading
+                src={article.image_url && article.image_url.includes('fal.media') 
+                  ? getOptimizedImageUrlBySize(article.image_url, 800, 450)
+                  : getOptimizedImageUrlBySize(article.image_url, 1200, 675)}
                 srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [400, 600, 800, 1200] }) : undefined}
                 sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({ featured: true }) : undefined}
                 alt={article.title}
@@ -335,7 +339,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
             )}
             <Image
               as="img"
-              src={getOptimizedImageUrlBySize(article.image_url, 592, 444)}
+              // Use smallest srcSet size as src to prevent duplicate loading
+              src={article.image_url && article.image_url.includes('fal.media')
+                ? getOptimizedImageUrlBySize(article.image_url, 350, 197)
+                : getOptimizedImageUrlBySize(article.image_url, 592, 444)}
               srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [350, 400, 592] }) : undefined}
               sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({}) : undefined}
               alt={article.title}

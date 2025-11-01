@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -42,26 +42,41 @@ const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Separate state for input field
   const [searchResults, setSearchResults] = useState([]);
+  // Initialize with default pageSize to prevent duplicate calls
+  // Will be updated when settings load, but default prevents unnecessary initial fetch
+  const defaultPageSize = 9; // Default to 9 (3x3) until settings load
   const [pagination, setPagination] = useState({
     currentPage: 1,
-    pageSize: (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3),
+    pageSize: defaultPageSize,
     totalPages: 1,
     totalCount: 0,
     hasNext: false,
     hasPrevious: false
   });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const initialFetchDone = useRef(false);
 
-  // Update page size when settings change
+  // Update page size when settings change - only once when settings first load
   useEffect(() => {
-    const newPageSize = (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3);
-    if (newPageSize !== pagination.pageSize) {
-      setPagination(prev => ({ 
-        ...prev, 
-        pageSize: newPageSize, 
-        currentPage: 1 
-      }));
+    // Only update once when settings first load to prevent duplicate API calls
+    if (!settingsLoaded && settings.story_cards_rows && settings.story_cards_columns) {
+      const newPageSize = settings.story_cards_rows * settings.story_cards_columns;
+      setSettingsLoaded(true);
+      
+      // Only update pageSize if it's different AND we haven't done initial fetch yet
+      // This prevents unnecessary refetch when settings load after initial data fetch
+      if (newPageSize > 0 && newPageSize !== defaultPageSize && !initialFetchDone.current) {
+        setPagination(prev => ({ 
+          ...prev, 
+          pageSize: newPageSize,
+          currentPage: 1
+        }));
+      } else if (initialFetchDone.current && newPageSize !== defaultPageSize) {
+        // Settings changed after initial load - update silently for next pagination
+        setPagination(prev => ({ ...prev, pageSize: newPageSize }));
+      }
     }
-  }, [settings.story_cards_rows, settings.story_cards_columns, pagination.pageSize]);
+  }, [settings.story_cards_rows, settings.story_cards_columns, settingsLoaded]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,32 +88,34 @@ const HomePage = () => {
         if (searchQuery.trim()) {
           // Use search API when there's a search query
           articlesResponse = await articlesAPI.search(searchQuery.trim(), selectedCategory, pagination.currentPage, pagination.pageSize);
-          console.log('Search response:', articlesResponse.data);
           setSearchResults(articlesResponse.data.results || articlesResponse.data);
           setArticles([]); // Clear regular articles when searching
         } else {
           // Use regular API when no search query
           articlesResponse = await articlesAPI.getPublished(selectedCategory, pagination.currentPage, pagination.pageSize);
-          console.log('Articles response:', articlesResponse.data);
           setArticles(articlesResponse.data.results || articlesResponse.data);
           setSearchResults([]); // Clear search results when not searching
         }
         
         // Update pagination info
-        setPagination({
-          currentPage: articlesResponse.data.current_page || pagination.currentPage,
-          pageSize: articlesResponse.data.page_size || pagination.pageSize,
+        setPagination(prev => ({
+          ...prev,
+          currentPage: articlesResponse.data.current_page || prev.currentPage,
+          pageSize: articlesResponse.data.page_size || prev.pageSize,
           totalPages: articlesResponse.data.total_pages || 1,
           totalCount: articlesResponse.data.count || 0,
           hasNext: articlesResponse.data.next !== null,
           hasPrevious: articlesResponse.data.previous !== null
-        });
+        }));
         
-        // Preload images for better first-visit experience
+        // Preload images for better LCP
         const articlesToPreload = searchQuery.trim() ? 
           (articlesResponse.data.results || articlesResponse.data) : 
           (articlesResponse.data.results || articlesResponse.data);
         preloadImages(articlesToPreload);
+        
+        // Mark initial fetch as done
+        initialFetchDone.current = true;
       } catch (err) {
         setError('Failed to load articles');
         console.error('Error fetching data:', err);
@@ -129,20 +146,28 @@ const HomePage = () => {
     setSearchResults([]);
   };
 
-  // Preload images to improve first-visit experience - use optimized URLs
+  // Preload images to improve LCP - use link preload for better performance
   const preloadImages = (articles) => {
-    // Only preload the first featured image (above the fold)
-    // Other images should lazy load naturally
+    // Only preload the first featured image (LCP element) using link preload
+    // This is more efficient than Image() preloading and prevents duplicates
     if (articles && articles.length > 0 && articles[0].image_url) {
       const firstArticle = articles[0];
-      // Use optimized URL for preload to avoid duplicate requests
-      const optimizedUrl = getOptimizedImageUrlBySize(firstArticle.image_url, 1200, 675);
-      
-      const img = new Image();
-      img.src = optimizedUrl;
-      img.fetchPriority = 'high';
+      // Use link preload - matches the srcSet 800w size for optimal LCP
+      // Don't use 1200w as that might not be needed initially
+      if (firstArticle.image_url && firstArticle.image_url.includes('fal.media')) {
+        const optimizedUrl = getOptimizedImageUrlBySize(firstArticle.image_url, 800, 450);
+        // Check if already preloaded to avoid duplicates
+        const existingPreload = document.querySelector(`link[rel="preload"][href="${optimizedUrl}"]`);
+        if (!existingPreload) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = optimizedUrl;
+          link.fetchPriority = 'high';
+          document.head.appendChild(link);
+        }
+      }
     }
-    // Don't preload all images - let lazy loading handle the rest
   };
 
   // Pagination handlers

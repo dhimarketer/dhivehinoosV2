@@ -17,13 +17,20 @@
     <!-- Preconnect to critical origins for faster resource loading -->
     <link rel="preconnect" href="https://dhivehinoos.net" crossorigin />
     <link rel="preconnect" href="https://v3b.fal.media" crossorigin />
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <!-- Defer Google Analytics preconnect - not critical for initial render -->
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     
-    <!-- Preload Inter font with font-display swap - load asynchronously -->
+    <!-- Resource hints for better performance -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    
+    <!-- Optimize font loading - preload font file directly, defer CSS -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <!-- Preload the actual font file for faster loading -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Load font CSS asynchronously -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all';this.onload=null;" />
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
     
     <!-- Note: Vite will inject CSS automatically. Critical CSS is inlined above to prevent render blocking. -->

@@ -16,12 +16,18 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false, // Disable sourcemaps in production for better performance
     minify: 'esbuild', // Use esbuild for fast minification (default, but explicit)
+    // Optimize chunk size warnings - Vite will automatically split large chunks
+    chunkSizeWarningLimit: 500, // Warn if chunks exceed 500KB
     rollupOptions: {
       output: {
-        // Fix: Disable manual chunking - let Vite handle dependencies automatically
-        // The issue: vendor chunk imports React but loads before vendor-react
-        // Vite's automatic chunking respects module dependencies and load order
-        manualChunks: undefined,
+        // Simplified chunking - only separate react-icons, let Vite handle dependency order
+        manualChunks: (id) => {
+          // Only manually chunk react-icons - let Vite handle everything else for correct dependency order
+          if (id.includes('react-icons')) {
+            return 'react-icons';
+          }
+          // Let Vite automatically chunk everything else to maintain correct load order
+        },
         // Optimize CSS output
         assetFileNames: (assetInfo) => {
           if (assetInfo.name && assetInfo.name.endsWith('.css')) {
@@ -42,8 +48,7 @@ export default defineConfig({
     cssMinify: true,
     // Optimize CSS for faster loading
     cssTarget: 'chrome80', // Target modern browsers for better CSS optimization
-    chunkSizeWarningLimit: 1000, // Increase warning threshold since we have a large bundle
-    // Optimize chunking strategy
+    // Optimize chunking strategy - target modern browsers for smaller bundle
     target: 'esnext', // Target modern browsers for smaller bundle
   },
 })

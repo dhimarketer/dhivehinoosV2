@@ -26,8 +26,16 @@ const CACHEABLE_ENDPOINTS = [
 // Request deduplication - track pending requests
 const pendingRequests = new Map();
 
-// Helper to get request key
+// Helper to get request key - includes full URL with params for accurate deduplication
 const getRequestKey = (method, url, params) => {
+  // If params exist and URL doesn't have query string, include params in key
+  // Otherwise, use the full URL as-is (params might be in URL already)
+  const urlObj = url.includes('?') ? new URL(url) : null;
+  if (urlObj) {
+    // URL already has params - use full URL as key
+    return `${method}:${url}`;
+  }
+  // Params are separate - include them in key
   const paramString = params ? JSON.stringify(params) : '';
   return `${method}:${url}:${paramString}`;
 };
@@ -45,7 +53,7 @@ api.get = function(url, config = {}) {
     // Check for cached response
     const cachedResponse = getCachedResponse(method, fullUrl, config.params);
     if (cachedResponse) {
-      console.log(`Using cached response for ${fullUrl}`);
+      // Return cached response immediately - no console log in production
       return Promise.resolve({
         data: cachedResponse,
         status: 200,
@@ -58,7 +66,7 @@ api.get = function(url, config = {}) {
     // Check for pending duplicate request
     const requestKey = getRequestKey(method, fullUrl, config.params);
     if (pendingRequests.has(requestKey)) {
-      console.log(`Deduplicating request for ${fullUrl}`);
+      // Return pending request - no console log in production
       return pendingRequests.get(requestKey);
     }
     
@@ -102,9 +110,6 @@ api.get = function(url, config = {}) {
 // Request interceptor for session authentication
 api.interceptors.request.use(
   async (config) => {
-    // Debug: Log request details
-    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
-    
     // Session authentication is handled automatically with cookies
     // For state-changing operations (POST, PUT, PATCH, DELETE), get CSRF token only for non-exempt endpoints
     const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -141,7 +146,6 @@ api.interceptors.request.use(
         if (response.ok) {
           const data = await response.json();
           config.headers['X-CSRFToken'] = data.csrf_token;
-          console.log('CSRF token added to request');
         }
       } catch (error) {
         console.warn('Could not fetch CSRF token:', error);
@@ -154,12 +158,8 @@ api.interceptors.request.use(
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
       if (csrfToken) {
         config.headers['X-CSRFToken'] = csrfToken;
-        console.log('CSRF token added from DOM');
       }
     }
-    
-    // Debug: Log headers being sent
-    console.log('Request headers:', config.headers);
     
     return config;
   },
@@ -171,23 +171,16 @@ api.interceptors.request.use(
 // Response interceptor to handle auth errors and retries
 api.interceptors.response.use(
   (response) => {
-    console.log(`Response received: ${response.status} for ${response.config.url}`);
     return response;
   },
   async (error) => {
     const config = error?.config;
     
-    // Debug: Log error details
-    console.error(`API Error: ${error.response?.status || 'Network'} for ${config?.url}`);
-    console.error('Error details:', error.response?.data || error.message);
-    
     // Handle authentication errors
     if (error.response?.status === 401 || error.response?.status === 403) {
-      console.log('Authentication error detected, clearing local auth state');
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('user');
       // Don't redirect automatically - let the component handle it
-      console.log('Authentication error:', error.response?.status);
       return Promise.reject(error);
     }
     
@@ -196,8 +189,6 @@ api.interceptors.response.use(
         config && !config._retry && config.retry > 0) {
       config._retry = true;
       config.retry--;
-      
-      console.log(`Retrying request to ${config.url}, attempts left: ${config.retry}`);
       
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, config.retryDelay || 1000));
