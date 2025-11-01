@@ -15,15 +15,14 @@ import {
 import { Link } from 'react-router-dom';
 import FormattedText from './FormattedText';
 import SocialShare from './SocialShare';
+import { generateSrcSet, generateSizes, getOptimizedImageUrlBySize } from '../utils/imageOptimization';
 
 const StoryCard = ({ article, variant = 'default' }) => {
   const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
   
   // Enhanced image error handling
   const handleImageError = (e) => {
     setImageLoading(false);
-    setImageError(true);
     console.log('Image failed to load:', article.image_url);
     
     // Use a more reliable fallback image
@@ -129,7 +128,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
                 />
               )}
               <Image
-                src={article.image_url}
+                as="img"
+                src={getOptimizedImageUrlBySize(article.image_url, 1200, 675)}
+                srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [400, 600, 800, 1200] }) : undefined}
+                sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({ featured: true }) : undefined}
                 alt={article.title}
                 position="absolute"
                 inset={0}
@@ -142,6 +144,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
                 loading={variant === 'featured' ? 'eager' : 'lazy'}
                 decoding="async"
                 fetchpriority={variant === 'featured' ? 'high' : 'auto'}
+                width="1200"
+                height="675"
                 onLoad={() => {
                   setImageLoading(false);
                 }}
@@ -204,7 +208,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
         mx="auto"
       >
         <Image
-          src={article.image_url}
+          as="img"
+          src={getOptimizedImageUrlBySize(article.image_url, 120, 100)}
+          srcSet={generateSrcSet(article.image_url, { aspectRatio: 1.2, breakpoints: [120] })}
+          sizes={generateSizes({ compact: true })}
           alt={article.title}
           w="120px"
           h="100px"
@@ -212,6 +219,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
           flexShrink={0}
           className="news-card-image"
           fallbackSrc="https://via.placeholder.com/120x100/cccccc/666666?text=News"
+          width="120"
+          height="100"
+          loading="lazy"
+          decoding="async"
           onError={handleImageError}
         />
         <Box 
@@ -323,7 +334,10 @@ const StoryCard = ({ article, variant = 'default' }) => {
               />
             )}
             <Image
-              src={article.image_url}
+              as="img"
+              src={getOptimizedImageUrlBySize(article.image_url, 592, 444)}
+              srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [350, 400, 592] }) : undefined}
+              sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({}) : undefined}
               alt={article.title}
               position="absolute"
               inset={0}
@@ -335,6 +349,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
               fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
               loading="lazy"
               decoding="async"
+              width="592"
+              height="444"
               onLoad={() => {
                 setImageLoading(false);
               }}

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getCachedResponse, setCachedResponse } from '../utils/requestCache';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -12,6 +13,91 @@ const api = axios.create({
   retry: 2, // Increased retries for better reliability
   retryDelay: 1000, // Increased delay between retries
 });
+
+// Cacheable GET requests
+const CACHEABLE_METHODS = ['GET'];
+const CACHEABLE_ENDPOINTS = [
+  '/settings/public/',
+  '/articles/categories/',
+  '/articles/published/',
+  '/ads/active/'
+];
+
+// Request deduplication - track pending requests
+const pendingRequests = new Map();
+
+// Helper to get request key
+const getRequestKey = (method, url, params) => {
+  const paramString = params ? JSON.stringify(params) : '';
+  return `${method}:${url}:${paramString}`;
+};
+
+// Intercept axios calls at a lower level for caching
+const originalGet = api.get.bind(api);
+api.get = function(url, config = {}) {
+  const fullUrl = (url || '').includes('http') ? url : (this.defaults.baseURL + url);
+  const method = 'GET';
+  
+  // Check if this is a cacheable endpoint
+  const isCacheable = CACHEABLE_ENDPOINTS.some(endpoint => fullUrl.includes(endpoint));
+  
+  if (isCacheable) {
+    // Check for cached response
+    const cachedResponse = getCachedResponse(method, fullUrl, config.params);
+    if (cachedResponse) {
+      console.log(`Using cached response for ${fullUrl}`);
+      return Promise.resolve({
+        data: cachedResponse,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: { ...config, url: fullUrl }
+      });
+    }
+    
+    // Check for pending duplicate request
+    const requestKey = getRequestKey(method, fullUrl, config.params);
+    if (pendingRequests.has(requestKey)) {
+      console.log(`Deduplicating request for ${fullUrl}`);
+      return pendingRequests.get(requestKey);
+    }
+    
+    // Make new request and track it
+    const requestPromise = originalGet(url, config)
+      .then(response => {
+        // Cache successful responses
+        if (response.status === 200) {
+          let ttl = 30000;
+          if (fullUrl.includes('/settings/public/')) {
+            ttl = 60000;
+          } else if (fullUrl.includes('/articles/categories/')) {
+            ttl = 300000;
+          } else if (fullUrl.includes('/ads/active/')) {
+            ttl = 60000;
+          }
+          setCachedResponse(method, fullUrl, config.params, response.data, ttl);
+        }
+        return response;
+      })
+      .catch(error => {
+        // Remove from pending on error
+        pendingRequests.delete(requestKey);
+        throw error;
+      })
+      .finally(() => {
+        // Clean up after a short delay
+        setTimeout(() => {
+          pendingRequests.delete(requestKey);
+        }, 100);
+      });
+    
+    pendingRequests.set(requestKey, requestPromise);
+    return requestPromise;
+  }
+  
+  // Non-cacheable request, use original
+  return originalGet(url, config);
+};
 
 // Request interceptor for session authentication
 api.interceptors.request.use(
@@ -89,7 +175,7 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const config = error.config;
+    const config = error?.config;
     
     // Debug: Log error details
     console.error(`API Error: ${error.response?.status || 'Network'} for ${config?.url}`);

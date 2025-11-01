@@ -89,9 +89,10 @@ describe('StoryCard Component', () => {
       const skeleton = document.querySelector('.chakra-skeleton')
       expect(skeleton).toBeInTheDocument()
       
-      // Test that the image loading state is properly initialized
-      // The actual image loading behavior is tested in integration tests
-      expect(image).toHaveAttribute('src', 'https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image')
+      // Test that the image has a src attribute (optimized URL will be generated)
+      // The component uses getOptimizedImageUrlBySize which may add query parameters
+      expect(image).toHaveAttribute('src')
+      expect(image.getAttribute('src')).toContain('example.com/test-image.jpg')
     })
 
     it('handles image error with fallback', async () => {
@@ -103,8 +104,9 @@ describe('StoryCard Component', () => {
       fireEvent.error(image)
       
       await waitFor(() => {
-        expect(image.src).toContain('placeholder.com')
-      })
+        // The component now uses unsplash images as fallback, not placeholder.com
+        expect(image.src).toContain('unsplash.com')
+      }, { timeout: 3000 })
     })
 
     it('formats date correctly', () => {

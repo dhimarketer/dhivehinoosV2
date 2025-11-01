@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ChakraProvider, Spinner, Box } from '@chakra-ui/react';
 import { HelmetProvider } from 'react-helmet-async';
@@ -9,18 +9,12 @@ import { trackPageView } from './utils/analytics';
 import { AuthProvider, ProtectedRoute } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Import routes directly first to ensure React is loaded, then we can enable lazy loading later
-// Temporarily disable lazy loading to fix React undefined error
-import HomePage from './pages/HomePage';
-import ArticlePage from './pages/ArticlePage';
-import ContactPage from './pages/ContactPage';
-import SettingsPage from './pages/admin/SettingsPage';
-
-// TODO: Re-enable lazy loading once React chunking issue is resolved
-// const HomePage = lazy(() => import('./pages/HomePage'));
-// const ArticlePage = lazy(() => import('./pages/ArticlePage'));
-// const ContactPage = lazy(() => import('./pages/ContactPage'));
-// const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
+// Enable lazy loading for route-based code splitting
+// This will significantly reduce initial bundle size
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ArticlePage = lazy(() => import('./pages/ArticlePage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -43,19 +37,21 @@ function AppContent() {
   return (
     <>
       <GoogleAnalytics trackingId={settings.google_analytics_id} />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/article/:slug" element={<ArticlePage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        
-        {/* Admin Routes - Only Settings Page Remains */}
-        <Route path="/admin/settings" element={
-          <ProtectedRoute>
-            <SettingsPage />
-          </ProtectedRoute>
-        } />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/article/:slug" element={<ArticlePage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
+          {/* Admin Routes - Only Settings Page Remains */}
+          <Route path="/admin/settings" element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </Suspense>
     </>
   );
 }

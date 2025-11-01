@@ -5,14 +5,28 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Preconnect to external domains for faster resource loading -->
+    <!-- Critical CSS - inline to prevent render blocking -->
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background-color:#f8f9fa;color:#333}
+      #root{min-height:100vh}
+      img{max-width:100%;height:auto}
+      a{color:inherit;text-decoration:none}
+    </style>
+    
+    <!-- Preconnect to critical origins for faster resource loading -->
+    <link rel="preconnect" href="https://dhivehinoos.net" crossorigin />
+    <link rel="preconnect" href="https://v3b.fal.media" crossorigin />
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     
-    <!-- Preload Inter font with font-display swap for better perceived performance -->
+    <!-- Preload Inter font with font-display swap - load asynchronously -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
+    
+    <!-- Note: Vite will inject CSS automatically. Critical CSS is inlined above to prevent render blocking. -->
     
     <title>frontend</title>
   </head>

@@ -30,17 +30,17 @@ import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
 import NewsletterSubscription from '../components/NewsletterSubscription';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { getOptimizedImageUrlBySize } from '../utils/imageOptimization';
 
 const HomePage = () => {
   const { settings } = useSiteSettings();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const selectedCategory = searchParams.get('category');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Separate state for input field
-  const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -61,7 +61,7 @@ const HomePage = () => {
         currentPage: 1 
       }));
     }
-  }, [settings.story_cards_rows, settings.story_cards_columns]);
+  }, [settings.story_cards_rows, settings.story_cards_columns, pagination.pageSize]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -129,24 +129,20 @@ const HomePage = () => {
     setSearchResults([]);
   };
 
-  // Preload images to improve first-visit experience
+  // Preload images to improve first-visit experience - use optimized URLs
   const preloadImages = (articles) => {
-    const imageUrls = [];
-    
-    // Collect article image URLs
-    articles.forEach(article => {
-      if (article.image_url) {
-        imageUrls.push(article.image_url);
-      }
-    });
-    
-    // Preload images
-    imageUrls.forEach(url => {
+    // Only preload the first featured image (above the fold)
+    // Other images should lazy load naturally
+    if (articles && articles.length > 0 && articles[0].image_url) {
+      const firstArticle = articles[0];
+      // Use optimized URL for preload to avoid duplicate requests
+      const optimizedUrl = getOptimizedImageUrlBySize(firstArticle.image_url, 1200, 675);
+      
       const img = new Image();
-      img.src = url;
-      img.onload = () => console.log('Preloaded image:', url);
-      img.onerror = () => console.log('Failed to preload image:', url);
-    });
+      img.src = optimizedUrl;
+      img.fetchPriority = 'high';
+    }
+    // Don't preload all images - let lazy loading handle the rest
   };
 
   // Pagination handlers
@@ -270,7 +266,7 @@ const HomePage = () => {
                 maxW="1200px"
                 mx="auto"
               >
-                {searchResults.map((article, index) => (
+                {searchResults.map((article) => (
                   <StoryCard key={article.id} article={article} variant="default" />
                 ))}
               </Grid>
@@ -322,7 +318,7 @@ const HomePage = () => {
                 maxW="1200px"
                 mx="auto"
               >
-                {articles.slice(1, (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3) + 1).map((article, index) => (
+                {articles.slice(1, (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3) + 1).map((article) => (
                   <StoryCard key={article.id} article={article} variant="default" />
                 ))}
               </Grid>

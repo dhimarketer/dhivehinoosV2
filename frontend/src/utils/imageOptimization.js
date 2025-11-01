@@ -3,15 +3,77 @@
  */
 
 /**
+ * Generate optimized image URL with size parameters
+ * Attempts to use URL parameters or path manipulation for common CDNs
+ * @param {string} imageUrl - Base image URL
+ * @param {number} width - Desired width
+ * @param {number} height - Desired height (optional)
+ * @returns {string} - Optimized image URL
+ */
+export const getOptimizedImageUrlBySize = (imageUrl, width, height = null) => {
+  if (!imageUrl) return imageUrl;
+  
+  // If it's a fal.media URL, try to use their image transformation API if available
+  // Common patterns: ?w=width, ?width=width, or path-based like /widthxheight/
+  if (imageUrl.includes('fal.media')) {
+    try {
+      // Try adding width parameter - common pattern for image CDNs
+      const url = new URL(imageUrl);
+      url.searchParams.set('w', width.toString());
+      if (height) {
+        url.searchParams.set('h', height.toString());
+        url.searchParams.set('fit', 'cover'); // Common fit parameter
+      }
+      url.searchParams.set('q', '85'); // Quality setting
+      return url.toString();
+    } catch (e) {
+      // If URL parsing fails (e.g., relative URL), return original
+      console.warn('Failed to optimize image URL:', imageUrl, e);
+      return imageUrl;
+    }
+  }
+  
+  // For other URLs, return as-is (backend should handle optimization)
+  return imageUrl;
+};
+
+/**
  * Generate responsive image srcset for different screen sizes
  * @param {string} imageUrl - Base image URL
- * @param {Object} sizes - Object with size options (optional)
+ * @param {Object} sizes - Object with size options
  * @returns {string} - srcset string
  */
 export const generateSrcSet = (imageUrl, sizes = {}) => {
-  // For now, return the original URL
-  // In the future, this could generate different sizes if backend supports it
-  return imageUrl;
+  if (!imageUrl) return '';
+  
+  // Define standard breakpoints for responsive images
+  const breakpoints = sizes.breakpoints || [400, 600, 800, 1200, 1600];
+  const aspectRatio = sizes.aspectRatio || 16/9;
+  
+  const srcsetParts = breakpoints.map(width => {
+    const height = Math.round(width / aspectRatio);
+    const optimizedUrl = getOptimizedImageUrlBySize(imageUrl, width, height);
+    return `${optimizedUrl} ${width}w`;
+  });
+  
+  return srcsetParts.join(', ');
+};
+
+/**
+ * Generate sizes attribute for responsive images
+ * @param {Object} sizes - Size configuration
+ * @returns {string} - sizes attribute string
+ */
+export const generateSizes = (sizes = {}) => {
+  // Default responsive sizes
+  if (sizes.featured) {
+    return '(max-width: 768px) 100vw, (max-width: 1024px) 800px, 1200px';
+  }
+  if (sizes.compact) {
+    return '120px';
+  }
+  // Default card sizes
+  return '(max-width: 768px) 100vw, (max-width: 1024px) 350px, 400px';
 };
 
 /**

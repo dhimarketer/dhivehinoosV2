@@ -1,8 +1,3 @@
-# Optimized Apache configuration for dhivehinoos.net
-# Replace the existing dhivehinoos.conf on your Linode server with this version
-# Make sure mod_deflate and mod_headers are enabled: a2enmod deflate headers
-
-# HTTPS VirtualHost - Primary configuration
 <VirtualHost *:443>
     ServerName dhivehinoos.net
     ServerAlias www.dhivehinoos.net
@@ -42,6 +37,12 @@
         FileETag None
     </LocationMatch>
     
+    # CRITICAL: Handle robots.txt and sitemap.xml BEFORE any ProxyPass rules
+    # Use RewriteRule to catch these early and proxy directly to backend
+    RewriteEngine On
+    RewriteRule ^/robots\.txt$ http://127.0.0.1:8052/robots.txt [P,L]
+    RewriteRule ^/sitemap\.xml$ http://127.0.0.1:8052/sitemap.xml [P,L]
+    
     # Backend API routes
     ProxyPass /api/ http://127.0.0.1:8052/api/
     ProxyPassReverse /api/ http://127.0.0.1:8052/api/
@@ -49,12 +50,6 @@
     # Django Admin
     ProxyPass /admin/ http://127.0.0.1:8052/admin/
     ProxyPassReverse /admin/ http://127.0.0.1:8052/admin/
-    
-    # robots.txt and sitemap.xml - proxy to backend
-    ProxyPass /robots.txt http://127.0.0.1:8052/robots.txt
-    ProxyPassReverse /robots.txt http://127.0.0.1:8052/robots.txt
-    ProxyPass /sitemap.xml http://127.0.0.1:8052/sitemap.xml
-    ProxyPassReverse /sitemap.xml http://127.0.0.1:8052/sitemap.xml
     
     # Frontend (catch-all for React app) - EXCLUDE media, api, admin, robots.txt, sitemap.xml
     ProxyPassMatch ^/(?!media|api|admin|robots\.txt|sitemap\.xml)(.*)$ http://127.0.0.1:8053/$1
@@ -90,36 +85,5 @@
     # Logging
     ErrorLog ${APACHE_LOG_DIR}/dhivehinoos_ssl_error.log
     CustomLog ${APACHE_LOG_DIR}/dhivehinoos_ssl_access.log combined
-</VirtualHost>
-
-# HTTP VirtualHost - Redirects to HTTPS
-<VirtualHost *:80>
-    ServerName dhivehinoos.net
-    ServerAlias www.dhivehinoos.net
-    
-    ProxyPreserveHost On
-    ProxyRequests Off
-    
-    # Enable gzip compression even for redirects
-    <Location />
-        SetOutputFilter DEFLATE
-        SetEnvIfNoCase Request_URI \
-            \.(?:gif|jpe?g|png|webp|avif|ico|svg|woff|woff2|ttf|eot)$ no-gzip dont-vary
-        AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
-    </Location>
-    
-    # Security headers
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set X-Frame-Options "SAMEORIGIN"
-    
-    # Logging
-    ErrorLog ${APACHE_LOG_DIR}/dhivehinoos_error.log
-    CustomLog ${APACHE_LOG_DIR}/dhivehinoos_access.log combined
-    
-    # Redirect all HTTP traffic to HTTPS
-    RewriteEngine on
-    RewriteCond %{SERVER_NAME} =www.dhivehinoos.net [OR]
-    RewriteCond %{SERVER_NAME} =dhivehinoos.net
-    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
 </VirtualHost>
 

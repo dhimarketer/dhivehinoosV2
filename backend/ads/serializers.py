@@ -53,14 +53,33 @@ class AdSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
     
     def get_image_url(self, obj):
-        """Return the full image URL"""
+        """Return the full image URL, ensuring HTTPS in production"""
+        from django.conf import settings
+        
+        # Helper function to ensure HTTPS URLs in production
+        def ensure_https_url(url):
+            if not url:
+                return url
+            # If it's already an external HTTPS URL, return as-is
+            if url.startswith('https://'):
+                return url
+            # If it's HTTP, convert to HTTPS in production
+            if url.startswith('http://'):
+                return url.replace('http://', 'https://') if not settings.DEBUG else url
+            # If it's a relative URL, construct absolute URL with HTTPS in production
+            if url.startswith('/'):
+                protocol = 'https' if not settings.DEBUG else 'http'
+                return f"{protocol}://dhivehinoos.net{url}"
+            return url
+        
         if obj.image:
-            return obj.image
+            return ensure_https_url(obj.image)
         elif obj.image_file:
             request = self.context.get('request')
             if request:
                 try:
-                    return request.build_absolute_uri(obj.image_file.url)
+                    url = request.build_absolute_uri(obj.image_file.url)
+                    return ensure_https_url(url)
                 except Exception:
                     # Fallback if build_absolute_uri fails
                     return f"https://dhivehinoos.net{obj.image_file.url}"

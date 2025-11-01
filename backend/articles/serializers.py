@@ -35,9 +35,27 @@ class ArticleListSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Always prioritize the original API image URL first, then fallback to other sources"""
+        from django.conf import settings
+        
+        # Helper function to ensure HTTPS URLs in production
+        def ensure_https_url(url):
+            if not url:
+                return url
+            # If it's already an external HTTPS URL, return as-is
+            if url.startswith('https://'):
+                return url
+            # If it's HTTP, convert to HTTPS in production
+            if url.startswith('http://'):
+                return url.replace('http://', 'https://') if not settings.DEBUG else url
+            # If it's a relative URL, construct absolute URL with HTTPS in production
+            if url.startswith('/'):
+                protocol = 'https' if not settings.DEBUG else 'http'
+                return f"{protocol}://dhivehinoos.net{url}"
+            return url
+        
         # ALWAYS prioritize the original API image first
         if obj.image and not obj.image.startswith('https://via.placeholder.com'):
-            return obj.image
+            return ensure_https_url(obj.image)
         
         # If there's an image_file (from upload), use it as fallback
         if obj.image_file:
@@ -46,9 +64,9 @@ class ArticleListSerializer(serializers.ModelSerializer):
                 if obj.image_file.name and obj.image_file.storage.exists(obj.image_file.name):
                     request = self.context.get('request')
                     if request:
-                        return request.build_absolute_uri(obj.image_file.url)
+                        url = request.build_absolute_uri(obj.image_file.url)
+                        return ensure_https_url(url)
                     else:
-                        from django.conf import settings
                         protocol = 'https' if not settings.DEBUG else 'http'
                         return f"{protocol}://dhivehinoos.net{obj.image_file.url}"
                 else:
@@ -63,9 +81,9 @@ class ArticleListSerializer(serializers.ModelSerializer):
                 if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
                     request = self.context.get('request')
                     if request:
-                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                        url = request.build_absolute_uri(obj.reused_image.image_file.url)
+                        return ensure_https_url(url)
                     else:
-                        from django.conf import settings
                         protocol = 'https' if not settings.DEBUG else 'http'
                         return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
                 else:
@@ -324,9 +342,27 @@ class ArticleSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Always return the original API image URL first, then fallback to other sources"""
+        from django.conf import settings
+        
+        # Helper function to ensure HTTPS URLs in production
+        def ensure_https_url(url):
+            if not url:
+                return url
+            # If it's already an external HTTPS URL, return as-is
+            if url.startswith('https://'):
+                return url
+            # If it's HTTP, convert to HTTPS in production
+            if url.startswith('http://'):
+                return url.replace('http://', 'https://') if not settings.DEBUG else url
+            # If it's a relative URL, construct absolute URL with HTTPS in production
+            if url.startswith('/'):
+                protocol = 'https' if not settings.DEBUG else 'http'
+                return f"{protocol}://dhivehinoos.net{url}"
+            return url
+        
         # Always prioritize the original API image
         if obj.image and not obj.image.startswith('https://via.placeholder.com'):
-            return obj.image
+            return ensure_https_url(obj.image)
         
         # If there's an image_file (from upload), use it as fallback
         if obj.image_file:
@@ -335,9 +371,9 @@ class ArticleSerializer(serializers.ModelSerializer):
                 if obj.image_file.name and obj.image_file.storage.exists(obj.image_file.name):
                     request = self.context.get('request')
                     if request:
-                        return request.build_absolute_uri(obj.image_file.url)
+                        url = request.build_absolute_uri(obj.image_file.url)
+                        return ensure_https_url(url)
                     else:
-                        from django.conf import settings
                         protocol = 'https' if not settings.DEBUG else 'http'
                         return f"{protocol}://dhivehinoos.net{obj.image_file.url}"
                 else:

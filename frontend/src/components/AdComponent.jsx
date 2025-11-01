@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Image, Link, Spinner, Text } from '@chakra-ui/react';
 import { adsAPI } from '../services/api';
 import { trackAdClick } from '../utils/analytics';
+import { getOptimizedImageUrlBySize } from '../utils/imageOptimization';
 
 const AdComponent = ({ placement, maxAds = 1 }) => {
   const [ads, setAds] = useState([]);
@@ -24,7 +25,8 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
       try {
         setLoading(true);
         setError(null); // Clear previous errors
-        const params = placement ? { placement, t: Date.now() } : { t: Date.now() };
+        // Remove timestamp to enable caching - cache will handle TTL
+        const params = placement ? { placement } : {};
         const response = await adsAPI.getActive(params);
         const adsData = response.data.results || response.data;
         
@@ -99,7 +101,8 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
             >
               {ad.image_url ? (
                 <Image
-                  src={ad.image_url}
+                  as="img"
+                  src={getOptimizedImageUrlBySize(ad.image_url, 900, 250)}
                   alt={ad.title}
                   maxW="100%"
                   h="auto"
@@ -107,6 +110,10 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
                   _hover={{ opacity: 0.9 }}
                   mx="auto"
                   display="block"
+                  loading="lazy"
+                  decoding="async"
+                  width="900"
+                  height="250"
                 />
               ) : (
                 <Box
@@ -131,13 +138,18 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
             <Box>
               {ad.image_url ? (
                 <Image
-                  src={ad.image_url}
+                  as="img"
+                  src={getOptimizedImageUrlBySize(ad.image_url, 300, 250)}
                   alt={ad.title}
                   maxW="100%"
                   h="auto"
                   borderRadius="md"
                   mx="auto"
                   display="block"
+                  loading="lazy"
+                  decoding="async"
+                  width="300"
+                  height="250"
                 />
               ) : (
                 <Box
