@@ -15,6 +15,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'require_comment_approval',
             'story_cards_rows',
             'story_cards_columns',
+            'default_pagination_size',
             'google_analytics_id',
             'comment_webhook_url',
             'comment_webhook_enabled',
@@ -54,6 +55,12 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
         """Validate story cards columns"""
         if value < 1 or value > 6:
             raise serializers.ValidationError("Number of columns must be between 1 and 6")
+        return value
+    
+    def validate_default_pagination_size(self, value):
+        """Validate default pagination size"""
+        if value < 5 or value > 100:
+            raise serializers.ValidationError("Default pagination size must be between 5 and 100")
         return value
     
     def validate_comment_webhook_url(self, value):

@@ -81,7 +81,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
         className="news-card featured-article"
         borderRadius="lg"
         shadow="md"
-        transition="all 0.3s ease"
+        transition="box-shadow 0.2s ease, transform 0.2s ease"
+        willChange="transform"
         _hover={{
           shadow: hoverShadow,
           transform: 'translateY(-2px)',
@@ -116,9 +117,15 @@ const StoryCard = ({ article, variant = 'default' }) => {
         </CardHeader>
         <CardBody flex="1" display="flex" flexDirection="column">
           {article.image_url && (
-            <Box position="relative" mb={3} w="100%" borderRadius="md" overflow="hidden">
-              {/* Maintain 16:9 aspect ratio for featured images */}
-              <Box paddingTop={{ base: "56.25%", md: "37.5%" }} />
+            <Box 
+              position="relative" 
+              mb={3} 
+              w="100%" 
+              borderRadius="md" 
+              overflow="hidden"
+              aspectRatio={{ base: "16/9", md: "16/9" }}
+              minH={{ base: "200px", md: "450px" }}
+            >
               {imageLoading && (
                 <Skeleton
                   position="absolute"
@@ -197,7 +204,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
         borderRadius="lg"
         overflow="hidden"
         shadow="sm"
-        transition="all 0.3s ease"
+        transition="box-shadow 0.2s ease, transform 0.2s ease"
+        willChange="transform"
         _hover={{
           shadow: hoverShadow,
           transform: 'translateY(-1px)',
@@ -293,7 +301,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
       className="news-card"
       borderRadius="lg"
       shadow="sm"
-      transition="all 0.3s ease"
+      transition="box-shadow 0.2s ease, transform 0.2s ease"
+      willChange="transform"
       _hover={{
         shadow: hoverShadow,
         transform: 'translateY(-2px)',
@@ -326,9 +335,15 @@ const StoryCard = ({ article, variant = 'default' }) => {
       </CardHeader>
       <CardBody flex="1" display="flex" flexDirection="column">
         {article.image_url && (
-          <Box position="relative" mb={3} w="100%" borderRadius="md" overflow="hidden">
-            {/* Maintain 16:9 aspect ratio for standard cards */}
-            <Box paddingTop={{ base: "57%", md: "57%" }} />
+          <Box 
+            position="relative" 
+            mb={3} 
+            w="100%" 
+            borderRadius="md" 
+            overflow="hidden"
+            aspectRatio="16/9"
+            minH="200px"
+          >
             {imageLoading && (
               <Skeleton
                 position="absolute"

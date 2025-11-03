@@ -24,7 +24,7 @@ export const getOptimizedImageUrlBySize = (imageUrl, width, height = null) => {
         url.searchParams.set('h', height.toString());
         url.searchParams.set('fit', 'cover'); // Common fit parameter
       }
-      url.searchParams.set('q', '85'); // Quality setting
+      url.searchParams.set('q', '75'); // Quality setting - reduced for better performance
       return url.toString();
     } catch (e) {
       // If URL parsing fails (e.g., relative URL), return original

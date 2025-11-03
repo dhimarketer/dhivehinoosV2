@@ -8,30 +8,62 @@ node_modules/
 dist/
 build/
 
-# Environment files
+# Environment files - ALL environment files must be excluded
 .env
+.env.*
 .env.local
+.env.production
+.env.development
+.env.test
 .env.*.local
 
+# Cookies and session files
+cookies.txt
+test_cookies.txt
+*.cookie
+
 # Development files
-.vscode
-.idea
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
 
 # Test files
 coverage/
 .nyc_output/
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+test/
+tests/
+__tests__/
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Temporary files
 *.tmp
 *.temp
+.cache/
 
-# Cookies
-cookies.txt
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in image)
+*.md
+!README.md
+docs/
+
+# IDE and editor files
+.editorconfig
+.eslintcache
+.DS_Store
+Thumbs.db

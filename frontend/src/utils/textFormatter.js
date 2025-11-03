@@ -65,6 +65,27 @@ export const formatTextToHTML = (text) => {
   // Handle links: [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
+  // Wrap paragraphs in source fragments section with subscript styling
+  // This handles paragraphs that start with "source fragments" or any content after that marker
+  if (html.toLowerCase().includes('source fragment')) {
+    html = html.replace(/<p>([^<]*source fragments?[^<]*)<\/p>/i, '<p class="source-fragments-header">$1</p>');
+    // Wrap remaining content after source fragments header in subscript
+    const fragmentsIndex = html.toLowerCase().indexOf('source fragments');
+    if (fragmentsIndex !== -1) {
+      // Find all paragraphs after the source fragments marker
+      const beforeFragments = html.substring(0, fragmentsIndex);
+      const fragmentsSection = html.substring(fragmentsIndex);
+      
+      // Wrap each paragraph content in subscript tags (but keep the paragraph structure)
+      const wrappedFragments = fragmentsSection.replace(
+        /<p>(.*?)<\/p>/g, 
+        '<p><sub>$1</sub></p>'
+      );
+      
+      html = beforeFragments + wrappedFragments;
+    }
+  }
+
   // Clean up any remaining empty paragraphs
   html = html.replace(/<p>\s*<\/p>/g, '');
 

@@ -24,13 +24,16 @@ import {
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
-import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
-import NewsletterSubscription from '../components/NewsletterSubscription';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { getOptimizedImageUrlBySize } from '../utils/imageOptimization';
+
+// Lazy load components that aren't immediately visible or below the fold
+const AdComponent = lazy(() => import('../components/AdComponent'));
+const NewsletterSubscription = lazy(() => import('../components/NewsletterSubscription'));
 
 const HomePage = () => {
   const { settings } = useSiteSettings();
@@ -42,41 +45,36 @@ const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Separate state for input field
   const [searchResults, setSearchResults] = useState([]);
-  // Initialize with default pageSize to prevent duplicate calls
-  // Will be updated when settings load, but default prevents unnecessary initial fetch
-  const defaultPageSize = 9; // Default to 9 (3x3) until settings load
+  // Simplified pagination - use default from settings, but user can override
   const [pagination, setPagination] = useState({
     currentPage: 1,
-    pageSize: defaultPageSize,
+    pageSize: 10, // Initial default, will be updated from settings
     totalPages: 1,
     totalCount: 0,
     hasNext: false,
     hasPrevious: false
   });
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const initialFetchDone = useRef(false);
+  const settingsInitialized = useRef(false);
+  
+  // Helper function to round page size to be divisible by columns
+  const roundToColumnMultiple = (size, columns) => {
+    if (!columns || columns < 1) return size;
+    return Math.max(columns, Math.floor(size / columns) * columns);
+  };
 
-  // Update page size when settings change - only once when settings first load
+  // Set default pageSize from settings once when settings first load
+  // Round it to be divisible by columns
   useEffect(() => {
-    // Only update once when settings first load to prevent duplicate API calls
-    if (!settingsLoaded && settings.story_cards_rows && settings.story_cards_columns) {
-      const newPageSize = settings.story_cards_rows * settings.story_cards_columns;
-      setSettingsLoaded(true);
-      
-      // Only update pageSize if it's different AND we haven't done initial fetch yet
-      // This prevents unnecessary refetch when settings load after initial data fetch
-      if (newPageSize > 0 && newPageSize !== defaultPageSize && !initialFetchDone.current) {
-        setPagination(prev => ({ 
-          ...prev, 
-          pageSize: newPageSize,
-          currentPage: 1
-        }));
-      } else if (initialFetchDone.current && newPageSize !== defaultPageSize) {
-        // Settings changed after initial load - update silently for next pagination
-        setPagination(prev => ({ ...prev, pageSize: newPageSize }));
-      }
+    if (!settingsInitialized.current && settings.default_pagination_size) {
+      const columns = settings.story_cards_columns || 3;
+      const roundedSize = roundToColumnMultiple(settings.default_pagination_size, columns);
+      setPagination(prev => ({ 
+        ...prev, 
+        pageSize: roundedSize 
+      }));
+      settingsInitialized.current = true;
     }
-  }, [settings.story_cards_rows, settings.story_cards_columns, settingsLoaded]);
+  }, [settings.default_pagination_size, settings.story_cards_columns]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -97,11 +95,11 @@ const HomePage = () => {
           setSearchResults([]); // Clear search results when not searching
         }
         
-        // Update pagination info
+        // Update pagination info - keep user's pageSize selection, don't override from API
         setPagination(prev => ({
           ...prev,
           currentPage: articlesResponse.data.current_page || prev.currentPage,
-          pageSize: articlesResponse.data.page_size || prev.pageSize,
+          // Don't override pageSize - respect user's selection
           totalPages: articlesResponse.data.total_pages || 1,
           totalCount: articlesResponse.data.count || 0,
           hasNext: articlesResponse.data.next !== null,
@@ -113,9 +111,6 @@ const HomePage = () => {
           (articlesResponse.data.results || articlesResponse.data) : 
           (articlesResponse.data.results || articlesResponse.data);
         preloadImages(articlesToPreload);
-        
-        // Mark initial fetch as done
-        initialFetchDone.current = true;
       } catch (err) {
         setError('Failed to load articles');
         console.error('Error fetching data:', err);
@@ -176,8 +171,19 @@ const HomePage = () => {
   };
 
   const handlePageSizeChange = (newPageSize) => {
-    setPagination(prev => ({ ...prev, pageSize: newPageSize, currentPage: 1 }));
+    const columns = settings.story_cards_columns || 3;
+    const roundedSize = roundToColumnMultiple(newPageSize, columns);
+    setPagination(prev => ({ ...prev, pageSize: roundedSize, currentPage: 1 }));
   };
+  
+  // Adjust pageSize when columns change to ensure it's divisible by columns
+  useEffect(() => {
+    const columns = settings.story_cards_columns || 3;
+    if (pagination.pageSize % columns !== 0) {
+      const roundedSize = roundToColumnMultiple(pagination.pageSize, columns);
+      setPagination(prev => ({ ...prev, pageSize: roundedSize }));
+    }
+  }, [settings.story_cards_columns]);
 
   // Ad rendering functionality temporarily disabled for deployment
 
@@ -255,7 +261,9 @@ const HomePage = () => {
       <Container maxW="container.xl" py={{ base: 4, md: 8 }}>
         {/* Top Banner Ad */}
         <Box mb={{ base: 4, md: 6 }}>
-          <AdComponent placement="top_banner" maxAds={1} />
+          <Suspense fallback={null}>
+            <AdComponent placement="top_banner" maxAds={1} />
+          </Suspense>
         </Box>
 
 
@@ -343,7 +351,8 @@ const HomePage = () => {
                 maxW="1200px"
                 mx="auto"
               >
-                {articles.slice(1, (settings.story_cards_rows || 3) * (settings.story_cards_columns || 3) + 1).map((article) => (
+                {/* Show all articles from paginated results (skip first one which is featured) */}
+                {articles.slice(1).map((article) => (
                   <StoryCard key={article.id} article={article} variant="default" />
                 ))}
               </Grid>
@@ -368,7 +377,9 @@ const HomePage = () => {
         {/* Newsletter Subscription Section */}
         {!searchQuery.trim() && (
           <Box mb={8}>
-            <NewsletterSubscription variant="inline" showTitle={true} />
+            <Suspense fallback={null}>
+              <NewsletterSubscription variant="inline" showTitle={true} />
+            </Suspense>
           </Box>
         )}
 
@@ -390,10 +401,25 @@ const HomePage = () => {
                     minWidth: '60px'
                   }}
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
+                  {(() => {
+                    const columns = settings.story_cards_columns || 3;
+                    // Generate options that are multiples of columns
+                    // For 3 columns: 3, 6, 9, 12, 15, 18, 21, 24
+                    // For 4 columns: 4, 8, 12, 16, 20, 24, 28, 32
+                    const options = [];
+                    const maxOptions = 8; // Show up to 8 options
+                    for (let i = 1; i <= maxOptions; i++) {
+                      const value = columns * i;
+                      if (value <= 100) { // Cap at 100
+                        options.push(
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        );
+                      }
+                    }
+                    return options;
+                  })()}
                 </select>
                 <Text fontSize="sm" color="gray.600">per page</Text>
               </HStack>
@@ -462,7 +488,9 @@ const HomePage = () => {
 
         {/* Sidebar Ad */}
         <Box mt={{ base: 6, md: 8 }} textAlign="center">
-          <AdComponent placement="sidebar" maxAds={2} />
+          <Suspense fallback={null}>
+            <AdComponent placement="sidebar" maxAds={2} />
+          </Suspense>
         </Box>
 
         {/* Sidebar-style compact articles for additional content */}
@@ -486,7 +514,9 @@ const HomePage = () => {
 
         {/* Bottom Banner Ad */}
         <Box mt={{ base: 8, md: 12 }} textAlign="center">
-          <AdComponent placement="bottom_banner" maxAds={1} />
+          <Suspense fallback={null}>
+            <AdComponent placement="bottom_banner" maxAds={1} />
+          </Suspense>
         </Box>
       </Container>
     </>

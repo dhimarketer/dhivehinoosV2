@@ -55,6 +55,12 @@ class SiteSettings(models.Model):
         help_text="Number of columns to display story cards (1-6)"
     )
     
+    # Pagination settings
+    default_pagination_size = models.PositiveIntegerField(
+        default=10,
+        help_text="Default number of articles to display per page (5-100)"
+    )
+    
     # Analytics settings
     google_analytics_id = models.CharField(
         max_length=50,
@@ -91,12 +97,15 @@ class SiteSettings(models.Model):
         verbose_name_plural = 'Site Settings'
     
     def clean(self):
-        """Validate story card layout settings"""
+        """Validate story card layout settings and pagination"""
         if self.story_cards_rows < 1 or self.story_cards_rows > 10:
             raise ValidationError({'story_cards_rows': 'Number of rows must be between 1 and 10'})
         
         if self.story_cards_columns < 1 or self.story_cards_columns > 6:
             raise ValidationError({'story_cards_columns': 'Number of columns must be between 1 and 6'})
+        
+        if self.default_pagination_size < 5 or self.default_pagination_size > 100:
+            raise ValidationError({'default_pagination_size': 'Default pagination size must be between 5 and 100'})
     
     def __str__(self):
         return f'Site Settings (Updated: {self.updated_at.strftime("%Y-%m-%d %H:%M")})'
@@ -112,6 +121,7 @@ class SiteSettings(models.Model):
             'site_description': 'Authentic Maldivian Dhivehi Twitter thoughts and cultural insights for the Maldivian diaspora worldwide. Connect with your roots through curated Dhivehi content.',
             'allow_comments': True,
             'require_comment_approval': True,
+            'default_pagination_size': 10,
         }
         )
         return settings

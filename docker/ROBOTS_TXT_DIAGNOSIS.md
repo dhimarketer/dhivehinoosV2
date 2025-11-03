@@ -35,3 +35,4 @@ Apache processes directives in a specific order. Alias should work, but maybe Pr
 3. Test with a simple file to verify Alias works at all
 4. Check if the file actually exists where we think it does
 
+

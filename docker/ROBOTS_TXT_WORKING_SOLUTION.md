@@ -60,3 +60,4 @@ RewriteCond /opt/dhivehinoos/media/robots.txt -f
 RewriteRule ^/robots\.txt$ /media/robots.txt [L]
 ```
 
+

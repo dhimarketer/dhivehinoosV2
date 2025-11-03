@@ -98,6 +98,7 @@ def public_settings_view(request):
         'google_analytics_id': settings.google_analytics_id,
         'story_cards_rows': settings.story_cards_rows,
         'story_cards_columns': settings.story_cards_columns,
+        'default_pagination_size': settings.default_pagination_size,
     }
     
     # Cache for 5 minutes

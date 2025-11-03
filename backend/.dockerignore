@@ -1,18 +1,20 @@
 # Backend Docker ignore
 # These files won't be copied into the backend Docker image
 
-# Database files
+# Database files - NEVER include databases
 *.db
 *.sqlite
 *.sqlite3
 database/
+*.sql
 
-# Media files (mounted as volumes)
+# Media files (mounted as volumes, not in image)
 media/
 
-# Logs
+# Logs - may contain sensitive information
 *.log
 logs/
+*.log.*
 
 # Python cache
 __pycache__/
@@ -21,27 +23,79 @@ __pycache__/
 *.so
 .Python
 .pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Virtual environment
+# Virtual environment - installed in container
 venv/
 env/
 ENV/
+.venv/
 
-# Environment files
+# Environment files - ALL environment files must be excluded
 .env
+.env.*
 .env.local
+.env.production
+.env.development
+.env.test
 .env.*.local
 
-# Development files
-.vscode
-.idea
-*.swp
-*.swo
-
-# Cookies and test files
+# Cookies and session files - may contain tokens/secrets
 cookies.txt
 test_cookies.txt
+*.cookie
+*.session
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+*.test.py
+test_*.py
+*_test.py
+tests/
+test/
+__tests__/
 
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.backup
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in image)
+*.md
+!README.md
+docs/
+
+# IDE and editor files
+.editorconfig
+.DS_Store
+Thumbs.db
+
+# Secret files (extra safety)
+*secret*
+*password*
+*key*
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# Backup files
+*.bak
+*.backup
+*.old

@@ -37,18 +37,35 @@ const FormattedText = ({
     );
   }
 
+  // Check if content contains source fragments section
+  // Look for "source fragments" or "source fragment" (case insensitive)
+  const sourceFragmentsRegex = /(source fragments?)[\s\S]*$/i;
+  const fragmentsMatch = content.match(sourceFragmentsRegex);
+  
+  let mainContent = content;
+  let fragmentsContent = null;
+  
+  if (fragmentsMatch && fragmentsMatch.index !== undefined) {
+    // Split content at the start of source fragments
+    const fragmentsIndex = fragmentsMatch.index;
+    mainContent = content.substring(0, fragmentsIndex).trim();
+    // Get everything from "source fragments" to end, including the marker
+    fragmentsContent = content.substring(fragmentsIndex).trim();
+  }
+
   // Full formatting for article content
-  const formattedHTML = formatTextToHTML(content);
+  const formattedHTML = formatTextToHTML(mainContent);
 
   return (
-    <Box
-      dangerouslySetInnerHTML={{ __html: formattedHTML }}
-      sx={{
-        '& p': { 
-          mb: 4, 
-          lineHeight: '1.6',
-          fontSize: 'md'
-        },
+    <>
+      <Box
+        dangerouslySetInnerHTML={{ __html: formattedHTML }}
+        sx={{
+          '& p': { 
+            mb: 4, 
+            lineHeight: '1.6',
+            fontSize: 'md'
+          },
         '& h1': { 
           mb: 4, 
           mt: 6, 
@@ -123,7 +140,55 @@ const FormattedText = ({
         }
       }}
       {...props}
-    />
+      />
+      {fragmentsContent && (
+        <Box
+          mt={8}
+          pt={6}
+          pb={4}
+          px={4}
+          borderTop="2px solid"
+          borderColor="gray.300"
+          bg="gray.50"
+          borderRadius="md"
+        >
+          <Box
+            dangerouslySetInnerHTML={{ 
+              __html: formatTextToHTML(fragmentsContent) 
+            }}
+            sx={{
+              '& p': {
+                mb: 3,
+                pl: 4,
+                borderLeft: '3px solid',
+                borderColor: 'gray.300',
+                fontStyle: 'italic',
+                fontSize: '0.7em',
+                lineHeight: '1.6',
+                color: 'gray.500',
+                '& sub': {
+                  fontStyle: 'italic !important',
+                  fontSize: '0.85em !important',
+                  verticalAlign: 'sub',
+                  lineHeight: '1.5'
+                }
+              },
+              '& p.source-fragments-header, & p:first-of-type': {
+                fontWeight: 'semibold',
+                fontSize: '0.65em',
+                textTransform: 'uppercase',
+                letterSpacing: 'wide',
+                color: 'gray.400',
+                mb: 4,
+                borderLeft: 'none',
+                pl: 0,
+                fontStyle: 'normal'
+              }
+            }}
+          />
+        </Box>
+      )}
+    </>
   );
 };
 

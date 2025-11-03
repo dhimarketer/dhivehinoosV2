@@ -19,14 +19,17 @@ import {
   SimpleGrid,
 } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet-async';
+import { lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { articlesAPI, commentsAPI, votesAPI } from '../services/api';
 import FormattedText from '../components/FormattedText';
-import AdComponent from '../components/AdComponent';
 import TopNavigation from '../components/TopNavigation';
-import SocialShare from '../components/SocialShare';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useImageSettings } from '../hooks/useImageSettings';
+
+// Lazy load components that aren't immediately visible
+const AdComponent = lazy(() => import('../components/AdComponent'));
+const SocialShare = lazy(() => import('../components/SocialShare'));
 
 const ArticlePage = () => {
   const { slug } = useParams();
@@ -250,7 +253,9 @@ const ArticlePage = () => {
       <Container maxW="container.lg" py={{ base: 4, md: 8 }}>
         <VStack spacing={{ base: 6, md: 8 }} align="stretch">
           {/* Article Header Ad */}
-          <AdComponent placement="article_header" maxAds={1} />
+          <Suspense fallback={null}>
+            <AdComponent placement="article_header" maxAds={1} />
+          </Suspense>
           
           {/* Article Header with Images */}
           <Card>
@@ -269,10 +274,14 @@ const ArticlePage = () => {
                           borderRadius={imageSettings.image_border_radius || 8} 
                           overflow="hidden"
                           boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
-                          transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
+                          transition={imageSettings.image_hover_effect ? 'transform 0.2s ease' : 'none'}
+                          willChange={imageSettings.image_hover_effect ? 'transform' : 'auto'}
                           _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
                         >
-                          <Box paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)} />
+                          <Box 
+                            paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)}
+                            aspectRatio={imageSettings.main_image_aspect_ratio || "16/9"}
+                          />
                           <ChakraImage
                             src={article.original_image_url || article.image_url || "https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"}
                             alt={`${article.title} - original image`}
@@ -286,6 +295,8 @@ const ArticlePage = () => {
                             loading="eager"
                             decoding="async"
                             fetchpriority="high"
+                            width="800"
+                            height="450"
                           />
                         </Box>
                         <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
@@ -305,7 +316,10 @@ const ArticlePage = () => {
                             transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
                             _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
                           >
-                            <Box paddingTop={getAspectRatioPadding(imageSettings.reuse_image_aspect_ratio)} />
+                            <Box 
+                              paddingTop={getAspectRatioPadding(imageSettings.reuse_image_aspect_ratio)}
+                              aspectRatio={imageSettings.reuse_image_aspect_ratio || "2/3"}
+                            />
                             <ChakraImage
                               src={article.reuse_images[0].image_url}
                               alt={`${article.title} - ${article.reuse_images[0].entity_name}`}
@@ -319,6 +333,8 @@ const ArticlePage = () => {
                               fallbackSrc="https://via.placeholder.com/400x600/cccccc/666666?text=Reuse+Image"
                               loading="lazy"
                               decoding="async"
+                              width="400"
+                              height="600"
                             />
                           </Box>
                           <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
@@ -389,7 +405,10 @@ const ArticlePage = () => {
                   _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
                   mb={4}
                 >
-                  <Box paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)} />
+                  <Box 
+                    paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)}
+                    aspectRatio={imageSettings.main_image_aspect_ratio || "16/9"}
+                  />
                   <ChakraImage
                     src={article.image_url || "https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"}
                     alt={article.title}
@@ -403,6 +422,8 @@ const ArticlePage = () => {
                     loading="eager"
                     decoding="async"
                     fetchpriority="high"
+                    width="800"
+                    height="450"
                   />
                 </Box>
               )}
@@ -445,30 +466,14 @@ const ArticlePage = () => {
                 )}
               </HStack>
 
-              {/* Article Content */}
+              {/* Article Content - fragments are handled within FormattedText */}
               <FormattedText content={article.content} />
-              
-              {/* Source Fragments - Displayed as italics for context */}
-              {article.source_fragments && (
-                <Box mt={6} pt={6} borderTop="1px solid" borderColor="gray.200">
-                  <Heading size="sm" mb={3} color="gray.600">
-                    Source Fragments
-                  </Heading>
-                  <Box fontStyle="italic" color="gray.600" fontSize="md" lineHeight="1.7">
-                    {article.source_fragments.split('\n').map((line, index) => 
-                      line.trim() ? (
-                        <Text key={index} mb={3}>
-                          {line.trim()}
-                        </Text>
-                      ) : null
-                    )}
-                  </Box>
-                </Box>
-              )}
               
               {/* Social Sharing */}
               <Box mt={6} p={4} bg="gray.50" borderRadius="md">
-                <SocialShare article={article} />
+                <Suspense fallback={null}>
+                  <SocialShare article={article} />
+                </Suspense>
               </Box>
               
               {/* Back to Home Link */}
@@ -544,7 +549,9 @@ const ArticlePage = () => {
           )}
 
           {/* Article Footer Ad */}
-          <AdComponent placement="article_footer" maxAds={1} />
+          <Suspense fallback={null}>
+            <AdComponent placement="article_footer" maxAds={1} />
+          </Suspense>
         </VStack>
       </Container>
     </>

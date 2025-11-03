@@ -30,8 +30,8 @@ const pendingRequests = new Map();
 const getRequestKey = (method, url, params) => {
   // If params exist and URL doesn't have query string, include params in key
   // Otherwise, use the full URL as-is (params might be in URL already)
-  const urlObj = url.includes('?') ? new URL(url) : null;
-  if (urlObj) {
+  // Check if URL has query params - just check string, don't parse URL constructor
+  if (url && url.includes('?')) {
     // URL already has params - use full URL as key
     return `${method}:${url}`;
   }
@@ -43,7 +43,16 @@ const getRequestKey = (method, url, params) => {
 // Intercept axios calls at a lower level for caching
 const originalGet = api.get.bind(api);
 api.get = function(url, config = {}) {
-  const fullUrl = (url || '').includes('http') ? url : (this.defaults.baseURL + url);
+  // Build full URL - handle both absolute and relative URLs
+  let fullUrl = url || '';
+  if (!fullUrl.includes('http://') && !fullUrl.includes('https://')) {
+    // Relative URL - prepend baseURL
+    const baseURL = this.defaults.baseURL || '';
+    // Ensure no double slashes
+    const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
+    const path = fullUrl.startsWith('/') ? fullUrl : '/' + fullUrl;
+    fullUrl = base + path;
+  }
   const method = 'GET';
   
   // Check if this is a cacheable endpoint
