@@ -261,7 +261,7 @@ class PublishedArticleListView(ListAPIView):
     
     def get_queryset(self):
         """Filter articles by category and search if specified"""
-        queryset = Article.objects.filter(status='published').select_related('category')
+        queryset = Article.objects.filter(status='published').select_related('category', 'reused_image').prefetch_related('reuse_images')
         
         # Handle both DRF requests (with query_params) and regular Django requests (with GET)
         if hasattr(self.request, 'query_params'):
@@ -320,8 +320,8 @@ class PublishedArticleListView(ListAPIView):
             serializer = self.get_serializer(queryset, many=True)
             response_data = serializer.data
         
-        # Cache for 2 minutes
-        cache.set(cache_key, response_data, 120)
+        # Cache for 5 minutes (increased from 2 minutes for better performance)
+        cache.set(cache_key, response_data, 300)
         
         return Response(response_data)
     
@@ -354,17 +354,36 @@ class ArticleDetailView(RetrieveAPIView):
 
 class PublishedArticleDetailView(RetrieveAPIView):
     """Public API for retrieving a published article with Redis caching"""
-    queryset = Article.objects.filter(status='published')
+    queryset = Article.objects.filter(status='published').select_related('category', 'reused_image').prefetch_related('reuse_images')
     serializer_class = ArticleSerializer
     permission_classes = [permissions.AllowAny]
     lookup_field = 'slug'
     
     def retrieve(self, request, *args, **kwargs):
-        """Override retrieve method - temporarily disable caching for debugging"""
-        # For now, let's disable caching and use regular database query
+        """Override retrieve method with caching for better performance"""
+        from django.core.cache import cache
+        from .cache_utils import get_cache_key, cache_article_data, get_cached_article_data, CACHE_TIMEOUTS
+        
+        # Get slug from kwargs
+        slug = kwargs.get('slug')
+        
+        # Create cache key
+        cache_key = get_cache_key('article_detail', slug)
+        
+        # Try to get cached data
+        cached_data = get_cached_article_data(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+        
+        # Get fresh data with optimized query
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        response_data = serializer.data
+        
+        # Cache for 10 minutes
+        cache_article_data(cache_key, response_data, CACHE_TIMEOUTS['article_detail'])
+        
+        return Response(response_data)
     
     def get_serializer_context(self):
         """Pass request context to serializer for absolute URL generation"""

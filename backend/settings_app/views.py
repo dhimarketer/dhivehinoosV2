@@ -99,6 +99,8 @@ def public_settings_view(request):
         'story_cards_rows': settings.story_cards_rows,
         'story_cards_columns': settings.story_cards_columns,
         'default_pagination_size': settings.default_pagination_size,
+        'active_theme': settings.active_theme,
+        'theme_config': settings.theme_config or {},
     }
     
     # Cache for 5 minutes

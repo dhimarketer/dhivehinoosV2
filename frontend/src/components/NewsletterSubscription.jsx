@@ -7,8 +7,6 @@ import {
   HStack,
   Text,
   Alert,
-  AlertIcon,
-  useToast,
   FormControl,
   FormLabel,
   FormHelperText,
@@ -18,12 +16,13 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  useDisclosure,
   Divider,
   Badge,
   IconButton,
   Tooltip
-} from '@chakra-ui/react';
+} from './ui';
+import { useToast } from '../contexts/ToastContext';
+import { useDisclosure } from '../hooks/useDisclosure';
 import api from '../services/api';
 
 const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
@@ -32,7 +31,7 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-  const toast = useToast();
+  const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const handleSubscribe = async (e) => {
@@ -87,12 +86,12 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
 
   if (subscribed) {
     return (
-      <Box p={6} bg="green.50" borderRadius="md" border="1px" borderColor="green.200">
+      <Box className="p-6 bg-green-50 rounded-lg border border-green-200">
         <VStack spacing={4}>
-          <Badge colorScheme="green" fontSize="sm" px={3} py={1} borderRadius="full">
+          <Badge colorScheme="green" size="sm" className="px-3 py-1 rounded-full">
             ✓ Subscribed Successfully
           </Badge>
-          <Text fontSize="sm" color="green.700" textAlign="center">
+          <Text size="sm" className="text-green-700 text-center">
             Thank you for subscribing! You'll receive our latest articles and updates.
           </Text>
         </VStack>
@@ -103,16 +102,15 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
   if (variant === 'modal') {
     return (
       <>
-        <Button onClick={onOpen} colorScheme="blue" variant="outline" size="sm">
+        <Button onClick={onOpen} colorScheme="brand" variant="outline" size="sm">
           📧 Subscribe to Newsletter
         </Button>
         
         <Modal isOpen={isOpen} onClose={onClose} size="md">
-          <ModalOverlay />
-          <ModalContent>
+          <ModalContent className="p-6">
             <ModalHeader>Subscribe to Newsletter</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody pb={6}>
+            <ModalCloseButton onClose={onClose} />
+            <ModalBody className="pb-6">
               <form onSubmit={handleSubscribe}>
                 <VStack spacing={4}>
                   <FormControl isRequired>
@@ -128,7 +126,7 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
                     </FormHelperText>
                   </FormControl>
                   
-                  <HStack spacing={4} w="full">
+                  <HStack spacing={4} className="w-full">
                     <FormControl>
                       <FormLabel>First Name (Optional)</FormLabel>
                       <Input
@@ -149,13 +147,12 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
                   
                   <Button
                     type="submit"
-                    colorScheme="blue"
+                    colorScheme="brand"
                     size="lg"
-                    w="full"
-                    isLoading={loading}
-                    loadingText="Subscribing..."
+                    className="w-full"
+                    disabled={loading}
                   >
-                    Subscribe to Newsletter
+                    {loading ? 'Subscribing...' : 'Subscribe to Newsletter'}
                   </Button>
                 </VStack>
               </form>
@@ -168,18 +165,18 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
 
   if (variant === 'inline') {
     return (
-      <Box p={4} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
+      <Box className="p-4 bg-blue-50 rounded-lg border border-blue-200">
         <VStack spacing={4}>
           {showTitle && (
-            <Text fontSize="lg" fontWeight="semibold" color="blue.800">
+            <Text size="lg" className="font-semibold text-blue-800">
               📧 Stay Updated
             </Text>
           )}
-          <Text fontSize="sm" color="blue.700" textAlign="center">
+          <Text size="sm" className="text-blue-700 text-center">
             Get the latest Dhivehi articles and cultural insights delivered to your inbox.
           </Text>
           
-          <form onSubmit={handleSubscribe} style={{ width: '100%' }}>
+          <form onSubmit={handleSubscribe} className="w-full">
             <VStack spacing={3}>
               <Input
                 type="email"
@@ -187,17 +184,16 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
                 size="md"
-                bg="white"
+                className="bg-white"
               />
               <Button
                 type="submit"
-                colorScheme="blue"
+                colorScheme="brand"
                 size="md"
-                w="full"
-                isLoading={loading}
-                loadingText="Subscribing..."
+                className="w-full"
+                disabled={loading}
               >
-                Subscribe
+                {loading ? 'Subscribing...' : 'Subscribe'}
               </Button>
             </VStack>
           </form>
@@ -208,15 +204,15 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
 
   // Default variant - sidebar style
   return (
-    <Box p={6} bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
+    <Box className="p-6 bg-gray-50 rounded-lg border border-gray-200">
       <VStack spacing={4} align="stretch">
         {showTitle && (
-          <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+          <Text size="lg" className="font-semibold text-gray-800">
             📧 Newsletter
           </Text>
         )}
         
-        <Text fontSize="sm" color="gray.600">
+        <Text size="sm" className="text-gray-600">
           Subscribe to get the latest Dhivehi articles and cultural insights delivered to your inbox.
         </Text>
         
@@ -228,35 +224,34 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your email address"
               size="sm"
-              bg="white"
+              className="bg-white"
             />
             
-            <HStack spacing={2} w="full">
+            <HStack spacing={2} className="w-full">
               <Input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="First name"
                 size="sm"
-                bg="white"
+                className="bg-white"
               />
               <Input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Last name"
                 size="sm"
-                bg="white"
+                className="bg-white"
               />
             </HStack>
             
             <Button
               type="submit"
-              colorScheme="blue"
+              colorScheme="brand"
               size="sm"
-              w="full"
-              isLoading={loading}
-              loadingText="Subscribing..."
+              className="w-full"
+              disabled={loading}
             >
-              Subscribe
+              {loading ? 'Subscribing...' : 'Subscribe'}
             </Button>
           </VStack>
         </form>
@@ -264,7 +259,7 @@ const NewsletterSubscription = ({ variant = 'default', showTitle = true }) => {
         <Divider />
         
         <VStack spacing={2}>
-          <Text fontSize="xs" color="gray.500" textAlign="center">
+          <Text size="xs" className="text-gray-500 text-center">
             RSS Feeds Available
           </Text>
           <HStack spacing={2}>

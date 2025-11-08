@@ -16,6 +16,8 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'story_cards_rows',
             'story_cards_columns',
             'default_pagination_size',
+            'active_theme',
+            'theme_config',
             'google_analytics_id',
             'comment_webhook_url',
             'comment_webhook_enabled',
@@ -61,6 +63,19 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
         """Validate default pagination size"""
         if value < 5 or value > 100:
             raise serializers.ValidationError("Default pagination size must be between 5 and 100")
+        return value
+    
+    def validate_active_theme(self, value):
+        """Validate active theme"""
+        valid_themes = ['modern', 'classic', 'minimal', 'newspaper', 'magazine']
+        if value not in valid_themes:
+            raise serializers.ValidationError(f"Theme must be one of: {', '.join(valid_themes)}")
+        return value
+    
+    def validate_theme_config(self, value):
+        """Validate theme_config is a dict"""
+        if value and not isinstance(value, dict):
+            raise serializers.ValidationError("Theme configuration must be a valid JSON object")
         return value
     
     def validate_comment_webhook_url(self, value):

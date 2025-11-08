@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
+import { ToastProvider } from '../contexts/ToastContext'
 import StoryCard from '../components/StoryCard'
 
 const mockArticle = {
@@ -35,11 +35,11 @@ const mockArticleWithoutImage = {
 
 const renderWithProviders = (component) => {
   return render(
-    <ChakraProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <ToastProvider>
         {component}
-      </BrowserRouter>
-    </ChakraProvider>
+      </ToastProvider>
+    </BrowserRouter>
   )
 }
 
@@ -86,7 +86,7 @@ describe('StoryCard Component', () => {
       expect(image).toHaveStyle({ opacity: '0' })
       
       // The skeleton should be visible while loading
-      const skeleton = document.querySelector('.chakra-skeleton')
+      const skeleton = document.querySelector('[class*="skeleton"]')
       expect(skeleton).toBeInTheDocument()
       
       // Test that the image has a src attribute (optimized URL will be generated)
@@ -258,11 +258,9 @@ describe('StoryCard Component', () => {
       for (let i = 0; i < 5; i++) {
         const newArticle = { ...mockArticle, id: i, title: `Article ${i}` }
         rerender(
-          <ChakraProvider>
-            <BrowserRouter>
-              <StoryCard article={newArticle} />
-            </BrowserRouter>
-          </ChakraProvider>
+          <BrowserRouter>
+            <StoryCard article={newArticle} />
+          </BrowserRouter>
         )
       }
       

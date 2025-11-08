@@ -20,13 +20,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 500, // Warn if chunks exceed 500KB
     rollupOptions: {
       output: {
-        // Simplified chunking - only separate react-icons, let Vite handle dependency order
+        // Single vendor chunk to avoid loading order issues
+        // All node_modules in one chunk ensures proper dependency resolution
         manualChunks: (id) => {
-          // Only manually chunk react-icons - let Vite handle everything else for correct dependency order
-          if (id.includes('react-icons')) {
-            return 'react-icons';
+          if (id.includes('node_modules')) {
+            // Put all vendor code in one chunk to ensure proper load order
+            return 'vendor';
           }
-          // Let Vite automatically chunk everything else to maintain correct load order
         },
         // Optimize CSS output
         assetFileNames: (assetInfo) => {
@@ -42,13 +42,15 @@ export default defineConfig({
     },
     // Enable CSS code splitting for better performance
     cssCodeSplit: true,
-    // Optimize asset handling
-    assetsInlineLimit: 4096, // Inline assets smaller than 4kb
+    // Optimize asset handling - reduce inline limit to force separate files
+    assetsInlineLimit: 2048, // Inline assets smaller than 2kb (reduced from 4kb)
     // Build optimizations
     cssMinify: true,
     // Optimize CSS for faster loading
     cssTarget: 'chrome80', // Target modern browsers for better CSS optimization
     // Optimize chunking strategy - target modern browsers for smaller bundle
     target: 'esnext', // Target modern browsers for smaller bundle
+    // Enable tree shaking
+    treeshake: true,
   },
 })

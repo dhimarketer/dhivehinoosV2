@@ -729,6 +729,12 @@ class Article(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Article'
         verbose_name_plural = 'Articles'
+        indexes = [
+            models.Index(fields=['status', '-created_at'], name='article_status_created_idx'),
+            models.Index(fields=['slug'], name='article_slug_idx'),
+            models.Index(fields=['category', 'status'], name='article_category_status_idx'),
+            models.Index(fields=['status', 'created_at'], name='article_status_created_at_idx'),
+        ]
     
     def __str__(self):
         return self.title

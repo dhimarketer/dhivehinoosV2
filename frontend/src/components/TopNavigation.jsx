@@ -10,7 +10,6 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
-  useDisclosure,
   Drawer,
   DrawerBody,
   DrawerHeader,
@@ -18,8 +17,6 @@ import {
   DrawerContent,
   DrawerCloseButton,
   VStack,
-  useBreakpointValue,
-  useColorModeValue,
   Text,
   Menu,
   MenuButton,
@@ -29,9 +26,11 @@ import {
   Spinner,
   Badge,
   Tooltip,
-} from '@chakra-ui/react';
+} from './ui';
+import { useDisclosure } from '../hooks/useDisclosure';
+import { useBreakpointValue } from '../hooks/useBreakpointValue';
 import { Link, useNavigate } from 'react-router-dom';
-import { SearchIcon, HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { MagnifyingGlassIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { categoriesAPI } from '../services/api';
 
 const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, onClearSearch, selectedCategory }) => {
@@ -40,10 +39,6 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
   const isMobile = useBreakpointValue({ base: true, md: false });
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const textColor = useColorModeValue('brand.600', 'brand.400');
 
   // Fetch categories
   useEffect(() => {
@@ -55,6 +50,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
         setCategories(categoriesData);
       } catch (err) {
         console.error('Error fetching categories:', err);
+        setCategories([]); // Set empty array on error
       } finally {
         setCategoriesLoading(false);
       }
@@ -81,8 +77,8 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
   const CategoriesDropdown = ({ isVertical = false, onLinkClick }) => {
     if (isVertical) {
       return (
-        <VStack spacing={2} align="stretch" w="full">
-          <Text fontSize="sm" fontWeight="bold" color="gray.600" px={2}>
+        <VStack spacing={2} align="stretch" className="w-full">
+          <Text size="sm" className="font-bold text-gray-600 px-2">
             Categories
           </Text>
           <Button 
@@ -91,35 +87,42 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
             variant="ghost" 
             size="sm"
             onClick={onLinkClick}
-            justifyContent="flex-start"
-            color={selectedCategory === null ? 'brand.600' : 'gray.600'}
-            bg={selectedCategory === null ? 'brand.50' : 'transparent'}
+            className={`justify-start ${
+              selectedCategory === null 
+                ? 'text-brand-600 bg-brand-50' 
+                : 'text-gray-600 bg-transparent'
+            }`}
           >
             📰 All Articles
           </Button>
           {categoriesLoading ? (
-            <Box p={2} textAlign="center">
+            <Box className="p-2 text-center">
               <Spinner size="sm" />
             </Box>
           ) : (
             categories.map((category) => (
-              <Button
+              <Link
                 key={category.id}
-                as={Link}
-                to={`/?category=${category.slug}`}
-                variant="ghost"
-                size="sm"
-                onClick={onLinkClick}
-                justifyContent="flex-start"
-                color={selectedCategory === category.slug ? 'brand.600' : 'gray.600'}
-                bg={selectedCategory === category.slug ? 'brand.50' : 'transparent'}
+                to={`/category/${category.slug}`}
+                onClick={(e) => {
+                  if (onLinkClick) {
+                    onLinkClick(e);
+                  }
+                }}
+                className={`flex items-center justify-between w-full px-2 py-2 text-sm rounded-md transition-colors ${
+                  selectedCategory === category.slug 
+                    ? 'text-brand-600 bg-brand-50' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
               >
-                <Text mr={2}>{category.icon}</Text>
-                {category.name}
-                <Badge ml="auto" size="xs" colorScheme="gray" variant="subtle">
+                <span className="flex items-center">
+                  <Text className="mr-2">{category.icon}</Text>
+                  {category.name}
+                </span>
+                <Badge size="xs" colorScheme="gray" variant="subtle">
                   {category.articles_count}
                 </Badge>
-              </Button>
+              </Link>
             ))
           )}
         </VStack>
@@ -132,20 +135,20 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
           as={Button}
           variant="ghost"
           size="sm"
-          rightIcon={<ChevronDownIcon />}
-          _hover={{ bg: 'brand.50', color: 'brand.600' }}
+          rightIcon={true}
+          className="hover:bg-brand-50 hover:text-brand-600"
         >
           Categories
         </MenuButton>
         <MenuList>
           <MenuItem as={Link} to="/" onClick={onLinkClick}>
-            <Text mr={2}>📰</Text>
+            <Text className="mr-2">📰</Text>
             All Articles
           </MenuItem>
           <MenuDivider />
           {categoriesLoading ? (
-            <MenuItem isDisabled>
-              <Spinner size="sm" mr={2} />
+            <MenuItem className="opacity-50 cursor-not-allowed">
+              <Spinner size="sm" className="mr-2" />
               Loading...
             </MenuItem>
           ) : (
@@ -153,11 +156,11 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
               <MenuItem
                 key={category.id}
                 as={Link}
-                to={`/?category=${category.slug}`}
+                to={`/category/${category.slug}`}
                 onClick={onLinkClick}
               >
-                <Text mr={2}>{category.icon}</Text>
-                <Text flex="1">{category.name}</Text>
+                <Text className="mr-2">{category.icon}</Text>
+                <Text className="flex-1">{category.name}</Text>
                 <Badge size="xs" colorScheme="gray" variant="subtle">
                   {category.articles_count}
                 </Badge>
@@ -169,95 +172,163 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
     );
   };
 
-  const NavigationLinks = ({ isVertical = false, onLinkClick }) => (
-    <>
-      <Button 
-        as={Link} 
-        to="/" 
-        variant="ghost" 
-        size="sm"
-        onClick={onLinkClick}
-        _hover={{ bg: 'brand.50', color: 'brand.600' }}
-      >
-        Home
-      </Button>
-      <CategoriesDropdown isVertical={isVertical} onLinkClick={onLinkClick} />
-      <Button 
-        as={Link} 
-        to="/contact" 
-        variant="ghost" 
-        size="sm"
-        onClick={onLinkClick}
-        _hover={{ bg: 'brand.50', color: 'brand.600' }}
-      >
-        Contact Us
-      </Button>
-    </>
-  );
+  // Get all categories with articles, sorted by article count
+  const allCategories = categories
+    .filter(cat => cat.articles_count > 0)
+    .sort((a, b) => (b.articles_count || 0) - (a.articles_count || 0));
+
+  const NavigationLinks = ({ isVertical = false, onLinkClick }) => {
+    if (isVertical) {
+      // Mobile: Show all categories in the drawer
+      return (
+        <>
+          <Button 
+            as={Link} 
+            to="/" 
+            variant="ghost" 
+            size="sm"
+            onClick={onLinkClick}
+            className={`justify-start ${
+              selectedCategory === null 
+                ? 'text-brand-600 bg-brand-50' 
+                : 'text-gray-600 bg-transparent'
+            }`}
+          >
+            Home
+          </Button>
+          <CategoriesDropdown isVertical={isVertical} onLinkClick={onLinkClick} />
+          <Button 
+            as={Link} 
+            to="/contact" 
+            variant="ghost" 
+            size="sm"
+            onClick={onLinkClick}
+            className="justify-start hover:bg-brand-50 hover:text-brand-600"
+          >
+            Contact Us
+          </Button>
+        </>
+      );
+    }
+
+    // Desktop: Show all categories as direct links
+    return (
+      <>
+        <Link
+          to="/"
+          onClick={(e) => {
+            if (onLinkClick) {
+              onLinkClick(e);
+            }
+          }}
+          className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+            selectedCategory === null 
+              ? 'text-brand-600 bg-brand-50' 
+              : 'text-gray-700 hover:bg-brand-50 hover:text-brand-600'
+          }`}
+        >
+          Home
+        </Link>
+        
+        {/* All Categories as Direct Links */}
+        {!categoriesLoading && allCategories.length > 0 && (
+          <>
+            {allCategories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/category/${category.slug}`}
+                onClick={(e) => {
+                  if (onLinkClick) {
+                    onLinkClick(e);
+                  }
+                }}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  selectedCategory === category.slug 
+                    ? 'text-brand-600 bg-brand-50' 
+                    : 'text-gray-700 hover:bg-brand-50 hover:text-brand-600'
+                }`}
+              >
+                <Text className="mr-1">{category.icon}</Text>
+                {category.name}
+              </Link>
+            ))}
+          </>
+        )}
+
+        {/* Fallback: If no categories but categories exist, show dropdown */}
+        {!categoriesLoading && allCategories.length === 0 && categories.length > 0 && (
+          <CategoriesDropdown isVertical={isVertical} onLinkClick={onLinkClick} />
+        )}
+
+        {/* Loading state for categories */}
+        {categoriesLoading && (
+          <Box className="px-2">
+            <Spinner size="sm" />
+          </Box>
+        )}
+
+        <Button 
+          as={Link} 
+          to="/contact" 
+          variant="ghost" 
+          size="sm"
+          onClick={onLinkClick}
+          className="hover:bg-brand-50 hover:text-brand-600"
+        >
+          Contact Us
+        </Button>
+      </>
+    );
+  };
 
   return (
     <Box 
-      className="site-header" 
-      bg={bgColor} 
-      shadow="sm" 
-      borderBottom="1px" 
-      borderColor={borderColor}
-      position="sticky"
-      top="0"
-      zIndex="1000"
+      className="site-header bg-white shadow-sm border-b border-gray-200 sticky top-0 z-[1000]" 
       role="navigation"
     >
-      <Container maxW="container.xl" py={4}>
+      <Container className="max-w-7xl py-4">
         <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
           {/* Logo */}
           <Heading 
             size="lg" 
-            className="site-title" 
-            color={textColor}
-            cursor="pointer"
+            className="site-title text-brand-600 cursor-pointer hover:text-brand-500"
             onClick={() => navigate('/')}
-            _hover={{ color: 'brand.500' }}
           >
             Dhivehinoos.net
           </Heading>
 
           {/* Desktop Navigation */}
           {!isMobile && (
-            <HStack spacing={4} flex="1" justify="center">
+            <HStack spacing={2} flex="1" justify="center" wrap="wrap">
               <NavigationLinks />
             </HStack>
           )}
 
           {/* Search Bar - Desktop */}
           {!isMobile && (
-            <Box minW="300px" maxW="400px" flex="1">
+            <Box className="min-w-[300px] max-w-[400px] flex-1">
               <form onSubmit={handleSearch}>
                 <InputGroup size="sm">
                   <Input
                     placeholder="Search articles..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    borderRadius="md"
-                    borderColor="gray.300"
-                    _focus={{
-                      borderColor: 'brand.500',
-                      boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)'
-                    }}
+                    className="rounded-md border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                   />
                   <InputRightElement>
                     {searchQuery && (
                       <IconButton
                         aria-label="Clear search"
-                        icon={<Text>✕</Text>}
+                        icon={<span className="text-sm">✕</span>}
                         size="sm"
                         variant="ghost"
                         onClick={onClearSearch}
-                        mr={1}
+                        className="mr-1"
                       />
                     )}
                     <IconButton
                       aria-label="Search"
-                      icon={<SearchIcon />}
+                      icon={MagnifyingGlassIcon}
                       size="sm"
                       variant="ghost"
                       onClick={handleSearch}
@@ -274,7 +345,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
             <IconButton
               aria-label="Open menu"
               aria-expanded={isOpen}
-              icon={<HamburgerIcon />}
+              icon={Bars3Icon}
               variant="ghost"
               onClick={onOpen}
             />
@@ -283,34 +354,29 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
 
         {/* Mobile Search Bar */}
         {isMobile && (
-          <Box mt={4}>
+          <Box className="mt-4">
             <form onSubmit={handleSearch}>
               <InputGroup size="sm">
                 <Input
                   placeholder="Search articles..."
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  borderRadius="md"
-                  borderColor="gray.300"
-                  _focus={{
-                    borderColor: 'brand.500',
-                    boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)'
-                  }}
+                  className="rounded-md border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                 />
                 <InputRightElement>
                   {searchQuery && (
                     <IconButton
                       aria-label="Clear search"
-                      icon={<Text>✕</Text>}
+                      icon={<span className="text-sm">✕</span>}
                       size="sm"
                       variant="ghost"
                       onClick={onClearSearch}
-                      mr={1}
+                      className="mr-1"
                     />
                   )}
                   <IconButton
                     aria-label="Search"
-                    icon={<SearchIcon />}
+                    icon={MagnifyingGlassIcon}
                     size="sm"
                     variant="ghost"
                     onClick={handleSearch}
@@ -325,9 +391,8 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
 
       {/* Mobile Drawer */}
       <Drawer isOpen={isOpen} onClose={onClose} placement="right">
-        <DrawerOverlay />
         <DrawerContent>
-          <DrawerCloseButton />
+          <DrawerCloseButton onClose={onClose} />
           <DrawerHeader>Menu</DrawerHeader>
           <DrawerBody>
             <VStack spacing={4} align="stretch">

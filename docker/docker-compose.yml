@@ -25,6 +25,10 @@ services:
       - DATABASE_URL=sqlite:////app/database/db.sqlite3
       - SECRET_KEY=${SECRET_KEY}
       - API_INGEST_KEY=${API_INGEST_KEY}
+      - REDIS_URL=redis://dhivehinoos_redis:6379/0
+    depends_on:
+      dhivehinoos_redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/articles/published/"]
       interval: 30s
@@ -41,6 +45,21 @@ services:
     depends_on:
       dhivehinoos_backend:
         condition: service_healthy
+
+  dhivehinoos_redis:
+    image: redis:7-alpine
+    container_name: dhivehinoos_redis
+    restart: unless-stopped
+    ports:
+      - "8054:6379"  # Unique port for dhivehinoos redis
+    volumes:
+      - /opt/dhivehinoos/redis:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 # Removed unused 'volumes:' and 'networks:' definitions at the root level
 # Using host volumes instead for better control and persistence

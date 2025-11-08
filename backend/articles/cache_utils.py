@@ -132,12 +132,13 @@ def invalidate_article_cache(article_id=None, category_id=None, clear_all=False)
             keys_to_delete = []
             
             if article_id:
-                # Clear article-specific caches
+                # Clear article-specific caches including image URL cache
                 keys_to_delete.extend([
                     get_cache_key('article_detail', article_id),
                     get_cache_key('published_articles'),
                     get_cache_key('latest_articles'),
                     get_cache_key('featured_articles'),
+                    f'article:image_url:{article_id}',  # Clear image URL cache
                 ])
             
             if category_id:

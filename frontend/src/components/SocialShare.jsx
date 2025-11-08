@@ -5,21 +5,20 @@ import {
   HStack,
   VStack,
   Text,
-  useColorModeValue,
   IconButton,
   Tooltip,
-  useToast,
   Modal,
   ModalOverlay,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  useDisclosure,
   Input,
   Textarea,
   Divider,
-} from '@chakra-ui/react';
+} from './ui';
+import { useToast } from '../contexts/ToastContext';
+import { useDisclosure } from '../hooks/useDisclosure';
 import {
   FaFacebook,
   FaTwitter,
@@ -35,7 +34,7 @@ import {
 const SocialShare = ({ article, variant = 'default' }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [emailData, setEmailData] = useState({ to: '', subject: '', message: '' });
-  const toast = useToast();
+  const { toast } = useToast();
 
   // Use social metadata from backend if available, otherwise fallback to manual construction
   const socialData = article.social_metadata || {
@@ -164,8 +163,8 @@ const SocialShare = ({ article, variant = 'default' }) => {
     });
   };
 
-  const buttonColor = useColorModeValue('gray.600', 'gray.300');
-  const hoverColor = useColorModeValue('blue.500', 'blue.300');
+  const buttonColor = 'gray.600';
+  const hoverColor = 'blue.500';
 
   const socialButtons = [
     {
@@ -209,17 +208,20 @@ const SocialShare = ({ article, variant = 'default' }) => {
   if (variant === 'compact') {
     return (
       <HStack spacing={2}>
-        <Text fontSize="sm" color={buttonColor} fontWeight="medium">
+        <Text size="sm" className="text-gray-600 font-medium">
           Share:
         </Text>
         {socialButtons.slice(0, 4).map(({ platform, icon: Icon, color, label }) => (
           <Tooltip key={platform} label={label} placement="top">
             <IconButton
-              icon={<Icon />}
+              icon={Icon}
               size="sm"
               variant="ghost"
-              color={buttonColor}
-              _hover={{ color, bg: `${color}10` }}
+              colorScheme="gray"
+              className="text-gray-600"
+              style={{
+                '--hover-color': color,
+              }}
               onClick={() => handleShare(platform)}
               aria-label={label}
             />
@@ -227,11 +229,11 @@ const SocialShare = ({ article, variant = 'default' }) => {
         ))}
         <Tooltip label="Copy Link" placement="top">
           <IconButton
-            icon={<FaCopy />}
+            icon={FaCopy}
             size="sm"
             variant="ghost"
-            color={buttonColor}
-            _hover={{ color: hoverColor, bg: `${hoverColor}10` }}
+            colorScheme="gray"
+            className="text-gray-600 hover:text-blue-500 hover:bg-blue-50"
             onClick={() => handleShare('copy')}
             aria-label="Copy Link"
           />
@@ -246,11 +248,11 @@ const SocialShare = ({ article, variant = 'default' }) => {
         {socialButtons.slice(0, 3).map(({ platform, icon: Icon, color, label }) => (
           <Tooltip key={platform} label={label} placement="top">
             <IconButton
-              icon={<Icon />}
+              icon={Icon}
               size="xs"
               variant="ghost"
-              color={buttonColor}
-              _hover={{ color, bg: `${color}10` }}
+              colorScheme="gray"
+              className="text-gray-600"
               onClick={() => handleShare(platform)}
               aria-label={label}
             />
@@ -264,27 +266,20 @@ const SocialShare = ({ article, variant = 'default' }) => {
   return (
     <Box>
       <VStack spacing={4} align="stretch">
-        <Text fontSize="lg" fontWeight="bold" color={buttonColor}>
+        <Text size="lg" className="font-bold text-gray-600">
           Share this article
         </Text>
         
         {/* Main social platforms */}
-        <HStack spacing={2} justify="center" flexWrap="wrap">
+        <HStack spacing={2} justify="center" className="flex-wrap">
           {socialButtons.map(({ platform, icon: Icon, color, label }) => (
             <Tooltip key={platform} label={label} placement="top">
               <IconButton
-                icon={<Icon />}
+                icon={Icon}
                 size="lg"
                 variant="outline"
-                color={buttonColor}
-                borderColor={buttonColor}
-                _hover={{ 
-                  color, 
-                  borderColor: color,
-                  bg: `${color}10`,
-                  transform: 'translateY(-2px)',
-                }}
-                transition="all 0.2s ease"
+                colorScheme="gray"
+                className="border-gray-300 text-gray-600 hover:-translate-y-0.5 transition-all"
                 onClick={() => handleShare(platform)}
                 aria-label={label}
               />
@@ -295,38 +290,35 @@ const SocialShare = ({ article, variant = 'default' }) => {
         {/* Additional sharing options */}
         <HStack spacing={2} justify="center">
           <Button
-            leftIcon={<FaShare />}
             size="sm"
             variant="outline"
-            color={buttonColor}
-            borderColor={buttonColor}
-            _hover={{ color: hoverColor, borderColor: hoverColor }}
+            colorScheme="gray"
+            className="flex items-center gap-2"
             onClick={() => handleShare('native')}
           >
+            <FaShare />
             Share
           </Button>
           
           <Button
-            leftIcon={<FaCopy />}
             size="sm"
             variant="outline"
-            color={buttonColor}
-            borderColor={buttonColor}
-            _hover={{ color: hoverColor, borderColor: hoverColor }}
+            colorScheme="gray"
+            className="flex items-center gap-2"
             onClick={() => handleShare('copy')}
           >
+            <FaCopy />
             Copy Link
           </Button>
           
           <Button
-            leftIcon={<FaEnvelope />}
             size="sm"
             variant="outline"
-            color={buttonColor}
-            borderColor={buttonColor}
-            _hover={{ color: hoverColor, borderColor: hoverColor }}
+            colorScheme="gray"
+            className="flex items-center gap-2"
             onClick={() => handleShare('email')}
           >
+            <FaEnvelope />
             Email
           </Button>
         </HStack>
@@ -334,11 +326,10 @@ const SocialShare = ({ article, variant = 'default' }) => {
 
       {/* Email Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="p-6">
           <ModalHeader>Share via Email</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
+          <ModalCloseButton onClose={onClose} />
+          <ModalBody className="pb-6">
             <VStack spacing={4}>
               <Input
                 placeholder="Recipient email address"
@@ -362,7 +353,7 @@ const SocialShare = ({ article, variant = 'default' }) => {
                   Cancel
                 </Button>
                 <Button 
-                  colorScheme="blue" 
+                  colorScheme="brand"
                   onClick={handleEmailShare}
                   isDisabled={!emailData.to}
                 >

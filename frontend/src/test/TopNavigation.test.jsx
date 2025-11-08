@@ -1,25 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import TopNavigation from '../components/TopNavigation'
 
 // Mock useBreakpointValue to always return false (desktop mode)
-vi.mock('@chakra-ui/react', async () => {
-  const actual = await vi.importActual('@chakra-ui/react')
-  return {
-    ...actual,
-    useBreakpointValue: vi.fn(() => false), // Always desktop mode
-  }
-})
+vi.mock('../hooks/useBreakpointValue', () => ({
+  useBreakpointValue: vi.fn(() => false), // Always desktop mode
+}))
 
 const renderWithProviders = (component) => {
   return render(
-    <ChakraProvider>
-      <BrowserRouter>
-        {component}
-      </BrowserRouter>
-    </ChakraProvider>
+    <BrowserRouter>
+      {component}
+    </BrowserRouter>
   )
 }
 

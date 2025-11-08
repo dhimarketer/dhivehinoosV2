@@ -11,17 +11,14 @@ import {
   Textarea,
   Button,
   Alert,
-  AlertIcon,
   FormControl,
   FormLabel,
   HStack,
-  Icon,
-  Link,
-} from '@chakra-ui/react';
+} from '../components/ui';
 import { Helmet } from 'react-helmet-async';
 import { contactAPI, settingsAPI } from '../services/api';
 import TopNavigation from '../components/TopNavigation';
-import { EmailIcon } from '@chakra-ui/icons';
+import { EnvelopeIcon } from '@heroicons/react/24/outline';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -104,54 +101,51 @@ const ContactPage = () => {
         selectedCategory={null}
       />
 
-      <Container maxW="container.md" py={8}>
+      <Container className="max-w-3xl py-8">
         <Card>
           <CardBody>
             <VStack spacing={8} align="stretch">
-              <Box textAlign="center">
-                <Heading size="xl" mb={4}>
+              <Box className="text-center">
+                <Heading size="xl" className="mb-4">
                   Get in Touch
                 </Heading>
-                <Text color="gray.600" mb={4}>
+                <Text className="text-gray-600 mb-4">
                   We'd love to hear from you. Send us a message and we'll respond as soon as possible.
                 </Text>
                 
                 {/* Contact Email Display */}
-                <Card bg="blue.50" borderColor="blue.200" borderWidth="1px" maxW="400px" mx="auto">
+                <Card className="bg-blue-50 border border-blue-200 max-w-[400px] mx-auto">
                   <CardBody>
                     <HStack spacing={3} justify="center">
-                      <EmailIcon color="blue.500" />
-                      <Text fontWeight="medium" color="blue.700">
+                      <EnvelopeIcon className="h-5 w-5 text-blue-500" />
+                      <Text className="font-medium text-blue-700">
                         Contact us directly:
                       </Text>
                     </HStack>
-                    <Link 
+                    <a 
                       href={`mailto:${contactEmail}`}
-                      color="blue.600"
-                      fontWeight="semibold"
-                      fontSize="lg"
-                      _hover={{ color: 'blue.800', textDecoration: 'underline' }}
+                      className="text-blue-600 font-semibold text-lg hover:text-blue-800 hover:underline block mt-2"
                     >
                       {contactEmail}
-                    </Link>
+                    </a>
                   </CardBody>
                 </Card>
               </Box>
 
               {/* About Section with Disclaimer */}
               <Box>
-                <Heading size="lg" mb={4} color="blue.600">
+                <Heading size="lg" className="mb-4 text-blue-600">
                   About Dhivehinoos.net
                 </Heading>
-                <Card bg="yellow.50" borderColor="yellow.200" borderWidth="1px">
+                <Card className="bg-yellow-50 border border-yellow-200">
                   <CardBody>
-                    <Text fontSize="md" color="gray.700" lineHeight="1.6">
+                    <Text className="text-base text-gray-700 leading-relaxed">
                       <strong>Important Disclaimer:</strong> This website aggregates and synthesizes sentiments, discussions, and trending topics from across Maldivian social media platforms and news sources. 
                       All content published on Dhivehinoos.net is <strong>AI-generated based on aggregated social media sentiments and news discussions</strong> from various Maldivian online communities, 
                       news outlets, and social platforms. The articles and stories are created using artificial intelligence to synthesize and present these aggregated sentiments 
                       in a readable format for research, entertainment, and educational purposes.
                     </Text>
-                    <Text fontSize="md" color="gray.700" mt={3} lineHeight="1.6">
+                    <Text className="text-base text-gray-700 mt-3 leading-relaxed">
                       This disclaimer is provided to comply with government registration guidelines and to ensure transparency about the nature of our content. 
                       While our content is based on real social media discussions and news sentiments from Maldivian sources, readers should not rely on any information 
                       from this site as direct factual news reporting or current events coverage.
@@ -162,14 +156,12 @@ const ContactPage = () => {
 
               {submitStatus === 'success' && (
                 <Alert status="success">
-                  <AlertIcon />
                   Thank you for your message! We'll get back to you soon.
                 </Alert>
               )}
 
               {submitStatus === 'error' && (
                 <Alert status="error">
-                  <AlertIcon />
                   Sorry, there was an error sending your message. Please try again.
                 </Alert>
               )}
@@ -211,13 +203,12 @@ const ContactPage = () => {
 
                   <Button
                     type="submit"
-                    colorScheme="blue"
+                    colorScheme="brand"
                     size="lg"
-                    isLoading={isSubmitting}
-                    loadingText="Sending..."
-                    isDisabled={!formData.message.trim()}
+                    className="w-full"
+                    disabled={isSubmitting || !formData.message.trim()}
                   >
-                    Send Message
+                    {isSubmitting ? 'Sending...' : 'Send Message'}
                   </Button>
                 </VStack>
               </form>

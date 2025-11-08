@@ -1,8 +1,8 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .logo {
@@ -43,9 +43,6 @@
 
 /* Mobile Optimizations */
 @media (max-width: 768px) {
-  #root {
-    padding: 1rem;
-  }
   
   .news-card {
     min-height: 200px;
@@ -81,15 +78,9 @@
   }
   
   /* Make buttons and touch targets larger on mobile */
-  button, .chakra-button {
+  button {
     min-height: 44px;
     min-width: 44px;
-  }
-  
-  /* Improve spacing for mobile */
-  .chakra-container {
-    padding-left: 1rem;
-    padding-right: 1rem;
   }
   
   /* Make search input more mobile-friendly */
@@ -99,12 +90,12 @@
   }
   
   /* Improve grid layout for mobile */
-  .chakra-grid {
+  .grid, [class*="grid"] {
     gap: 1rem;
   }
   
   /* Make pagination more mobile-friendly */
-  .chakra-hstack {
+  .flex, [class*="flex"] {
     flex-wrap: wrap;
     justify-content: center;
   }

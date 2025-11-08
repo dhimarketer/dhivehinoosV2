@@ -214,7 +214,10 @@ export const articlesAPI = {
     const params = new URLSearchParams();
     if (category) params.append('category', category);
     params.append('page', page);
-    if (pageSize) params.append('page_size', pageSize);
+    // Always append page_size if provided, even if it's 0 (though that shouldn't happen)
+    if (pageSize !== null && pageSize !== undefined) {
+      params.append('page_size', pageSize);
+    }
     return api.get(`/articles/published/?${params.toString()}`);
   },
   search: (query, category = null, page = 1, pageSize = null) => {
@@ -222,7 +225,10 @@ export const articlesAPI = {
     params.append('search', query);
     if (category) params.append('category', category);
     params.append('page', page);
-    if (pageSize) params.append('page_size', pageSize);
+    // Always append page_size if provided, even if it's 0 (though that shouldn't happen)
+    if (pageSize !== null && pageSize !== undefined) {
+      params.append('page_size', pageSize);
+    }
     return api.get(`/articles/published/?${params.toString()}`);
   },
   getBySlug: (slug) => api.get(`/articles/published/${slug}/`),
@@ -265,7 +271,7 @@ export const authAPI = {
 };
 
 export const settingsAPI = {
-  get: () => api.get('/settings/public/'),
+  get: () => api.get('/settings/admin/get/'), // Admin endpoint to get all settings
   update: (data) => api.put('/settings/admin/', data),
   getPublic: () => api.get('/settings/public/'),
 };

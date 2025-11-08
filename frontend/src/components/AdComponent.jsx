@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Image, Link, Spinner, Text } from '@chakra-ui/react';
+import { Box, Spinner, Text } from './ui';
 import { adsAPI } from '../services/api';
 import { trackAdClick } from '../utils/analytics';
 import { getOptimizedImageUrlBySize } from '../utils/imageOptimization';
@@ -61,7 +61,7 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
 
   if (loading) {
     return (
-      <Box textAlign="center" p={4}>
+      <Box className="text-center p-4">
         <Spinner size="sm" />
       </Box>
     );
@@ -69,8 +69,8 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
 
   if (error) {
     return (
-      <Box textAlign="center" p={4}>
-        <Text fontSize="sm" color="gray.500">{error}</Text>
+      <Box className="text-center p-4">
+        <Text size="sm" className="text-gray-500">{error}</Text>
       </Box>
     );
   }
@@ -81,90 +81,60 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
 
   return (
     <Box
-      textAlign={isHorizontalPlacement ? "center" : "left"}
-      mx={isHorizontalPlacement ? "auto" : 0}
-      maxW={isHorizontalPlacement ? { base: "100%", md: "800px", lg: "1000px" } : "100%"}
-      px={{ base: 2, md: 4 }}
+      className={`${isHorizontalPlacement ? "text-center mx-auto" : "text-left"} ${isHorizontalPlacement ? "max-w-full md:max-w-[1400px] lg:max-w-[1600px]" : "max-w-full"} px-2 md:px-4`}
     >
       {ads.map((ad) => (
         <Box 
           key={ad.id} 
-          mb={4}
-          className="ad-container"
+          className="mb-4 ad-container"
         >
           {ad.destination_url ? (
-            <Link
+            <a
               href={ad.destination_url}
-              isExternal
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => handleAdClick(ad)}
-              display="block"
+              className="block"
             >
               {ad.image_url ? (
-                <Image
-                  as="img"
-                  src={getOptimizedImageUrlBySize(ad.image_url, 900, 250)}
+                <img
+                  src={getOptimizedImageUrlBySize(ad.image_url, 1600, 400)}
                   alt={ad.title}
-                  maxW="100%"
-                  h="auto"
-                  borderRadius="md"
-                  _hover={{ opacity: 0.9 }}
-                  mx="auto"
-                  display="block"
+                  className="max-w-full h-auto rounded-lg hover:opacity-90 mx-auto block"
                   loading="lazy"
                   decoding="async"
-                  width="900"
-                  height="250"
+                  width="1600"
+                  height="400"
                 />
               ) : (
-                <Box
-                  p={{ base: 3, md: 4 }}
-                  bg="gray.100"
-                  borderRadius="md"
-                  textAlign="center"
-                  border="2px dashed"
-                  borderColor="gray.300"
-                  fontSize={{ base: "sm", md: "md" }}
-                >
-                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} color="gray.700">
+                <Box className="p-3 md:p-4 bg-gray-100 rounded-lg text-center border-2 border-dashed border-gray-300 text-sm md:text-base">
+                  <Text className="font-bold text-base md:text-lg text-gray-700">
                     {ad.title}
                   </Text>
-                  <Text fontSize={{ base: "xs", md: "sm" }} color="gray.500" mt={1}>
+                  <Text size="sm" className="text-gray-500 mt-1">
                     Click to visit
                   </Text>
                 </Box>
               )}
-            </Link>
+            </a>
           ) : (
             <Box>
               {ad.image_url ? (
-                <Image
-                  as="img"
+                <img
                   src={getOptimizedImageUrlBySize(ad.image_url, 300, 250)}
                   alt={ad.title}
-                  maxW="100%"
-                  h="auto"
-                  borderRadius="md"
-                  mx="auto"
-                  display="block"
+                  className="max-w-full h-auto rounded-lg mx-auto block"
                   loading="lazy"
                   decoding="async"
                   width="300"
                   height="250"
                 />
               ) : (
-                <Box
-                  p={{ base: 3, md: 4 }}
-                  bg="gray.100"
-                  borderRadius="md"
-                  textAlign="center"
-                  border="2px dashed"
-                  borderColor="gray.300"
-                  fontSize={{ base: "sm", md: "md" }}
-                >
-                  <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} color="gray.700">
+                <Box className="p-3 md:p-4 bg-gray-100 rounded-lg text-center border-2 border-dashed border-gray-300 text-sm md:text-base">
+                  <Text className="font-bold text-base md:text-lg text-gray-700">
                     {ad.title}
                   </Text>
-                  <Text fontSize={{ base: "xs", md: "sm" }} color="gray.500" mt={1}>
+                  <Text size="sm" className="text-gray-500 mt-1">
                     Advertisement
                   </Text>
                 </Box>

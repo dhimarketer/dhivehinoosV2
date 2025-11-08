@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Image,
   Heading,
   Text,
   Flex,
   Badge,
-  useColorModeValue,
   Card,
   CardBody,
   CardHeader,
   Skeleton,
-} from '@chakra-ui/react';
+} from './ui';
 import { Link } from 'react-router-dom';
 import FormattedText from './FormattedText';
 import SocialShare from './SocialShare';
@@ -23,23 +21,26 @@ const StoryCard = ({ article, variant = 'default' }) => {
   // Enhanced image error handling
   const handleImageError = (e) => {
     setImageLoading(false);
-    // Silent fail - don't log in production
-    
-    // Use a more reliable fallback image
-    const fallbackImages = {
-      featured: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=300&fit=crop&crop=center",
-      default: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=350&h=200&fit=crop&crop=center",
-      compact: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=120&h=100&fit=crop&crop=center"
-    };
-    
-    e.target.src = fallbackImages[variant] || fallbackImages.default;
+    // Don't set placeholder - let the image fail gracefully
+    // The image will show as broken, but we won't replace it with placeholder
+    // This prevents placeholder images from showing when real images should load
+    const target = e.target;
+    if (target.src && !target.src.includes('placeholder') && !target.dataset.retry) {
+      // Try to reload the original image once
+      target.dataset.retry = 'true';
+      const originalSrc = target.getAttribute('data-original-src') || article.image_url;
+      if (originalSrc && originalSrc !== target.src) {
+        setTimeout(() => {
+          target.src = originalSrc;
+        }, 1000);
+      }
+    }
   };
   
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const textColor = useColorModeValue('gray.600', 'gray.300');
-  const titleColor = useColorModeValue('gray.800', 'white');
-  const hoverShadow = useColorModeValue('lg', 'dark-lg');
+  const cardBg = 'white';
+  const borderColor = 'gray.200';
+  const textColor = 'gray.600';
+  const titleColor = 'gray.800';
 
   // Format date like Times of Addu with consistent timezone handling
   const formatDate = (dateString) => {
@@ -69,92 +70,59 @@ const StoryCard = ({ article, variant = 'default' }) => {
   // Different card variants based on Times of Addu layout
   if (variant === 'featured') {
     return (
-      <Card
+      <Card 
         as={Link}
         to={`/article/${article.slug}`}
-        h={{ base: "auto", md: "600px" }}
-        w={{ base: "100%", md: "800px" }}
-        maxW="100%"
-        display="flex"
-        flexDirection="column"
-        overflow="hidden"
-        className="news-card featured-article"
-        borderRadius="lg"
-        shadow="md"
-        transition="box-shadow 0.2s ease, transform 0.2s ease"
-        willChange="transform"
-        _hover={{
-          shadow: hoverShadow,
-          transform: 'translateY(-2px)',
-        }}
-        mb={6}
-        mx="auto"
+        className="news-card featured-article h-auto w-full max-w-4xl flex flex-col mb-8 mx-auto"
       >
-        <CardHeader>
-          <Flex justify="space-between" align="start">
-            <Box flex="1">
-              <Heading size="lg" mb={2} noOfLines={2} className="news-title">
-                {article.title}
-              </Heading>
-              <Flex gap={2} mb={2}>
-                <Badge colorScheme="blue" variant="solid">
-                  Featured
+        <CardHeader className="pb-3">
+          <Box className="flex-1">
+            <Heading size="lg" className="mb-3 news-title">
+              {article.title}
+            </Heading>
+            <Flex gap={2} className="mb-2 items-center">
+              {article.category && (
+                <Badge 
+                  colorScheme="gray" 
+                  variant="subtle"
+                  size="sm"
+                  className="text-xs"
+                >
+                  {article.category.icon} {article.category.name}
                 </Badge>
-                {article.category && (
-                  <Badge 
-                    colorScheme="gray" 
-                    variant="subtle"
-                    bg={`${article.category.color}20`}
-                    color={article.category.color}
-                    borderColor={article.category.color}
-                  >
-                    {article.category.icon} {article.category.name}
-                  </Badge>
-                )}
-              </Flex>
-            </Box>
-          </Flex>
+              )}
+              <Text size="sm" className="text-gray-500 text-xs">
+                {formatDate(article.created_at)}
+              </Text>
+            </Flex>
+          </Box>
         </CardHeader>
-        <CardBody flex="1" display="flex" flexDirection="column">
+        <CardBody className="flex-1 flex flex-col pt-0">
           {article.image_url && (
             <Box 
-              position="relative" 
-              mb={3} 
-              w="100%" 
-              borderRadius="md" 
-              overflow="hidden"
-              aspectRatio={{ base: "16/9", md: "16/9" }}
-              minH={{ base: "200px", md: "450px" }}
+              className="relative mb-4 w-full rounded overflow-hidden"
+              style={{ 
+                aspectRatio: '16/9',
+                maxHeight: variant === 'featured' ? '500px' : 'none'
+              }}
             >
               {imageLoading && (
                 <Skeleton
-                  position="absolute"
-                  inset={0}
-                  borderRadius="md"
-                  zIndex={1}
+                  className="absolute inset-0 rounded-md z-10"
                 />
               )}
-              <Image
-                as="img"
-                // For featured images, use 800w as src (optimal for LCP, matches preload)
-                // Browser will choose from srcSet for responsive loading
+              <img
                 src={article.image_url && article.image_url.includes('fal.media') 
                   ? getOptimizedImageUrlBySize(article.image_url, 800, 450)
-                  : getOptimizedImageUrlBySize(article.image_url, 1200, 675)}
+                  : (article.image_url || '')}
+                data-original-src={article.image_url}
                 srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [400, 600, 800, 1200] }) : undefined}
                 sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({ featured: true }) : undefined}
                 alt={article.title}
-                position="absolute"
-                inset={0}
-                w="100%"
-                h="100%"
-                objectFit="cover"
-                objectPosition="center"
-                className="news-card-image"
-                fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Featured+Article"
+                className="w-full h-full object-cover object-center news-card-image"
                 loading={variant === 'featured' ? 'eager' : 'lazy'}
                 decoding="async"
-                fetchpriority={variant === 'featured' ? 'high' : 'auto'}
+                fetchPriority={variant === 'featured' ? 'high' : 'auto'}
                 width="1200"
                 height="675"
                 onLoad={() => {
@@ -174,20 +142,15 @@ const StoryCard = ({ article, variant = 'default' }) => {
               content={article.content} 
               preview={true} 
               maxLength={150}
-              fontSize="md"
-              color="gray.600"
-              mb={3}
-              noOfLines={4}
-              lineHeight="1.5"
+              className="text-base text-gray-600 mb-3 line-clamp-4 leading-normal"
             />
           )}
-          <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
-            <Text>{formatDate(article.created_at)}</Text>
-            <Flex gap={4} align="center">
+          <Flex align="center" justify="space-between" className="news-meta text-xs mt-auto pt-3 border-t border-gray-100">
+            <Flex gap={3} align="center">
               <Text className="news-stats">👍 {article.vote_score || 0}</Text>
               <Text className="news-stats">💬 {article.approved_comments_count || 0}</Text>
-              <SocialShare article={article} variant="minimal" />
             </Flex>
+            <SocialShare article={article} variant="minimal" />
           </Flex>
         </CardBody>
       </Card>
@@ -199,38 +162,14 @@ const StoryCard = ({ article, variant = 'default' }) => {
       <Box
         as={Link}
         to={`/article/${article.slug}`}
-        display="flex"
-        className="news-card compact-article"
-        borderRadius="lg"
-        overflow="hidden"
-        shadow="sm"
-        transition="box-shadow 0.2s ease, transform 0.2s ease"
-        willChange="transform"
-        _hover={{
-          shadow: hoverShadow,
-          transform: 'translateY(-1px)',
-        }}
-        mb={4}
-        border="1px solid"
-        borderColor={borderColor}
-        bg={cardBg}
-        w="100%"
-        maxW="400px"
-        h="120px"
-        mx="auto"
+        className="news-card compact-article flex overflow-hidden mb-4 border border-gray-200 bg-white w-full max-w-[400px] h-[120px] mx-auto hover:shadow-lg hover:-translate-y-0.5 transition-all rounded-lg"
       >
-        <Image
-          as="img"
+        <img
           src={getOptimizedImageUrlBySize(article.image_url, 120, 100)}
           srcSet={generateSrcSet(article.image_url, { aspectRatio: 1.2, breakpoints: [120] })}
           sizes={generateSizes({ compact: true })}
           alt={article.title}
-          w="120px"
-          h="100px"
-          objectFit="cover"
-          flexShrink={0}
-          className="news-card-image"
-          fallbackSrc="https://via.placeholder.com/120x100/cccccc/666666?text=News"
+          className="w-[120px] h-[100px] object-cover flex-shrink-0 news-card-image"
           width="120"
           height="100"
           loading="lazy"
@@ -238,34 +177,18 @@ const StoryCard = ({ article, variant = 'default' }) => {
           onError={handleImageError}
         />
         <Box 
-          p={3} 
-          flex="1" 
-          display="flex" 
-          flexDirection="column" 
-          justifyContent="space-between"
-          minW="0"
-          overflow="hidden"
+          className="p-3 flex-1 flex flex-col justify-between min-w-0 overflow-hidden"
         >
           <Heading
             size="sm"
-            className="news-title"
-            mb={1}
-            lineHeight="1.3"
-            noOfLines={2}
-            color={titleColor}
-            fontSize={{ base: "sm", md: "md" }}
-            _hover={{ color: 'blue.500' }}
-            transition="color 0.2s ease"
+            className="news-title mb-1 leading-tight line-clamp-2 text-gray-800 text-sm md:text-base hover:text-blue-500 transition-colors"
           >
             {article.title}
           </Heading>
           {article.content && (
             <Text 
-              fontSize="xs" 
-              color={textColor}
-              mb={1}
-              noOfLines={2}
-              lineHeight="1.3"
+              size="xs"
+              className="text-gray-600 mb-1 line-clamp-2 leading-tight"
             >
               <FormattedText 
                 content={article.content} 
@@ -275,10 +198,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
             </Text>
           )}
           <Text 
-            fontSize="xs" 
-            className="news-meta" 
-            color={textColor}
-            fontWeight="medium"
+            size="xs"
+            className="news-meta text-gray-600 font-medium"
           >
             {formatDate(article.created_at)}
           </Text>
@@ -287,92 +208,57 @@ const StoryCard = ({ article, variant = 'default' }) => {
     );
   }
 
-  // Default card variant
+  // Default card variant - Standard.mv style
   return (
     <Card 
       as={Link}
       to={`/article/${article.slug}`}
-      h={{ base: "auto", md: "500px" }} 
-      w={{ base: "100%", md: "350px" }}
-      maxW="100%"
-      display="flex" 
-      flexDirection="column" 
-      overflow="hidden"
-      className="news-card"
-      borderRadius="lg"
-      shadow="sm"
-      transition="box-shadow 0.2s ease, transform 0.2s ease"
-      willChange="transform"
-      _hover={{
-        shadow: hoverShadow,
-        transform: 'translateY(-2px)',
-      }}
-      mb={6}
-      border="1px solid"
-      borderColor={borderColor}
+      className="news-card h-auto w-full flex flex-col"
+      style={{ minWidth: 0 }}
     >
-      <CardHeader>
-        <Heading size="sm" mb={2} noOfLines={2} className="news-title">
+      <CardHeader className="pb-2">
+        <Heading size="sm" className="mb-2 news-title line-clamp-2">
           {article.title}
         </Heading>
-        <Flex gap={2} mb={2}>
+        <Flex gap={2} className="mb-2 items-center">
           {article.category && (
             <Badge 
               colorScheme="gray" 
               variant="subtle"
-              bg={`${article.category.color}20`}
-              color={article.category.color}
-              borderColor={article.category.color}
               size="sm"
+              className="text-xs"
             >
               {article.category.icon} {article.category.name}
             </Badge>
           )}
+          <Text size="sm" className="text-gray-500 text-xs">
+            {formatDate(article.created_at)}
+          </Text>
         </Flex>
-        <Text fontSize="sm" color="gray.600">
-          {formatDate(article.created_at)}
-        </Text>
       </CardHeader>
-      <CardBody flex="1" display="flex" flexDirection="column">
+      <CardBody className="flex-1 flex flex-col pt-0">
         {article.image_url && (
           <Box 
-            position="relative" 
-            mb={3} 
-            w="100%" 
-            borderRadius="md" 
-            overflow="hidden"
-            aspectRatio="16/9"
-            minH="200px"
+            className="relative mb-3 w-full rounded overflow-hidden aspect-video min-h-[200px]"
           >
             {imageLoading && (
               <Skeleton
-                position="absolute"
-                inset={0}
-                borderRadius="md"
-                zIndex={1}
+                className="absolute inset-0 rounded-md z-10"
               />
             )}
-            <Image
-              as="img"
-              // Use smallest srcSet size as src to prevent duplicate loading
+            <img
               src={article.image_url && article.image_url.includes('fal.media')
                 ? getOptimizedImageUrlBySize(article.image_url, 350, 197)
-                : getOptimizedImageUrlBySize(article.image_url, 592, 444)}
-              srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [350, 400, 592] }) : undefined}
-              sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({}) : undefined}
+                : (article.image_url || '')}
+              data-original-src={article.image_url}
+              srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [350, 400, 600] }) : undefined}
+              sizes={article.image_url && article.image_url.includes('fal.media') ? "(max-width: 768px) 100vw, (max-width: 1024px) 350px, 400px" : undefined}
               alt={article.title}
-              position="absolute"
-              inset={0}
-              w="100%"
-              h="100%"
-              objectFit="cover"
-              objectPosition="center"
-              className="news-card-image"
-              fallbackSrc="https://via.placeholder.com/350x200/cccccc/666666?text=Article+Image"
+              className="absolute inset-0 w-full h-full object-cover object-center news-card-image"
               loading="lazy"
               decoding="async"
-              width="592"
-              height="444"
+              width="400"
+              height="300"
               onLoad={() => {
                 setImageLoading(false);
               }}
@@ -390,20 +276,15 @@ const StoryCard = ({ article, variant = 'default' }) => {
             content={article.content} 
             preview={true} 
             maxLength={120}
-            fontSize="sm"
-            color="gray.600"
-            mb={3}
-            noOfLines={3}
-            lineHeight="1.4"
+            className="text-sm text-gray-600 mb-3 line-clamp-3 leading-relaxed"
           />
         )}
-        <Flex align="center" justify="space-between" className="news-meta" fontSize="sm" mt="auto">
-          <Text fontWeight="medium">Read More</Text>
+        <Flex align="center" justify="space-between" className="news-meta text-xs mt-auto pt-2 border-t border-gray-100">
           <Flex gap={3} align="center">
             <Text className="news-stats">👍 {article.vote_score || 0}</Text>
             <Text className="news-stats">💬 {article.approved_comments_count || 0}</Text>
-            <SocialShare article={article} variant="minimal" />
           </Flex>
+          <SocialShare article={article} variant="minimal" />
         </Flex>
       </CardBody>
     </Card>

@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Flex,
   Text,
   Badge,
   Spinner,
   SimpleGrid,
-  useColorModeValue,
-  Link as ChakraLink,
-  Icon,
   Tooltip,
-} from '@chakra-ui/react';
+} from './ui';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { categoriesAPI } from '../services/api';
 
@@ -19,10 +15,6 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const location = useLocation();
-  
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const hoverBg = useColorModeValue('gray.50', 'gray.700');
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -65,9 +57,9 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
 
   if (loading) {
     return (
-      <Box p={4} textAlign="center">
+      <Box className="p-4 text-center">
         <Spinner size="md" />
-        <Text mt={2} fontSize="sm" color="gray.500">
+        <Text className="mt-2 text-sm text-gray-500">
           Loading categories...
         </Text>
       </Box>
@@ -76,8 +68,8 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
 
   if (error) {
     return (
-      <Box p={4} textAlign="center">
-        <Text color="red.500" fontSize="sm">
+      <Box className="p-4 text-center">
+        <Text className="text-red-500 text-sm">
           {error}
         </Text>
       </Box>
@@ -86,8 +78,8 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
 
   if (!categories || categories.length === 0) {
     return (
-      <Box p={4} textAlign="center">
-        <Text fontSize="sm" color="gray.500">
+      <Box className="p-4 text-center">
+        <Text size="sm" className="text-gray-500">
           No categories available
         </Text>
       </Box>
@@ -95,15 +87,8 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
   }
 
   return (
-    <Box
-      bg={bgColor}
-      border="1px"
-      borderColor={borderColor}
-      borderRadius="lg"
-      p={3}
-      mb={4}
-    >
-      <Text fontSize="md" fontWeight="bold" mb={3} color="gray.700">
+    <Box className="bg-white border border-gray-200 rounded-lg p-3 mb-4">
+      <Text size="md" className="font-bold mb-3 text-gray-700">
         Browse by Category
       </Text>
       
@@ -114,25 +99,14 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
             as={RouterLink}
             to="/"
             onClick={() => handleCategoryClick(null)}
-            p={2}
-            borderRadius="md"
-            border="1px"
-            borderColor={selectedCategory === null ? 'blue.500' : 'transparent'}
-            bg={selectedCategory === null ? 'blue.50' : 'transparent'}
-            _hover={{
-              bg: selectedCategory === null ? 'blue.100' : hoverBg,
-              transform: 'translateY(-1px)',
-            }}
-            transition="all 0.2s"
-            cursor="pointer"
-            textAlign="center"
-            minH="60px"
-            display="flex"
-            flexDirection="column"
-            justifyContent="center"
+            className={`p-2 rounded-md border text-center min-h-[60px] flex flex-col justify-center transition-all cursor-pointer ${
+              selectedCategory === null 
+                ? 'border-blue-500 bg-blue-50 hover:bg-blue-100' 
+                : 'border-transparent hover:bg-gray-50'
+            } hover:-translate-y-0.5`}
           >
-            <Text fontSize="lg" mb={1}>📰</Text>
-            <Text fontSize="xs" fontWeight="medium">
+            <Text className="text-lg mb-1">📰</Text>
+            <Text size="xs" className="font-medium">
               All
             </Text>
           </Box>
@@ -145,34 +119,23 @@ const CategoryNavigation = ({ onCategorySelect, selectedCategory = null }) => {
               as={RouterLink}
               to={`/?category=${category.slug}`}
               onClick={() => handleCategoryClick(category.slug)}
-              p={2}
-              borderRadius="md"
-              border="1px"
-              borderColor={selectedCategory === category.slug ? category.color : 'transparent'}
-              bg={selectedCategory === category.slug ? `${category.color}10` : 'transparent'}
-              _hover={{
-                bg: selectedCategory === category.slug ? `${category.color}20` : hoverBg,
-                transform: 'translateY(-1px)',
-              }}
-              transition="all 0.2s"
-              cursor="pointer"
-              textAlign="center"
-              minH="60px"
-              display="flex"
-              flexDirection="column"
-              justifyContent="center"
+              className={`p-2 rounded-md border text-center min-h-[60px] flex flex-col justify-center transition-all cursor-pointer ${
+                selectedCategory === category.slug
+                  ? `border-[${category.color}] bg-[${category.color}]/10 hover:bg-[${category.color}]/20`
+                  : 'border-transparent hover:bg-gray-50'
+              } hover:-translate-y-0.5`}
             >
-              <Text fontSize="lg" mb={1}>
+              <Text className="text-lg mb-1">
                 {category.icon}
               </Text>
-              <Text fontSize="xs" fontWeight="medium" mb={1} noOfLines={2}>
+              <Text size="xs" className="font-medium mb-1 line-clamp-2">
                 {category.name}
               </Text>
               <Badge
                 size="xs"
                 colorScheme="gray"
                 variant="subtle"
-                fontSize="2xs"
+                className="text-[10px]"
               >
                 {category.articles_count}
               </Badge>

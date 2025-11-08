@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text, Button, VStack } from '@chakra-ui/react';
+import { Box, Text, Button, VStack } from './ui';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -25,27 +25,27 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       // Fallback UI
       return (
-        <Box p={8} textAlign="center">
+        <Box className="p-8 text-center">
           <VStack spacing={4}>
-            <Text fontSize="xl" fontWeight="bold" color="red.500">
+            <Text size="lg" className="font-bold text-red-500">
               Something went wrong
             </Text>
-            <Text color="gray.600">
+            <Text className="text-gray-600">
               An error occurred while loading the application. Please refresh the page.
             </Text>
             <Button 
-              colorScheme="blue" 
+              colorScheme="brand"
               onClick={() => window.location.reload()}
             >
               Refresh Page
             </Button>
             {process.env.NODE_ENV === 'development' && (
-              <Box mt={4} p={4} bg="gray.100" borderRadius="md" textAlign="left">
-                <Text fontSize="sm" fontWeight="bold">Error Details:</Text>
-                <Text fontSize="xs" fontFamily="mono" whiteSpace="pre-wrap">
+              <Box className="mt-4 p-4 bg-gray-100 rounded-lg text-left">
+                <Text size="sm" className="font-bold">Error Details:</Text>
+                <Text size="xs" className="font-mono whitespace-pre-wrap">
                   {this.state.error && this.state.error.toString()}
                 </Text>
-                <Text fontSize="xs" fontFamily="mono" whiteSpace="pre-wrap" mt={2}>
+                <Text size="xs" className="font-mono whitespace-pre-wrap mt-2">
                   {this.state.errorInfo.componentStack}
                 </Text>
               </Box>

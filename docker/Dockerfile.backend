@@ -42,6 +42,9 @@ mkdir -p /app/database\n\
 chown -R django:django /app/media /app/database /app/logs\n\
 chmod -R 755 /app/media /app/database /app/logs\n\
 chmod 664 /app/database/db.sqlite3 2>/dev/null || true\n\
+# Run database migrations\n\
+echo "Running database migrations..."\n\
+python manage.py migrate --noinput || echo "Migration failed, continuing..."\n\
 # Debug: List media directory contents\n\
 echo "Media directory contents:"\n\
 ls -la /app/media/\n\

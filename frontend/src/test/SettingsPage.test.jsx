@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import SettingsPage from '../pages/admin/SettingsPage'
 import { settingsAPI } from '../services/api'
 import { AuthProvider } from '../contexts/AuthContext'
+import { ToastProvider } from '../contexts/ToastContext'
 
 // Mock the API
 vi.mock('../services/api', () => ({
@@ -51,15 +51,15 @@ const mockSettings = {
 
 const renderWithProviders = (component) => {
   return render(
-    <ChakraProvider>
-      <HelmetProvider>
+    <HelmetProvider>
+      <ToastProvider>
         <BrowserRouter>
           <AuthProvider>
             {component}
           </AuthProvider>
         </BrowserRouter>
-      </HelmetProvider>
-    </ChakraProvider>
+      </ToastProvider>
+    </HelmetProvider>
   )
 }
 

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider, useAuth, ProtectedRoute } from '../contexts/AuthContext'
+import { ToastProvider } from '../contexts/ToastContext'
 import authService from '../services/auth'
 
 // Mock the auth service
@@ -43,15 +43,15 @@ const TestComponent = () => {
 
 const renderWithProviders = (component) => {
   return render(
-    <ChakraProvider>
-      <HelmetProvider>
+    <HelmetProvider>
+      <ToastProvider>
         <BrowserRouter>
           <AuthProvider>
             {component}
           </AuthProvider>
         </BrowserRouter>
-      </HelmetProvider>
-    </ChakraProvider>
+      </ToastProvider>
+    </HelmetProvider>
   )
 }
 
@@ -299,11 +299,9 @@ describe('AuthContext', () => {
       }
 
       render(
-        <ChakraProvider>
-          <BrowserRouter>
-            <TestComponentWithoutProvider />
-          </BrowserRouter>
-        </ChakraProvider>
+        <BrowserRouter>
+          <TestComponentWithoutProvider />
+        </BrowserRouter>
       )
 
       expect(screen.getByText('Error: useAuth must be used within an AuthProvider')).toBeInTheDocument()

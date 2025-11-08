@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Reset and base styles */
 * {
   margin: 0;
@@ -11,10 +15,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8f9fa;
-  color: #333;
+  background-color: #ffffff;
+  color: #1a1a1a;
   /* Ensure text remains visible during font load */
   font-display: swap;
+  line-height: 1.6;
 }
 
 code {
@@ -56,20 +61,21 @@ img {
   height: auto;
 }
 
-/* Times of Addu inspired styles */
+/* Standard.mv inspired clean card styles */
 .news-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
+  transition: all 0.2s ease;
+  border-radius: 8px;
   overflow: hidden;
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  border: 1px solid #f0f0f0;
 }
 
 .news-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .news-card-image {
@@ -82,56 +88,60 @@ img {
 
 .news-title {
   font-weight: 600;
-  line-height: 1.4;
-  color: #1a202c;
+  line-height: 1.5;
+  color: #1a1a1a;
   transition: color 0.2s ease;
+  font-size: 1.125rem;
 }
 
 .news-title:hover {
-  color: #3182ce;
+  color: #0073e6;
 }
 
 .news-meta {
   font-size: 0.875rem;
-  color: #718096;
-  font-weight: 500;
+  color: #666;
+  font-weight: 400;
 }
 
 .news-stats {
   font-size: 0.875rem;
-  color: #a0aec0;
+  color: #999;
+  font-weight: 400;
 }
 
-/* Featured article styles */
+/* Featured article styles - Standard.mv style */
 .featured-article {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 16px;
+  background: white;
+  color: #1a1a1a;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f0f0f0;
 }
 
 .featured-article .news-title {
-  color: white;
-  font-size: 1.75rem;
+  color: #1a1a1a;
+  font-size: 1.5rem;
   font-weight: 700;
+  line-height: 1.4;
 }
 
 .featured-article .news-title:hover {
-  color: #e2e8f0;
+  color: #0073e6;
 }
 
-/* Compact article styles */
+/* Compact article styles - Standard.mv style */
 .compact-article {
   background: white;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #f0f0f0;
   transition: all 0.2s ease;
 }
 
 .compact-article:hover {
-  border-color: #3182ce;
-  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.15);
+  border-color: #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .compact-article .news-title {
@@ -198,27 +208,14 @@ img {
   }
 }
 
-/* Tablet (768px+) */
+/* Tablet (768px+) - Standard.mv style */
 @media (min-width: 768px) {
   .news-card {
-    margin-bottom: 1.5rem;
-    min-height: 400px;
-  }
-  
-  .news-card.default-card {
-    height: 400px;
-  }
-  
-  .news-card.featured-card {
-    height: 450px;
-  }
-  
-  .news-card.compact-card {
-    height: 120px;
+    margin-bottom: 0;
   }
   
   .featured-article .news-title {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
   }
   
   .site-title {
@@ -226,14 +223,14 @@ img {
   }
 }
 
-/* Desktop (1024px+) */
+/* Desktop (1024px+) - Standard.mv style */
 @media (min-width: 1024px) {
   .news-card {
-    margin-bottom: 2rem;
+    margin-bottom: 0;
   }
   
   .featured-article .news-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
   
   .site-title {
@@ -311,13 +308,18 @@ img {
   align-items: start;
 }
 
+/* Ensure grid items don't overflow */
+.grid > * {
+  min-width: 0;
+}
+
 /* Ensure consistent card heights */
 .news-card.default-card {
   height: 400px;
 }
 
 .news-card.featured-card {
-  height: 450px;
+  /* Remove fixed height to allow natural aspect ratio */
 }
 
 .news-card.compact-card {
@@ -333,4 +335,28 @@ img {
                     linear-gradient(-45deg, transparent 75%, #f7fafc 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Mobile Performance Optimizations - Disable animations on mobile */
+@media (max-width: 767px), (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable hover effects on mobile */
+  .news-card:hover,
+  .ad-container:hover,
+  .compact-article:hover {
+    transform: none !important;
+    box-shadow: inherit !important;
+  }
+  
+  .news-card:hover .news-card-image {
+    transform: none !important;
+  }
 }

@@ -61,6 +61,26 @@ class SiteSettings(models.Model):
         help_text="Default number of articles to display per page (5-100)"
     )
     
+    # Theme settings
+    active_theme = models.CharField(
+        max_length=50,
+        choices=[
+            ('modern', 'Modern News'),
+            ('classic', 'Classic Blog'),
+            ('minimal', 'Minimal Clean'),
+            ('newspaper', 'Newspaper Style'),
+            ('magazine', 'Magazine Layout'),
+        ],
+        default='modern',
+        help_text="Active frontend theme/layout"
+    )
+    
+    theme_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom theme configuration (colors, fonts, spacing) - stored as JSON"
+    )
+    
     # Analytics settings
     google_analytics_id = models.CharField(
         max_length=50,
@@ -106,6 +126,15 @@ class SiteSettings(models.Model):
         
         if self.default_pagination_size < 5 or self.default_pagination_size > 100:
             raise ValidationError({'default_pagination_size': 'Default pagination size must be between 5 and 100'})
+        
+        # Validate active_theme
+        valid_themes = ['modern', 'classic', 'minimal', 'newspaper', 'magazine']
+        if self.active_theme not in valid_themes:
+            raise ValidationError({'active_theme': f'Theme must be one of: {", ".join(valid_themes)}'})
+        
+        # Validate theme_config is a dict (JSONField handles this, but we can add custom validation)
+        if self.theme_config and not isinstance(self.theme_config, dict):
+            raise ValidationError({'theme_config': 'Theme configuration must be a valid JSON object'})
     
     def __str__(self):
         return f'Site Settings (Updated: {self.updated_at.strftime("%Y-%m-%d %H:%M")})'
@@ -122,6 +151,8 @@ class SiteSettings(models.Model):
             'allow_comments': True,
             'require_comment_approval': True,
             'default_pagination_size': 10,
+            'active_theme': 'modern',
+            'theme_config': {},
         }
         )
         return settings

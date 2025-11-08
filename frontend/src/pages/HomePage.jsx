@@ -7,12 +7,10 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Image as ChakraImage,
   Heading,
   Text,
   Spinner,
   Alert,
-  AlertIcon,
   Flex,
   Button,
   HStack,
@@ -21,14 +19,17 @@ import {
   Skeleton,
   Badge,
   VStack,
-} from '@chakra-ui/react';
+  Select,
+} from '../components/ui';
 import { Helmet } from 'react-helmet-async';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
 import TopNavigation from '../components/TopNavigation';
+import ThemeLayout from '../components/ThemeLayout';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useTheme } from '../hooks/useTheme';
 import { getOptimizedImageUrlBySize } from '../utils/imageOptimization';
 
 // Lazy load components that aren't immediately visible or below the fold
@@ -37,44 +38,61 @@ const NewsletterSubscription = lazy(() => import('../components/NewsletterSubscr
 
 const HomePage = () => {
   const { settings } = useSiteSettings();
+  const { themeName } = useTheme();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchParams] = useSearchParams();
-  const selectedCategory = searchParams.get('category');
+  const { slug: categorySlug } = useParams();
+  const selectedCategory = categorySlug || null;
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Separate state for input field
   const [searchResults, setSearchResults] = useState([]);
-  // Simplified pagination - use default from settings, but user can override
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    pageSize: 10, // Initial default, will be updated from settings
-    totalPages: 1,
-    totalCount: 0,
-    hasNext: false,
-    hasPrevious: false
-  });
-  const settingsInitialized = useRef(false);
-  
   // Helper function to round page size to be divisible by columns
   const roundToColumnMultiple = (size, columns) => {
     if (!columns || columns < 1) return size;
     return Math.max(columns, Math.floor(size / columns) * columns);
   };
 
-  // Set default pageSize from settings once when settings first load
-  // Round it to be divisible by columns
+  // Simplified pagination - use default from settings, but user can override
+  const [pagination, setPagination] = useState(() => {
+    // Lazy initializer - calculate from settings if available, otherwise use safe default
+    const initialSize = settings.default_pagination_size || 12;
+    const columns = settings.story_cards_columns || 3;
+    return {
+      currentPage: 1,
+      pageSize: roundToColumnMultiple(initialSize, columns),
+      totalPages: 1,
+      totalCount: 0,
+      hasNext: false,
+      hasPrevious: false
+    };
+  });
+  
+  // Update pageSize when settings change (this handles when settings load asynchronously)
   useEffect(() => {
-    if (!settingsInitialized.current && settings.default_pagination_size) {
+    if (settings.default_pagination_size) {
       const columns = settings.story_cards_columns || 3;
       const roundedSize = roundToColumnMultiple(settings.default_pagination_size, columns);
-      setPagination(prev => ({ 
-        ...prev, 
-        pageSize: roundedSize 
-      }));
-      settingsInitialized.current = true;
+      setPagination(prev => {
+        // Only update if it's different to avoid unnecessary re-renders
+        if (prev.pageSize !== roundedSize) {
+          return { ...prev, pageSize: roundedSize, currentPage: 1 };
+        }
+        return prev;
+      });
     }
   }, [settings.default_pagination_size, settings.story_cards_columns]);
+
+  // Reset search and pagination when category changes
+  useEffect(() => {
+    // Force re-render when category changes by resetting state
+    setSearchQuery('');
+    setSearchInput('');
+    setSearchResults([]);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    // Clear articles to show loading state
+    setArticles([]);
+  }, [selectedCategory]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,16 +100,45 @@ const HomePage = () => {
         setLoading(true);
         setError(null);
         
+        // Ensure pageSize is set - use a minimum of columns to ensure at least one row
+        const effectivePageSize = pagination.pageSize || (settings.story_cards_columns || 3) * 3;
+        
         let articlesResponse;
         if (searchQuery.trim()) {
           // Use search API when there's a search query
-          articlesResponse = await articlesAPI.search(searchQuery.trim(), selectedCategory, pagination.currentPage, pagination.pageSize);
+          articlesResponse = await articlesAPI.search(searchQuery.trim(), selectedCategory, pagination.currentPage, effectivePageSize);
           setSearchResults(articlesResponse.data.results || articlesResponse.data);
           setArticles([]); // Clear regular articles when searching
         } else {
-          // Use regular API when no search query
-          articlesResponse = await articlesAPI.getPublished(selectedCategory, pagination.currentPage, pagination.pageSize);
-          setArticles(articlesResponse.data.results || articlesResponse.data);
+          // Use regular API when no search query - request 1 extra for featured article
+          // So if pageSize is 12, we request 13 (1 featured + 12 in grid)
+          // Request exactly pageSize + 1 to ensure we have enough for featured + grid
+          const apiPageSize = effectivePageSize + 1;
+          articlesResponse = await articlesAPI.getPublished(selectedCategory, pagination.currentPage, apiPageSize);
+          let allArticles = articlesResponse.data.results || articlesResponse.data;
+          
+          // If we didn't get enough articles and we're on page 1, try to get more
+          // This handles cases where the API pagination might limit results
+          if (allArticles.length < apiPageSize && pagination.currentPage === 1) {
+            // Try requesting a larger page size to get more articles
+            const largerPageSize = apiPageSize + 3; // Request a few extra to ensure we have enough
+            try {
+              const additionalResponse = await articlesAPI.getPublished(selectedCategory, 1, largerPageSize);
+              const additionalArticles = additionalResponse.data.results || additionalResponse.data;
+              if (additionalArticles.length > allArticles.length) {
+                allArticles = additionalArticles;
+              }
+            } catch (err) {
+              // If the larger request fails, use what we have
+              console.warn('Could not fetch additional articles:', err);
+            }
+          }
+          
+          // Log if we didn't get enough articles (for debugging)
+          if (allArticles.length < apiPageSize && import.meta.env.DEV) {
+            console.warn(`API returned ${allArticles.length} articles, but requested ${apiPageSize} (1 featured + ${effectivePageSize} grid)`);
+          }
+          setArticles(allArticles);
           setSearchResults([]); // Clear search results when not searching
         }
         
@@ -120,7 +167,7 @@ const HomePage = () => {
     };
 
     fetchData();
-  }, [selectedCategory, pagination.currentPage, pagination.pageSize, searchQuery]);
+  }, [selectedCategory, pagination.currentPage, pagination.pageSize, searchQuery, settings.story_cards_columns]);
 
   // Search only on Enter key press
   const handleSearchSubmit = (e) => {
@@ -189,10 +236,10 @@ const HomePage = () => {
 
   if (loading) {
     return (
-      <Container maxW="container.xl" py={8}>
-        <Box textAlign="center">
+      <Container className="max-w-7xl py-8">
+        <Box className="text-center">
           <Spinner size="xl" />
-          <Text mt={4}>Loading articles...</Text>
+          <Text className="mt-4">Loading articles...</Text>
         </Box>
       </Container>
     );
@@ -200,9 +247,8 @@ const HomePage = () => {
 
   if (error) {
     return (
-      <Container maxW="container.xl" py={8}>
+      <Container className="max-w-7xl py-8">
         <Alert status="error">
-          <AlertIcon />
           {error}
         </Alert>
       </Container>
@@ -258,60 +304,62 @@ const HomePage = () => {
         selectedCategory={selectedCategory}
       />
 
-      <Container maxW="container.xl" py={{ base: 4, md: 8 }}>
+      <ThemeLayout
+        featuredArticle={articles.length > 0 ? articles[0] : null}
+        articles={articles}
+        settings={settings}
+      >
         {/* Top Banner Ad */}
-        <Box mb={{ base: 4, md: 6 }}>
+        <Box className="mb-4 md:mb-6">
           <Suspense fallback={null}>
             <AdComponent placement="top_banner" maxAds={1} />
           </Suspense>
         </Box>
 
-
         {/* Search Results or Regular Content */}
         {loading ? (
-          <Box mb={12}>
+          <Box className="mb-12">
             <VStack spacing={4} align="center">
               <Spinner size="lg" />
               <Text>{searchQuery.trim() ? 'Searching articles...' : 'Loading articles...'}</Text>
             </VStack>
           </Box>
         ) : searchQuery.trim() ? (
-          <Box mb={12}>
-            <Flex justify="space-between" align="center" mb={6} wrap="wrap" gap={4}>
-              <Heading size="lg" color="gray.800">
+          <Box className="mb-12">
+            <Flex justify="space-between" align="center" className="mb-6 flex-wrap gap-4">
+              <Heading size="lg" className="text-gray-800">
                 Search Results for "{searchQuery}"
               </Heading>
-              <Badge colorScheme="blue" fontSize="sm" px={3} py={1}>
+              <Badge colorScheme="blue" size="sm" className="px-3 py-1">
                 {pagination.totalCount} result{pagination.totalCount !== 1 ? 's' : ''} found
               </Badge>
             </Flex>
             
             {searchResults.length > 0 ? (
-              /* Search Results Grid - Dynamic Layout */
-              <Grid 
-                templateColumns={{ 
-                  base: "1fr", 
-                  sm: `repeat(${Math.min(settings.story_cards_columns || 3, 2)}, 1fr)`, 
-                  md: `repeat(${settings.story_cards_columns || 3}, 1fr)` 
+              /* Search Results Grid - Dynamic Layout - Standard.mv style */
+              <SimpleGrid 
+                columns={{ 
+                  base: 1, 
+                  sm: Math.min(settings.story_cards_columns || 3, 2), 
+                  md: settings.story_cards_columns || 3,
+                  lg: settings.story_cards_columns || 3
                 }} 
-                gap={{ base: 4, md: 6 }} 
-                justifyItems="center"
-                maxW="1200px"
-                mx="auto"
+                spacing={4}
+                className="max-w-[1200px] mx-auto w-full"
               >
                 {searchResults.map((article) => (
                   <StoryCard key={article.id} article={article} variant="default" />
                 ))}
-              </Grid>
+              </SimpleGrid>
             ) : (
-              <Box textAlign="center" py={8}>
-                <Text fontSize="lg" color="gray.500" mb={4}>
+              <Box className="text-center py-8">
+                <Text size="lg" className="text-gray-500 mb-4">
                   No articles found matching "{searchQuery}"
                 </Text>
                 <Button
                   onClick={() => setSearchQuery('')}
                   variant="outline"
-                  colorScheme="blue"
+                  colorScheme="brand"
                   size="sm"
                 >
                   Clear Search
@@ -321,48 +369,46 @@ const HomePage = () => {
           </Box>
         ) : (
           <>
-            {/* Featured Article Section */}
+            {/* Featured Article Section - Standard.mv style */}
             {articles.length > 0 && (
-              <Box mb={12}>
-                <Heading size="lg" mb={6} color="gray.800" textAlign="center">
-                  {selectedCategory ? `Latest ${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} News` : 'Latest News'}
-                </Heading>
+              <Box className="mb-10">
                 <StoryCard article={articles[0]} variant="featured" />
               </Box>
             )}
 
-            <Divider my={8} />
-
-            {/* Main Articles Grid */}
-            <Box>
-              <Heading size="md" mb={6} color="gray.700" textAlign="center">
+            {/* Main Articles Grid - Standard.mv style */}
+            <Box className="mt-6">
+              <Heading size="md" className="mb-6 text-gray-800">
                 More News
               </Heading>
               
-              {/* Dynamic Grid Layout based on settings */}
-              <Grid 
-                templateColumns={{ 
-                  base: "1fr", 
-                  sm: `repeat(${Math.min(settings.story_cards_columns || 3, 2)}, 1fr)`, 
-                  md: `repeat(${settings.story_cards_columns || 3}, 1fr)` 
+              {/* Dynamic Grid Layout based on settings - Standard.mv style */}
+              <SimpleGrid 
+                columns={{ 
+                  base: 1, 
+                  sm: Math.min(settings.story_cards_columns || 3, 2), 
+                  md: settings.story_cards_columns || 3,
+                  lg: settings.story_cards_columns || 3
                 }} 
-                gap={{ base: 4, md: 6 }} 
-                justifyItems="center"
-                maxW="1200px"
-                mx="auto"
+                spacing={4}
+                className="max-w-[1200px] mx-auto w-full"
               >
-                {/* Show all articles from paginated results (skip first one which is featured) */}
-                {articles.slice(1).map((article) => (
-                  <StoryCard key={article.id} article={article} variant="default" />
-                ))}
-              </Grid>
+                {/* Show exactly pageSize articles from paginated results (skip first one which is featured) */}
+                {/* Exclude the featured article (index 0) and show exactly pageSize items */}
+                {/* We should have at least pageSize + 1 articles (1 featured + pageSize grid) */}
+                {articles.length > 1 ? (
+                  articles.slice(1, pagination.pageSize + 1).map((article) => (
+                    <StoryCard key={article.id} article={article} variant="default" />
+                  ))
+                ) : null}
+              </SimpleGrid>
             </Box>
           </>
         )}
 
         {/* Clear Search Button */}
         {searchQuery.trim() && (
-          <Box mb={6} textAlign="center">
+          <Box className="mb-6 text-center">
             <Button
               onClick={clearSearch}
               variant="outline"
@@ -376,7 +422,7 @@ const HomePage = () => {
 
         {/* Newsletter Subscription Section */}
         {!searchQuery.trim() && (
-          <Box mb={8}>
+          <Box className="mb-8">
             <Suspense fallback={null}>
               <NewsletterSubscription variant="inline" showTitle={true} />
             </Suspense>
@@ -385,21 +431,16 @@ const HomePage = () => {
 
         {/* Pagination Controls */}
         {pagination.totalPages > 1 && (
-          <Box mt={8} p={{ base: 4, md: 6 }} bg="gray.50" borderRadius="md">
+          <Box className="mt-8 p-4 md:p-6 bg-gray-50 rounded-md">
             <VStack spacing={4}>
               {/* Page Size Selector - Mobile Friendly */}
-              <HStack spacing={3} wrap="wrap" justify="center">
-                <Text fontSize="sm" fontWeight="medium">Show:</Text>
-                <select
+              <HStack spacing={3} className="flex-wrap justify-center">
+                <Text size="sm" className="font-medium">Show:</Text>
+                <Select
                   value={pagination.pageSize}
                   onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '14px',
-                    minWidth: '60px'
-                  }}
+                  size="sm"
+                  className="min-w-[60px]"
                 >
                   {(() => {
                     const columns = settings.story_cards_columns || 3;
@@ -420,31 +461,31 @@ const HomePage = () => {
                     }
                     return options;
                   })()}
-                </select>
-                <Text fontSize="sm" color="gray.600">per page</Text>
+                </Select>
+                <Text size="sm" className="text-gray-600">per page</Text>
               </HStack>
               
               {/* Pagination Info - Mobile Friendly */}
-              <Text fontSize="sm" color="gray.600" textAlign="center">
+              <Text size="sm" className="text-gray-600 text-center">
                 Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
                 {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of{' '}
                 {pagination.totalCount} articles
               </Text>
               
               {/* Pagination Buttons - Mobile Optimized */}
-              <HStack spacing={2} wrap="wrap" justify="center">
+              <HStack spacing={2} className="flex-wrap justify-center">
                 <Button
                   size="sm"
                   variant="outline"
-                  isDisabled={!pagination.hasPrevious}
+                  disabled={!pagination.hasPrevious}
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  minW="80px"
+                  className="min-w-[80px]"
                 >
                   Previous
                 </Button>
                 
                 {/* Page Numbers - Responsive */}
-                <HStack spacing={1} wrap="wrap" justify="center">
+                <HStack spacing={1} className="flex-wrap justify-center">
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                     let pageNum;
                     if (pagination.totalPages <= 5) {
@@ -461,10 +502,10 @@ const HomePage = () => {
                       <Button
                         key={pageNum}
                         size="sm"
-                        variant={pageNum === pagination.currentPage ? "solid" : "outline"}
-                        colorScheme={pageNum === pagination.currentPage ? "blue" : "gray"}
+                        variant={pageNum === pagination.currentPage ? "primary" : "outline"}
+                        colorScheme={pageNum === pagination.currentPage ? "brand" : "gray"}
                         onClick={() => handlePageChange(pageNum)}
-                        minW="40px"
+                        className="min-w-[40px]"
                       >
                         {pageNum}
                       </Button>
@@ -475,9 +516,9 @@ const HomePage = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  isDisabled={!pagination.hasNext}
+                  disabled={!pagination.hasNext}
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  minW="80px"
+                  className="min-w-[80px]"
                 >
                   Next
                 </Button>
@@ -487,7 +528,7 @@ const HomePage = () => {
         )}
 
         {/* Sidebar Ad */}
-        <Box mt={{ base: 6, md: 8 }} textAlign="center">
+        <Box className="mt-6 md:mt-8 text-center">
           <Suspense fallback={null}>
             <AdComponent placement="sidebar" maxAds={2} />
           </Suspense>
@@ -495,15 +536,14 @@ const HomePage = () => {
 
         {/* Sidebar-style compact articles for additional content */}
         {articles.length > 7 && (
-          <Box mt={12}>
-            <Heading size="md" mb={6} color="gray.700" textAlign="center">
+          <Box className="mt-12">
+            <Heading size="md" className="mb-6 text-gray-700 text-center">
               Recent Stories
             </Heading>
             <SimpleGrid 
               columns={{ base: 1, sm: 2, md: 3 }} 
               spacing={4}
-              maxW="1200px"
-              mx="auto"
+              className="max-w-[1200px] mx-auto"
             >
               {articles.slice(7, 10).map((article) => (
                 <StoryCard key={article.id} article={article} variant="compact" />
@@ -513,12 +553,12 @@ const HomePage = () => {
         )}
 
         {/* Bottom Banner Ad */}
-        <Box mt={{ base: 8, md: 12 }} textAlign="center">
+        <Box className="mt-8 md:mt-12 text-center">
           <Suspense fallback={null}>
             <AdComponent placement="bottom_banner" maxAds={1} />
           </Suspense>
         </Box>
-      </Container>
+      </ThemeLayout>
     </>
   );
 };

@@ -17,11 +17,10 @@ import {
   Textarea,
   Input,
   Alert,
-  AlertIcon,
   Spinner,
-  useToast,
   Divider,
-} from '@chakra-ui/react';
+} from '../../components/ui';
+import { useToast } from '../../contexts/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,7 +29,7 @@ import { settingsAPI } from '../../services/api';
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const toast = useToast();
+  const { toast } = useToast();
   const [settings, setSettings] = useState({
     default_article_status: 'draft',
     site_name: 'Dhivehinoos.net',
@@ -40,6 +39,8 @@ const SettingsPage = () => {
     require_comment_approval: true,
     story_cards_rows: 3,
     story_cards_columns: 3,
+    active_theme: 'modern',
+    theme_config: {},
     google_analytics_id: '',
     comment_webhook_enabled: false,
     comment_webhook_url: '',
@@ -232,10 +233,10 @@ const SettingsPage = () => {
 
   if (loading) {
     return (
-      <Container maxW="container.md" py={8}>
-        <Box textAlign="center">
+      <Container className="max-w-3xl py-8">
+        <Box className="text-center">
           <Spinner size="xl" />
-          <Text mt={4}>Loading settings...</Text>
+          <Text className="mt-4">Loading settings...</Text>
         </Box>
       </Container>
     );
@@ -247,10 +248,10 @@ const SettingsPage = () => {
         <title>Settings - Dhivehinoos.net</title>
       </Helmet>
 
-      <Container maxW="container.md" py={8}>
+      <Container className="max-w-3xl py-8">
         <VStack spacing={8} align="stretch">
           {/* Header */}
-          <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box className="flex justify-between items-center">
             <Heading size="xl">Site Settings</Heading>
             <HStack spacing={4}>
               <Button onClick={() => navigate('/')}>
@@ -264,7 +265,6 @@ const SettingsPage = () => {
 
           {error && (
             <Alert status="error">
-              <AlertIcon />
               {error}
             </Alert>
           )}
@@ -286,7 +286,7 @@ const SettingsPage = () => {
                     <option value="published">Published</option>
                     <option value="scheduled">Scheduled</option>
                   </Select>
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     New articles created via API will be set to this status by default.
                     Currently set to: <strong>{settings.default_article_status}</strong>
                   </Text>
@@ -319,7 +319,7 @@ const SettingsPage = () => {
                     placeholder="Site description"
                     rows={3}
                   />
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     This description will be used for SEO and about pages.
                   </Text>
                 </FormControl>
@@ -334,28 +334,101 @@ const SettingsPage = () => {
             </CardHeader>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <FormControl display="flex" alignItems="center">
-                  <FormLabel mb="0">Allow Comments</FormLabel>
+                <FormControl className="flex items-center">
+                  <FormLabel className="mb-0">Allow Comments</FormLabel>
                   <Switch
                     isChecked={settings.allow_comments}
                     onChange={(e) => handleChange('allow_comments', e.target.checked)}
-                    colorScheme="blue"
+                    colorScheme="brand"
                   />
                 </FormControl>
 
-                <FormControl display="flex" alignItems="center">
-                  <FormLabel mb="0">Require Comment Approval</FormLabel>
+                <FormControl className="flex items-center">
+                  <FormLabel className="mb-0">Require Comment Approval</FormLabel>
                   <Switch
                     isChecked={settings.require_comment_approval}
                     onChange={(e) => handleChange('require_comment_approval', e.target.checked)}
-                    colorScheme="blue"
-                    isDisabled={!settings.allow_comments}
+                    colorScheme="brand"
+                    disabled={!settings.allow_comments}
                   />
                 </FormControl>
 
-                <Text fontSize="sm" color="gray.600">
+                <Text size="sm" className="text-gray-600">
                   When comment approval is required, comments will need admin approval before being visible to users.
                 </Text>
+              </VStack>
+            </CardBody>
+          </Card>
+
+          {/* Theme Settings */}
+          <Card>
+            <CardHeader>
+              <Heading size="md">Theme & Layout Settings</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={6} align="stretch">
+                <FormControl>
+                  <FormLabel>Active Theme</FormLabel>
+                  <Select
+                    value={settings.active_theme || 'modern'}
+                    onChange={(e) => handleChange('active_theme', e.target.value)}
+                  >
+                    <option value="modern">Modern News</option>
+                    <option value="classic">Classic Blog</option>
+                    <option value="minimal">Minimal Clean</option>
+                    <option value="newspaper">Newspaper Style</option>
+                    <option value="magazine">Magazine Layout</option>
+                  </Select>
+                  <Text size="sm" className="text-gray-600 mt-2">
+                    Select the frontend theme/layout for your site. Changes will be applied immediately after saving.
+                  </Text>
+                </FormControl>
+
+                <Box className="p-4 bg-gray-50 rounded-md border border-gray-200">
+                  <Text size="sm" className="font-medium mb-2">Theme Descriptions:</Text>
+                  <VStack spacing={2} align="stretch">
+                    <Box>
+                      <Text size="sm" className="font-semibold">Modern News</Text>
+                      <Text size="xs" className="text-gray-600">
+                        Clean, modern design with featured article and grid layout. Current default style.
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text size="sm" className="font-semibold">Classic Blog</Text>
+                      <Text size="xs" className="text-gray-600">
+                        Traditional blog layout with sidebar, warm colors, and serif fonts.
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text size="sm" className="font-semibold">Minimal Clean</Text>
+                      <Text size="xs" className="text-gray-600">
+                        Minimalist design with lots of whitespace, simple typography, focus on content.
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text size="sm" className="font-semibold">Newspaper Style</Text>
+                      <Text size="xs" className="text-gray-600">
+                        Traditional newspaper layout with multi-column grid, black/white/gray colors.
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text size="sm" className="font-semibold">Magazine Layout</Text>
+                      <Text size="xs" className="text-gray-600">
+                        Bold, visual design with large featured images, asymmetric layouts, bold typography.
+                      </Text>
+                    </Box>
+                  </VStack>
+                </Box>
+
+                <Alert status="info">
+                  <Box>
+                    <Text size="sm" className="font-bold">Note:</Text>
+                    <Text size="xs" className="mt-1">
+                      Theme changes take effect immediately after saving. You can preview the theme by navigating to the homepage.
+                      Custom theme configuration (colors, fonts, spacing) can be set via the theme_config field in Django admin if needed.
+                    </Text>
+                  </Box>
+                </Alert>
               </VStack>
             </CardBody>
           </Card>
@@ -377,7 +450,7 @@ const SettingsPage = () => {
                       <option key={num} value={num}>{num} row{num !== 1 ? 's' : ''}</option>
                     ))}
                   </Select>
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     Number of rows to display story cards on the homepage. Currently set to: <strong>{settings.story_cards_rows}</strong>
                   </Text>
                 </FormControl>
@@ -392,13 +465,13 @@ const SettingsPage = () => {
                       <option key={num} value={num}>{num} column{num !== 1 ? 's' : ''}</option>
                     ))}
                   </Select>
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     Number of columns to display story cards on the homepage. Currently set to: <strong>{settings.story_cards_columns}</strong>
                   </Text>
                 </FormControl>
 
-                <Box p={4} bg="blue.50" borderRadius="md" border="1px solid" borderColor="blue.200">
-                  <Text fontSize="sm" color="blue.700" fontWeight="medium">
+                <Box className="p-4 bg-blue-50 rounded-md border border-blue-200">
+                  <Text size="sm" className="text-blue-700 font-medium">
                     Layout Preview: {settings.story_cards_rows} row{settings.story_cards_rows !== 1 ? 's' : ''} × {settings.story_cards_columns} column{settings.story_cards_columns !== 1 ? 's' : ''} = {settings.story_cards_rows * settings.story_cards_columns} story cards
                   </Text>
                 </Box>
@@ -413,12 +486,12 @@ const SettingsPage = () => {
             </CardHeader>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <FormControl display="flex" alignItems="center">
-                  <FormLabel mb="0">Enable Comment Webhook</FormLabel>
+                <FormControl className="flex items-center">
+                  <FormLabel className="mb-0">Enable Comment Webhook</FormLabel>
                   <Switch
                     isChecked={settings.comment_webhook_enabled}
                     onChange={(e) => handleChange('comment_webhook_enabled', e.target.checked)}
-                    colorScheme="blue"
+                    colorScheme="brand"
                   />
                 </FormControl>
 
@@ -428,13 +501,13 @@ const SettingsPage = () => {
                     value={settings.comment_webhook_url || ''}
                     onChange={(e) => handleChange('comment_webhook_url', e.target.value)}
                     placeholder="https://your-n8n-workflow-url.com/webhook"
-                    isDisabled={!settings.comment_webhook_enabled}
+                    disabled={!settings.comment_webhook_enabled}
                   />
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     Enter your n8n workflow webhook URL. Approved comments will be sent to this endpoint.
                     Leave empty to disable webhook notifications.
                   </Text>
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text size="xs" className="text-gray-500 mt-1">
                     Must start with http:// or https://
                   </Text>
                 </FormControl>
@@ -446,9 +519,9 @@ const SettingsPage = () => {
                     value={settings.comment_webhook_secret || ''}
                     onChange={(e) => handleChange('comment_webhook_secret', e.target.value)}
                     placeholder="Optional secret key for webhook authentication"
-                    isDisabled={!settings.comment_webhook_enabled}
+                    disabled={!settings.comment_webhook_enabled}
                   />
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     Optional secret key for webhook authentication. This will be sent in the X-Webhook-Secret header.
                   </Text>
                 </FormControl>
@@ -460,22 +533,20 @@ const SettingsPage = () => {
                       variant="outline"
                       size="sm"
                       onClick={testWebhook}
-                      isLoading={testingWebhook}
-                      loadingText="Testing..."
+                      disabled={testingWebhook}
                     >
-                      Test Webhook
+                      {testingWebhook ? 'Testing...' : 'Test Webhook'}
                     </Button>
-                    <Text fontSize="xs" color="gray.500" mt={1}>
+                    <Text size="xs" className="text-gray-500 mt-1">
                       Test your webhook configuration to ensure it's working correctly.
                     </Text>
                   </Box>
                 )}
 
                 <Alert status="info">
-                  <AlertIcon />
                   <Box>
-                    <Text fontSize="sm" fontWeight="bold">Webhook Payload:</Text>
-                    <Text fontSize="xs" mt={1}>
+                    <Text size="sm" className="font-bold">Webhook Payload:</Text>
+                    <Text size="xs" className="mt-1">
                       When a comment is approved, the webhook will receive a JSON payload containing:
                       comment details, article information, and site metadata.
                     </Text>
@@ -499,12 +570,12 @@ const SettingsPage = () => {
                     onChange={(e) => handleChange('google_analytics_id', e.target.value)}
                     placeholder="G-MLXXKKVFXQ"
                   />
-                  <Text fontSize="sm" color="gray.600" mt={2}>
+                  <Text size="sm" className="text-gray-600 mt-2">
                     Enter your Google Analytics 4 tracking ID (e.g., G-MLXXKKVFXQ). 
                     This should be your Measurement ID from Google Analytics 4.
                     Leave empty to disable analytics tracking.
                   </Text>
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text size="xs" className="text-gray-500 mt-1">
                     Format: G- followed by 8-10 alphanumeric characters
                   </Text>
                 </FormControl>
@@ -514,21 +585,20 @@ const SettingsPage = () => {
 
           {/* Save Button */}
           <Box>
-            <Divider mb={6} />
+            <Divider className="mb-6" />
             <HStack spacing={4} justify="center">
               <Button
-                colorScheme="blue"
+                colorScheme="brand"
                 size="lg"
                 onClick={handleSave}
-                isLoading={saving}
-                loadingText="Saving..."
+                disabled={saving}
               >
-                Save Settings
+                {saving ? 'Saving...' : 'Save Settings'}
               </Button>
               <Button
                 size="lg"
                 onClick={fetchSettings}
-                isDisabled={saving}
+                disabled={saving}
               >
                 Reset Changes
               </Button>

@@ -4,7 +4,6 @@ import {
   Container,
   Card,
   CardBody,
-  Image as ChakraImage,
   Heading,
   Text,
   Button,
@@ -12,12 +11,11 @@ import {
   HStack,
   Spinner,
   Alert,
-  AlertIcon,
   Textarea,
   Input,
   Divider,
   SimpleGrid,
-} from '@chakra-ui/react';
+} from '../components/ui';
 import { Helmet } from 'react-helmet-async';
 import { lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -151,10 +149,10 @@ const ArticlePage = () => {
 
   if (loading) {
     return (
-      <Container maxW="container.lg" py={8}>
-        <Box textAlign="center">
+      <Container className="max-w-5xl py-8">
+        <Box className="text-center">
           <Spinner size="xl" />
-          <Text mt={4}>Loading article...</Text>
+          <Text className="mt-4">Loading article...</Text>
         </Box>
       </Container>
     );
@@ -162,20 +160,19 @@ const ArticlePage = () => {
 
     if (error || !article) {
       return (
-        <Container maxW="container.lg" py={8}>
+        <Container className="max-w-5xl py-8">
           <VStack spacing={6}>
             <Alert status="error">
-              <AlertIcon />
               {error || 'Article not found'}
             </Alert>
-            <Box textAlign="center">
-              <Text mb={4}>
+            <Box className="text-center">
+              <Text className="mb-4">
                 {error?.includes('not published') 
                   ? 'This article is not yet published or has been removed.'
                   : 'The article you\'re looking for doesn\'t exist or has been removed.'
                 }
               </Text>
-              <Button as={Link} to="/" colorScheme="blue">
+              <Button as={Link} to="/" colorScheme="brand">
                 ← Back to Home
               </Button>
             </Box>
@@ -250,8 +247,8 @@ const ArticlePage = () => {
         selectedCategory={null}
       />
 
-      <Container maxW="container.lg" py={{ base: 4, md: 8 }}>
-        <VStack spacing={{ base: 6, md: 8 }} align="stretch">
+      <Container className="max-w-5xl py-4 md:py-8">
+        <VStack spacing={8} align="stretch">
           {/* Article Header Ad */}
           <Suspense fallback={null}>
             <AdComponent placement="article_header" maxAds={1} />
@@ -262,82 +259,74 @@ const ArticlePage = () => {
             <CardBody>
               {article.reuse_images && article.reuse_images.length > 0 ? (
                 // Show original image + reuse images symmetrically
-                <VStack spacing={4} mb={4} align="stretch">
+                <VStack spacing={4} className="mb-3" align="stretch">
                   {/* Main images row: Original + Reuse images */}
                   <Box>
-                    <HStack spacing={4} align="stretch" flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+                    <HStack spacing={4} align="stretch" className="flex-wrap md:flex-nowrap">
                       {/* Original API image */}
-                      <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
+                      <Box className="flex-1 basis-full md:basis-1/2">
                         <Box 
-                          position="relative" 
-                          w="100%" 
-                          borderRadius={imageSettings.image_border_radius || 8} 
-                          overflow="hidden"
-                          boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
-                          transition={imageSettings.image_hover_effect ? 'transform 0.2s ease' : 'none'}
-                          willChange={imageSettings.image_hover_effect ? 'transform' : 'auto'}
-                          _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
+                          className={`relative w-full overflow-hidden ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
+                          style={{
+                            borderRadius: `${imageSettings.image_border_radius || 8}px`,
+                            boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
+                            aspectRatio: imageSettings.main_image_aspect_ratio || "16/9",
+                          }}
                         >
-                          <Box 
-                            paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)}
-                            aspectRatio={imageSettings.main_image_aspect_ratio || "16/9"}
-                          />
-                          <ChakraImage
-                            src={article.original_image_url || article.image_url || "https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"}
+                          <img
+                            src={article.original_image_url || article.image_url}
                             alt={`${article.title} - original image`}
-                            position="absolute"
-                            inset={0}
-                            w="100%"
-                            h="100%"
-                            objectFit={imageSettings.image_fit || 'cover'}
-                            objectPosition={imageSettings.image_position || 'top'}
-                            fallbackSrc="https://via.placeholder.com/800x450/cccccc/666666?text=Original+Image"
+                            className="w-full h-full object-cover"
+                            style={{
+                              objectFit: imageSettings.image_fit || 'cover',
+                              objectPosition: imageSettings.image_position || 'top',
+                            }}
                             loading="eager"
                             decoding="async"
-                            fetchpriority="high"
+                            fetchPriority="high"
                             width="800"
                             height="450"
+                            onError={(e) => {
+                              // Hide image if it fails to load
+                              e.target.style.display = 'none';
+                            }}
                           />
                         </Box>
-                        <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
+                        <Text size="sm" className="text-gray-600 mt-2 text-center">
                           Original Story Image
                         </Text>
                       </Box>
 
                       {/* First reuse image - scaled to match API image height */}
                       {article.reuse_images[0] && (
-                        <Box flex={{ base: '1 1 100%', md: '1 1 50%' }}>
+                        <Box className="flex-1 basis-full md:basis-1/2">
                           <Box 
-                            position="relative" 
-                            w="100%" 
-                            borderRadius={imageSettings.image_border_radius || 8} 
-                            overflow="hidden"
-                            boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
-                            transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
-                            _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
+                            className={`relative w-full overflow-hidden bg-gray-100 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
+                            style={{
+                              borderRadius: `${imageSettings.image_border_radius || 8}px`,
+                              boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
+                              aspectRatio: imageSettings.reuse_image_aspect_ratio || "2/3",
+                            }}
                           >
-                            <Box 
-                              paddingTop={getAspectRatioPadding(imageSettings.reuse_image_aspect_ratio)}
-                              aspectRatio={imageSettings.reuse_image_aspect_ratio || "2/3"}
-                            />
-                            <ChakraImage
+                            <img
                               src={article.reuse_images[0].image_url}
                               alt={`${article.title} - ${article.reuse_images[0].entity_name}`}
-                              position="absolute"
-                              inset={0}
-                              w="100%"
-                              h="100%"
-                              objectFit={imageSettings.image_fit || 'contain'}
-                              objectPosition={imageSettings.image_position || 'center'}
-                              bg="gray.100"
-                              fallbackSrc="https://via.placeholder.com/400x600/cccccc/666666?text=Reuse+Image"
+                              className="w-full h-full object-contain"
+                              style={{
+                                objectFit: imageSettings.image_fit || 'contain',
+                                objectPosition: imageSettings.image_position || 'center',
+                              }}
                               loading="lazy"
                               decoding="async"
                               width="400"
                               height="600"
+                              onError={(e) => {
+                                // Hide image if it fails to load
+                                e.target.style.display = 'none';
+                              }}
                             />
                           </Box>
-                          <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
+                          <Text size="sm" className="text-gray-600 mt-2 text-center">
                             {article.reuse_images[0].entity_name}
                           </Text>
                         </Box>
@@ -348,43 +337,39 @@ const ArticlePage = () => {
                   {/* Additional reuse images (2x2 grid if more than 2 total) */}
                   {article.reuse_images.length > 1 && (
                     <Box>
-                      <Heading size="md" mb={3} color="gray.700">
+                      <Heading size="md" className="mb-3 text-gray-700">
                         Related Public Figures & Institutions
                       </Heading>
                       <SimpleGrid columns={{ base: 1, sm: 2, md: Math.min(article.reuse_images.length - 1, 2) }} spacing={4}>
                         {article.reuse_images.slice(1).map((image, index) => (
-                          <Box key={image.id} textAlign="center">
+                          <Box key={image.id} className="text-center">
                             <Box 
-                              position="relative" 
-                              pb="125%" 
-                              height="0" 
-                              overflow="hidden" 
-                              borderRadius={imageSettings.image_border_radius || 8}
-                              mb={2}
-                              bg="gray.100"
-                              boxShadow={imageSettings.image_shadow ? 'md' : 'none'}
-                              transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
-                              _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.05)' } : {}}
+                              className={`relative pb-[125%] h-0 overflow-hidden bg-gray-100 mb-2 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-105' : ''}`}
+                              style={{
+                                borderRadius: `${imageSettings.image_border_radius || 8}px`,
+                                boxShadow: imageSettings.image_shadow ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
+                              }}
                             >
-                              <ChakraImage
+                              <img
                                 src={image.image_url}
                                 alt={image.entity_name}
-                                objectFit={imageSettings.image_fit || 'contain'}
-                                objectPosition={imageSettings.image_position || 'center'}
-                                position="absolute"
-                                top="0"
-                                left="0"
-                                width="100%"
-                                height="100%"
-                                fallbackSrc="https://via.placeholder.com/200x250/cccccc/666666?text=Entity+Image"
+                                className="absolute top-0 left-0 w-full h-full"
+                                style={{
+                                  objectFit: imageSettings.image_fit || 'contain',
+                                  objectPosition: imageSettings.image_position || 'center',
+                                }}
                                 loading="lazy"
                                 decoding="async"
+                                onError={(e) => {
+                                  // Hide image if it fails to load
+                                  e.target.style.display = 'none';
+                                }}
                               />
                             </Box>
-                            <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                            <Text size="sm" className="font-medium text-gray-600">
                               {image.entity_name}
                             </Text>
-                            <Text fontSize="xs" color="gray.500">
+                            <Text size="xs" className="text-gray-500">
                               {image.entity_type}
                             </Text>
                           </Box>
@@ -395,57 +380,54 @@ const ArticlePage = () => {
                 </VStack>
               ) : (
                 // Default single image display
-                <Box 
-                  position="relative" 
-                  w="100%" 
-                  borderRadius={imageSettings.image_border_radius || 8} 
-                  overflow="hidden"
-                  boxShadow={imageSettings.image_shadow ? 'lg' : 'none'}
-                  transition={imageSettings.image_hover_effect ? 'all 0.3s ease' : 'none'}
-                  _hover={imageSettings.image_hover_effect ? { transform: 'scale(1.02)' } : {}}
-                  mb={4}
-                >
+                article.image_url ? (
                   <Box 
-                    paddingTop={getAspectRatioPadding(imageSettings.main_image_aspect_ratio)}
-                    aspectRatio={imageSettings.main_image_aspect_ratio || "16/9"}
-                  />
-                  <ChakraImage
-                    src={article.image_url || "https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"}
-                    alt={article.title}
-                    position="absolute"
-                    inset={0}
-                    w="100%"
-                    h="100%"
-                    objectFit={imageSettings.image_fit || 'cover'}
-                    objectPosition={imageSettings.image_position || 'top'}
-                    fallbackSrc="https://via.placeholder.com/800x400/cccccc/666666?text=Article+Image"
-                    loading="eager"
-                    decoding="async"
-                    fetchpriority="high"
-                    width="800"
-                    height="450"
-                  />
-                </Box>
+                    className={`relative w-full overflow-hidden mb-3 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
+                    style={{
+                      borderRadius: `${imageSettings.image_border_radius || 8}px`,
+                      boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
+                      aspectRatio: imageSettings.main_image_aspect_ratio || "16/9",
+                    }}
+                  >
+                    <img
+                      src={article.image_url}
+                      alt={article.title}
+                      className="w-full h-full object-cover"
+                      style={{
+                        objectFit: imageSettings.image_fit || 'cover',
+                        objectPosition: imageSettings.image_position || 'top',
+                      }}
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority="high"
+                      width="800"
+                      height="450"
+                      onError={(e) => {
+                        // Don't show placeholder - just hide the image container
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </Box>
+                ) : null
               )}
-              <Heading size="xl" mb={4}>
+              <Heading size="xl" className={article.image_url ? "mt-1 mb-2" : "mb-3"}>
                 {article.title}
               </Heading>
-              <HStack spacing={4} mb={4}>
-                <Text fontSize="sm" color="gray.600">
+              <HStack spacing={4} className="mb-4">
+                <Text size="sm" className="text-gray-600">
                   {new Date(article.created_at).toLocaleDateString()}
                 </Text>
               </HStack>
 
               {/* Voting Section */}
-              <HStack spacing={4} mb={6}>
-                <Text fontWeight="bold">Vote Score: {voteStatus.vote_score}</Text>
+              <HStack spacing={4} className="mb-6">
+                <Text className="font-bold">Vote Score: {voteStatus.vote_score}</Text>
                 <Button
                   colorScheme="green"
                   size="xs"
                   onClick={() => handleVote('up')}
-                  isDisabled={voteStatus.has_voted}
-                  minW="auto"
-                  px={2}
+                  disabled={voteStatus.has_voted}
+                  className="min-w-auto px-2"
                 >
                   👍
                 </Button>
@@ -453,14 +435,13 @@ const ArticlePage = () => {
                   colorScheme="red"
                   size="xs"
                   onClick={() => handleVote('down')}
-                  isDisabled={voteStatus.has_voted}
-                  minW="auto"
-                  px={2}
+                  disabled={voteStatus.has_voted}
+                  className="min-w-auto px-2"
                 >
                   👎
                 </Button>
                 {voteStatus.has_voted && (
-                  <Text fontSize="sm" color="gray.500">
+                  <Text size="sm" className="text-gray-500">
                     You voted: {voteStatus.vote_type}
                   </Text>
                 )}
@@ -470,15 +451,15 @@ const ArticlePage = () => {
               <FormattedText content={article.content} />
               
               {/* Social Sharing */}
-              <Box mt={6} p={4} bg="gray.50" borderRadius="md">
+              <Box className="mt-6 p-4 bg-gray-50 rounded-md">
                 <Suspense fallback={null}>
                   <SocialShare article={article} />
                 </Suspense>
               </Box>
               
               {/* Back to Home Link */}
-              <Box mt={8} textAlign="center">
-                <Button as={Link} to="/" colorScheme="blue" variant="outline">
+              <Box className="mt-8 text-center">
+                <Button as={Link} to="/" colorScheme="brand" variant="outline">
                   ← Back to Home
                 </Button>
               </Box>
@@ -489,12 +470,12 @@ const ArticlePage = () => {
           {settings.allow_comments && (
             <Card>
               <CardBody>
-                <Heading size="lg" mb={6}>
+                <Heading size="lg" className="mb-6">
                   Comments ({comments.length})
                 </Heading>
 
                 {/* Comment Form */}
-                <Box mb={8}>
+                <Box className="mb-8">
                   <form onSubmit={handleCommentSubmit}>
                     <VStack spacing={4}>
                       <Input
@@ -511,27 +492,26 @@ const ArticlePage = () => {
                       />
                       <Button
                         type="submit"
-                        colorScheme="blue"
-                        isLoading={submittingComment}
-                        loadingText="Submitting..."
+                        colorScheme="brand"
+                        disabled={submittingComment}
                       >
-                        Submit Comment
+                        {submittingComment ? 'Submitting...' : 'Submit Comment'}
                       </Button>
                     </VStack>
                   </form>
                 </Box>
 
-                <Divider mb={6} />
+                <Divider className="mb-6" />
 
                 {/* Comments List */}
                 <VStack spacing={4} align="stretch">
                   {comments.map((comment) => (
-                    <Box key={comment.id} p={4} bg="gray.50" borderRadius="md">
-                      <HStack justify="space-between" mb={2}>
-                        <Text fontWeight="bold">
+                    <Box key={comment.id} className="p-4 bg-gray-50 rounded-md">
+                      <HStack justify="space-between" className="mb-2">
+                        <Text className="font-bold">
                           {comment.author_name || 'Anonymous'}
                         </Text>
-                        <Text fontSize="sm" color="gray.600">
+                        <Text size="sm" className="text-gray-600">
                           {new Date(comment.created_at).toLocaleDateString()}
                         </Text>
                       </HStack>
@@ -539,7 +519,7 @@ const ArticlePage = () => {
                     </Box>
                   ))}
                   {comments.length === 0 && (
-                    <Text color="gray.500" textAlign="center" py={8}>
+                    <Text className="text-gray-500 text-center py-8">
                       No comments yet. Be the first to comment!
                     </Text>
                   )}
