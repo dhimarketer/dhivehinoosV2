@@ -159,17 +159,17 @@ const StoryCard = ({ article, variant = 'default' }) => {
 
   if (variant === 'compact') {
     return (
-      <Box
-        as={Link}
+      <Link
         to={`/article/${article.slug}`}
-        className="news-card compact-article flex overflow-hidden mb-4 border border-gray-200 bg-white w-full max-w-[400px] h-[120px] mx-auto hover:shadow-lg hover:-translate-y-0.5 transition-all rounded-lg"
+        className="news-card compact-article flex overflow-hidden mb-4 border border-gray-200 bg-white w-full max-w-[400px] h-[120px] mx-auto hover:shadow-lg hover:-translate-y-0.5 transition-all rounded-lg cursor-pointer no-underline"
+        style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}
       >
         <img
           src={getOptimizedImageUrlBySize(article.image_url, 120, 100)}
           srcSet={generateSrcSet(article.image_url, { aspectRatio: 1.2, breakpoints: [120] })}
           sizes={generateSizes({ compact: true })}
           alt={article.title}
-          className="w-[120px] h-[100px] object-cover flex-shrink-0 news-card-image"
+          className="w-[120px] h-[100px] object-cover flex-shrink-0 news-card-image pointer-events-none"
           width="120"
           height="100"
           loading="lazy"
@@ -177,7 +177,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
           onError={handleImageError}
         />
         <Box 
-          className="p-3 flex-1 flex flex-col justify-between min-w-0 overflow-hidden"
+          className="p-3 flex-1 flex flex-col justify-between min-w-0 overflow-hidden pointer-events-none"
         >
           <Heading
             size="sm"
@@ -204,7 +204,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
             {formatDate(article.created_at)}
           </Text>
         </Box>
-      </Box>
+      </Link>
     );
   }
 

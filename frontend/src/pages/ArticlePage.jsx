@@ -259,7 +259,7 @@ const ArticlePage = () => {
             <CardBody>
               {article.reuse_images && article.reuse_images.length > 0 ? (
                 // Show original image + reuse images symmetrically
-                <VStack spacing={4} className="mb-3" align="stretch">
+                <VStack spacing={4} className="mb-2" align="stretch">
                   {/* Main images row: Original + Reuse images */}
                   <Box>
                     <HStack spacing={4} align="stretch" className="flex-wrap md:flex-nowrap">
@@ -382,7 +382,7 @@ const ArticlePage = () => {
                 // Default single image display
                 article.image_url ? (
                   <Box 
-                    className={`relative w-full overflow-hidden mb-3 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
+                    className={`relative w-full overflow-hidden mb-2 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
                     style={{
                       borderRadius: `${imageSettings.image_border_radius || 8}px`,
                       boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
@@ -410,17 +410,17 @@ const ArticlePage = () => {
                   </Box>
                 ) : null
               )}
-              <Heading size="xl" className={article.image_url ? "mt-1 mb-2" : "mb-3"}>
+              <Heading size="xl" className={article.image_url ? "mt-0 mb-1" : "mb-3"}>
                 {article.title}
               </Heading>
-              <HStack spacing={4} className="mb-4">
+              <HStack spacing={4} className="mb-2">
                 <Text size="sm" className="text-gray-600">
                   {new Date(article.created_at).toLocaleDateString()}
                 </Text>
               </HStack>
 
               {/* Voting Section */}
-              <HStack spacing={4} className="mb-6">
+              <HStack spacing={4} className="mb-4">
                 <Text className="font-bold">Vote Score: {voteStatus.vote_score}</Text>
                 <Button
                   colorScheme="green"

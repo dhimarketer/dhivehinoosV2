@@ -221,10 +221,10 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
               onLinkClick(e);
             }
           }}
-          className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+          className={`inline-flex items-center px-4 py-2 text-sm font-medium transition-colors ${
             selectedCategory === null 
-              ? 'text-brand-600 bg-brand-50' 
-              : 'text-gray-700 hover:bg-brand-50 hover:text-brand-600'
+              ? 'text-gray-900 border-b-2 border-gray-900' 
+              : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           Home
@@ -242,13 +242,13 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
                     onLinkClick(e);
                   }
                 }}
-                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`inline-flex items-center px-4 py-2 text-sm font-medium transition-colors ${
                   selectedCategory === category.slug 
-                    ? 'text-brand-600 bg-brand-50' 
-                    : 'text-gray-700 hover:bg-brand-50 hover:text-brand-600'
+                    ? 'text-gray-900 border-b-2 border-gray-900' 
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Text className="mr-1">{category.icon}</Text>
+                <Text className="mr-1.5">{category.icon}</Text>
                 {category.name}
               </Link>
             ))}
@@ -266,54 +266,37 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
             <Spinner size="sm" />
           </Box>
         )}
-
-        <Button 
-          as={Link} 
-          to="/contact" 
-          variant="ghost" 
-          size="sm"
-          onClick={onLinkClick}
-          className="hover:bg-brand-50 hover:text-brand-600"
-        >
-          Contact Us
-        </Button>
       </>
     );
   };
 
   return (
     <Box 
-      className="site-header bg-white shadow-sm border-b border-gray-200 sticky top-0 z-[1000]" 
+      className="site-header bg-white border-b border-gray-200 sticky top-0 z-[1000]" 
       role="navigation"
     >
-      <Container className="max-w-7xl py-4">
-        <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
+      <Container className="max-w-7xl">
+        {/* Top Row: Logo and Search */}
+        <Flex justify="space-between" align="center" wrap="wrap" gap={4} className="py-3">
           {/* Logo */}
           <Heading 
             size="lg" 
-            className="site-title text-brand-600 cursor-pointer hover:text-brand-500"
+            className="site-title text-gray-900 cursor-pointer hover:text-gray-700 font-bold"
             onClick={() => navigate('/')}
           >
             Dhivehinoos.net
           </Heading>
 
-          {/* Desktop Navigation */}
-          {!isMobile && (
-            <HStack spacing={2} flex="1" justify="center" wrap="wrap">
-              <NavigationLinks />
-            </HStack>
-          )}
-
           {/* Search Bar - Desktop */}
           {!isMobile && (
-            <Box className="min-w-[300px] max-w-[400px] flex-1">
+            <Box className="min-w-[250px] max-w-[350px]">
               <form onSubmit={handleSearch}>
                 <InputGroup size="sm">
                   <Input
                     placeholder="Search articles..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="rounded-md border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    className="rounded-md border-gray-300 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 bg-gray-50"
                   />
                   <InputRightElement>
                     {searchQuery && (
@@ -351,6 +334,15 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
             />
           )}
         </Flex>
+
+        {/* Desktop Navigation - Categories Row */}
+        {!isMobile && (
+          <Box className="border-t border-gray-100">
+            <Flex justify="center" align="center" wrap="wrap" gap={1} className="py-2">
+              <NavigationLinks />
+            </Flex>
+          </Box>
+        )}
 
         {/* Mobile Search Bar */}
         {isMobile && (

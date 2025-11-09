@@ -81,7 +81,7 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
 
   return (
     <Box
-      className={`${isHorizontalPlacement ? "text-center mx-auto" : "text-left"} ${isHorizontalPlacement ? "max-w-full md:max-w-[1400px] lg:max-w-[1600px]" : "max-w-full"} px-2 md:px-4`}
+      className={`${isHorizontalPlacement ? "text-center mx-auto" : "text-left"} ${isHorizontalPlacement ? "max-w-full md:max-w-[1800px] lg:max-w-[1920px]" : "max-w-full"} px-2 md:px-4`}
     >
       {ads.map((ad) => (
         <Box 

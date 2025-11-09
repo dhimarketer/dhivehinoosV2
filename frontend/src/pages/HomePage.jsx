@@ -216,12 +216,6 @@ const HomePage = () => {
   const handlePageChange = (newPage) => {
     setPagination(prev => ({ ...prev, currentPage: newPage }));
   };
-
-  const handlePageSizeChange = (newPageSize) => {
-    const columns = settings.story_cards_columns || 3;
-    const roundedSize = roundToColumnMultiple(newPageSize, columns);
-    setPagination(prev => ({ ...prev, pageSize: roundedSize, currentPage: 1 }));
-  };
   
   // Adjust pageSize when columns change to ensure it's divisible by columns
   useEffect(() => {
@@ -395,9 +389,9 @@ const HomePage = () => {
               >
                 {/* Show exactly pageSize articles from paginated results (skip first one which is featured) */}
                 {/* Exclude the featured article (index 0) and show exactly pageSize items */}
-                {/* We should have at least pageSize + 1 articles (1 featured + pageSize grid) */}
+                {/* Use slice(1) to skip featured, then slice(0, pageSize) to get exactly pageSize items */}
                 {articles.length > 1 ? (
-                  articles.slice(1, pagination.pageSize + 1).map((article) => (
+                  articles.slice(1).slice(0, pagination.pageSize).map((article) => (
                     <StoryCard key={article.id} article={article} variant="default" />
                   ))
                 ) : null}
@@ -433,38 +427,6 @@ const HomePage = () => {
         {pagination.totalPages > 1 && (
           <Box className="mt-8 p-4 md:p-6 bg-gray-50 rounded-md">
             <VStack spacing={4}>
-              {/* Page Size Selector - Mobile Friendly */}
-              <HStack spacing={3} className="flex-wrap justify-center">
-                <Text size="sm" className="font-medium">Show:</Text>
-                <Select
-                  value={pagination.pageSize}
-                  onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
-                  size="sm"
-                  className="min-w-[60px]"
-                >
-                  {(() => {
-                    const columns = settings.story_cards_columns || 3;
-                    // Generate options that are multiples of columns
-                    // For 3 columns: 3, 6, 9, 12, 15, 18, 21, 24
-                    // For 4 columns: 4, 8, 12, 16, 20, 24, 28, 32
-                    const options = [];
-                    const maxOptions = 8; // Show up to 8 options
-                    for (let i = 1; i <= maxOptions; i++) {
-                      const value = columns * i;
-                      if (value <= 100) { // Cap at 100
-                        options.push(
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        );
-                      }
-                    }
-                    return options;
-                  })()}
-                </Select>
-                <Text size="sm" className="text-gray-600">per page</Text>
-              </HStack>
-              
               {/* Pagination Info - Mobile Friendly */}
               <Text size="sm" className="text-gray-600 text-center">
                 Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
