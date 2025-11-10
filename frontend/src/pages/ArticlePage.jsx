@@ -24,6 +24,7 @@ import FormattedText from '../components/FormattedText';
 import TopNavigation from '../components/TopNavigation';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useImageSettings } from '../hooks/useImageSettings';
+import { formatTextToHTML } from '../utils/textFormatter';
 
 // Lazy load components that aren't immediately visible
 const AdComponent = lazy(() => import('../components/AdComponent'));
@@ -256,212 +257,231 @@ const ArticlePage = () => {
           
           {/* Article Header with Images */}
           <Card>
-            <CardBody>
-              {article.reuse_images && article.reuse_images.length > 0 ? (
-                // Show original image + reuse images symmetrically
-                <VStack spacing={4} className="mb-2" align="stretch">
-                  {/* Main images row: Original + Reuse images */}
-                  <Box>
-                    <HStack spacing={4} align="stretch" className="flex-wrap md:flex-nowrap">
-                      {/* Original API image */}
-                      <Box className="flex-1 basis-full md:basis-1/2">
-                        <Box 
-                          className={`relative w-full overflow-hidden ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
-                          style={{
-                            borderRadius: `${imageSettings.image_border_radius || 8}px`,
-                            boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
-                            aspectRatio: imageSettings.main_image_aspect_ratio || "16/9",
-                          }}
-                        >
-                          <img
-                            src={article.original_image_url || article.image_url}
-                            alt={`${article.title} - original image`}
-                            className="w-full h-full object-cover"
-                            style={{
-                              objectFit: imageSettings.image_fit || 'cover',
-                              objectPosition: imageSettings.image_position || 'top',
-                            }}
-                            loading="eager"
-                            decoding="async"
-                            fetchPriority="high"
-                            width="800"
-                            height="450"
-                            onError={(e) => {
-                              // Hide image if it fails to load
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </Box>
-                        <Text size="sm" className="text-gray-600 mt-2 text-center">
-                          Original Story Image
-                        </Text>
-                      </Box>
+            <CardBody className="p-0">
+              {/* Article Header Content - with padding */}
+              <Box className="px-4 pt-4">
+                {/* Headline with proper spacing */}
+                <Heading size="xl" className="mb-6" style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: 700, 
+                  lineHeight: '1.2',
+                  color: '#1a202c'
+                }}>
+                  {article.title}
+                </Heading>
+                
+                {/* Metadata with spacing */}
+                <HStack spacing={4} className="mb-6">
+                  <Text size="sm" className="text-gray-600">
+                    {new Date(article.created_at).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                  <Text size="sm" className="text-gray-500">•</Text>
+                  <Text size="sm" className="text-gray-600">
+                    {new Date(article.created_at).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </Text>
+                </HStack>
 
-                      {/* First reuse image - scaled to match API image height */}
-                      {article.reuse_images[0] && (
-                        <Box className="flex-1 basis-full md:basis-1/2">
-                          <Box 
-                            className={`relative w-full overflow-hidden bg-gray-100 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
-                            style={{
-                              borderRadius: `${imageSettings.image_border_radius || 8}px`,
-                              boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
-                              aspectRatio: imageSettings.reuse_image_aspect_ratio || "2/3",
-                            }}
-                          >
-                            <img
-                              src={article.reuse_images[0].image_url}
-                              alt={`${article.title} - ${article.reuse_images[0].entity_name}`}
-                              className="w-full h-full object-contain"
-                              style={{
-                                objectFit: imageSettings.image_fit || 'contain',
-                                objectPosition: imageSettings.image_position || 'center',
-                              }}
-                              loading="lazy"
-                              decoding="async"
-                              width="400"
-                              height="600"
-                              onError={(e) => {
-                                // Hide image if it fails to load
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          </Box>
-                          <Text size="sm" className="text-gray-600 mt-2 text-center">
-                            {article.reuse_images[0].entity_name}
-                          </Text>
-                        </Box>
-                      )}
-                    </HStack>
-                  </Box>
-
-                  {/* Additional reuse images (2x2 grid if more than 2 total) */}
-                  {article.reuse_images.length > 1 && (
-                    <Box>
-                      <Heading size="md" className="mb-3 text-gray-700">
-                        Related Public Figures & Institutions
-                      </Heading>
-                      <SimpleGrid columns={{ base: 1, sm: 2, md: Math.min(article.reuse_images.length - 1, 2) }} spacing={4}>
-                        {article.reuse_images.slice(1).map((image, index) => (
-                          <Box key={image.id} className="text-center">
-                            <Box 
-                              className={`relative pb-[125%] h-0 overflow-hidden bg-gray-100 mb-2 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-105' : ''}`}
-                              style={{
-                                borderRadius: `${imageSettings.image_border_radius || 8}px`,
-                                boxShadow: imageSettings.image_shadow ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
-                              }}
-                            >
-                              <img
-                                src={image.image_url}
-                                alt={image.entity_name}
-                                className="absolute top-0 left-0 w-full h-full"
-                                style={{
-                                  objectFit: imageSettings.image_fit || 'contain',
-                                  objectPosition: imageSettings.image_position || 'center',
-                                }}
-                                loading="lazy"
-                                decoding="async"
-                                onError={(e) => {
-                                  // Hide image if it fails to load
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            </Box>
-                            <Text size="sm" className="font-medium text-gray-600">
-                              {image.entity_name}
-                            </Text>
-                            <Text size="xs" className="text-gray-500">
-                              {image.entity_type}
-                            </Text>
-                          </Box>
-                        ))}
-                      </SimpleGrid>
-                    </Box>
+                {/* Voting Section */}
+                <HStack spacing={4} className="mb-4">
+                  <Text className="font-bold">Vote Score: {voteStatus.vote_score}</Text>
+                  <Button
+                    colorScheme="green"
+                    size="xs"
+                    onClick={() => handleVote('up')}
+                    disabled={voteStatus.has_voted}
+                    className="min-w-auto px-2"
+                  >
+                    👍
+                  </Button>
+                  <Button
+                    colorScheme="red"
+                    size="xs"
+                    onClick={() => handleVote('down')}
+                    disabled={voteStatus.has_voted}
+                    className="min-w-auto px-2"
+                  >
+                    👎
+                  </Button>
+                  {voteStatus.has_voted && (
+                    <Text size="sm" className="text-gray-500">
+                      You voted: {voteStatus.vote_type}
+                    </Text>
                   )}
-                </VStack>
-              ) : (
-                // Default single image display
-                article.image_url ? (
-                  <Box 
-                    className={`relative w-full overflow-hidden mb-2 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
+                </HStack>
+              </Box>
+
+              {/* Article Content Container - includes image and text */}
+              <Box className="px-4 pb-4">
+                {/* Main API image - positioned after headline and metadata, before article text */}
+                {(article.original_image_url || article.image_url) ? (
+                  <figure 
+                    className="mt-2 mb-2"
                     style={{
-                      borderRadius: `${imageSettings.image_border_radius || 8}px`,
-                      boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
-                      aspectRatio: imageSettings.main_image_aspect_ratio || "16/9",
+                      margin: '0.5rem 0 0.5rem 0',
+                      padding: 0,
+                      width: '100%',
+                      maxWidth: '100%',
+                      display: 'block',
                     }}
                   >
-                    <img
-                      src={article.image_url}
-                      alt={article.title}
-                      className="w-full h-full object-cover"
+                    <Box 
+                      className={`relative overflow-hidden bg-gray-50 ${imageSettings.image_hover_effect ? 'transition-transform hover:scale-[1.02]' : ''}`}
                       style={{
-                        objectFit: imageSettings.image_fit || 'cover',
-                        objectPosition: imageSettings.image_position || 'top',
+                        borderRadius: `${imageSettings.image_border_radius || 8}px`,
+                        boxShadow: imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none',
+                        aspectRatio: imageSettings.main_image_aspect_ratio || "3/2",
+                        width: '100%',
+                        maxWidth: '100%',
+                        display: 'block',
+                        margin: 0,
                       }}
-                      loading="eager"
-                      decoding="async"
-                      fetchPriority="high"
-                      width="800"
-                      height="450"
-                      onError={(e) => {
-                        // Don't show placeholder - just hide the image container
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  </Box>
-                ) : null
-              )}
-              <Heading size="xl" className={article.image_url ? "mt-0 mb-1" : "mb-3"}>
-                {article.title}
-              </Heading>
-              <HStack spacing={4} className="mb-2">
-                <Text size="sm" className="text-gray-600">
-                  {new Date(article.created_at).toLocaleDateString()}
-                </Text>
-              </HStack>
+                    >
+                      <img
+                        src={article.original_image_url || article.image_url}
+                        alt={article.title}
+                        className="w-full h-full"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'block',
+                          objectFit: imageSettings.image_fit === 'contain' ? 'contain' : (imageSettings.image_fit || 'cover'),
+                          objectPosition: imageSettings.image_position || 'top center',
+                        }}
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
+                        onError={(e) => {
+                          // Don't show placeholder - just hide the image container
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </Box>
+                  </figure>
+                ) : null}
 
-              {/* Voting Section */}
-              <HStack spacing={4} className="mb-4">
-                <Text className="font-bold">Vote Score: {voteStatus.vote_score}</Text>
-                <Button
-                  colorScheme="green"
-                  size="xs"
-                  onClick={() => handleVote('up')}
-                  disabled={voteStatus.has_voted}
-                  className="min-w-auto px-2"
-                >
-                  👍
-                </Button>
-                <Button
-                  colorScheme="red"
-                  size="xs"
-                  onClick={() => handleVote('down')}
-                  disabled={voteStatus.has_voted}
-                  className="min-w-auto px-2"
-                >
-                  👎
-                </Button>
-                {voteStatus.has_voted && (
-                  <Text size="sm" className="text-gray-500">
-                    You voted: {voteStatus.vote_type}
-                  </Text>
-                )}
-              </HStack>
-
-              {/* Article Content - fragments are handled within FormattedText */}
-              <FormattedText content={article.content} />
-              
-              {/* Social Sharing */}
-              <Box className="mt-6 p-4 bg-gray-50 rounded-md">
-                <Suspense fallback={null}>
-                  <SocialShare article={article} />
-                </Suspense>
-              </Box>
-              
-              {/* Back to Home Link */}
-              <Box className="mt-8 text-center">
-                <Button as={Link} to="/" colorScheme="brand" variant="outline">
-                  ← Back to Home
-                </Button>
+                {/* Article Content - fragments are handled within FormattedText */}
+                <Box className="mb-6 [&_p:first-child]:mt-0 [&_p:first-child]:pt-0">
+                  {(() => {
+                    // If there are reuse images, render content with images interspersed between paragraphs
+                    if (article.reuse_images && article.reuse_images.length > 0) {
+                      // First, format the content to get HTML with paragraph tags
+                      
+                      // Check if content contains source fragments section
+                      const sourceFragmentsRegex = /(source fragments?)[\s\S]*$/i;
+                      const fragmentsMatch = article.content.match(sourceFragmentsRegex);
+                      
+                      let mainContent = article.content;
+                      let fragmentsContent = null;
+                      
+                      if (fragmentsMatch && fragmentsMatch.index !== undefined) {
+                        const fragmentsIndex = fragmentsMatch.index;
+                        mainContent = article.content.substring(0, fragmentsIndex).trim();
+                        fragmentsContent = article.content.substring(fragmentsIndex).trim();
+                      }
+                      
+                      // Format main content to HTML
+                      const formattedHTML = formatTextToHTML(mainContent);
+                      
+                      // Parse HTML to find paragraph boundaries
+                      // Split by </p> tags to get individual paragraphs
+                      const paragraphMatches = formattedHTML.match(/<p>[\s\S]*?<\/p>/g) || [];
+                      
+                      // Calculate where to insert images (distribute evenly)
+                      const paragraphToImageMap = new Map();
+                      if (paragraphMatches.length > 1) {
+                        const interval = Math.max(1, Math.floor(paragraphMatches.length / (article.reuse_images.length + 1)));
+                        for (let i = 0; i < article.reuse_images.length; i++) {
+                          const insertAfter = Math.min((i + 1) * interval, paragraphMatches.length - 1);
+                          paragraphToImageMap.set(insertAfter, i);
+                        }
+                      } else if (paragraphMatches.length === 1) {
+                        // If only one paragraph, insert first image after it
+                        paragraphToImageMap.set(0, 0);
+                      }
+                      
+                      // Build the content with images inserted
+                      const contentParts = [];
+                      paragraphMatches.forEach((paraHTML, paraIndex) => {
+                        contentParts.push(paraHTML);
+                        
+                        // Insert image after this paragraph if it's an insertion point
+                        const imageIndex = paragraphToImageMap.get(paraIndex);
+                        if (imageIndex !== undefined && imageIndex < article.reuse_images.length) {
+                          const reuseImage = article.reuse_images[imageIndex];
+                          const imageHTML = `
+                            <div class="reuse-image-container" style="margin: 2rem 0;">
+                              <div class="reuse-image-wrapper" style="position: relative; width: 100%; max-width: 28rem; margin: 0 auto; overflow: hidden; background: #f3f4f6; border-radius: ${imageSettings.image_border_radius || 8}px; box-shadow: ${imageSettings.image_shadow ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none'}; aspect-ratio: 4/3;">
+                                <img 
+                                  src="${reuseImage.image_url}" 
+                                  alt="${article.title} - ${reuseImage.entity_name || 'Related image'}"
+                                  style="width: 100%; height: 100%; object-fit: ${imageSettings.image_fit === 'contain' ? 'contain' : (imageSettings.image_fit || 'cover')}; object-position: ${imageSettings.image_position || 'top center'};"
+                                  loading="lazy"
+                                  decoding="async"
+                                  onerror="this.style.display='none'"
+                                />
+                              </div>
+                              ${reuseImage.entity_name ? `<p style="text-align: center; margin-top: 0.5rem; font-size: 0.875rem; color: #4b5563;">${reuseImage.entity_name}</p>` : ''}
+                            </div>
+                          `;
+                          contentParts.push(imageHTML);
+                        }
+                      });
+                      
+                      // Add any remaining HTML after the last paragraph
+                      const lastParaIndex = formattedHTML.lastIndexOf('</p>');
+                      if (lastParaIndex !== -1 && lastParaIndex + 4 < formattedHTML.length) {
+                        const remainingHTML = formattedHTML.substring(lastParaIndex + 4);
+                        if (remainingHTML.trim()) {
+                          contentParts.push(remainingHTML);
+                        }
+                      }
+                      
+                      return (
+                        <>
+                          <Box
+                            dangerouslySetInnerHTML={{ __html: contentParts.join('') }}
+                            className="formatted-text [&_p]:mb-6 [&_p]:leading-7 [&_p]:text-base [&_p:last-child]:mb-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-gray-800 [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-gray-800 [&_h3]:mb-3 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-gray-800 [&_strong]:font-bold [&_strong]:text-gray-800 [&_em]:italic [&_del]:line-through [&_del]:text-gray-500 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_ul]:mb-4 [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:pl-6 [&_li]:mb-1 [&_li]:leading-normal [&_a]:text-blue-500 [&_a]:underline [&_a:hover]:text-blue-600 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-4 [&_blockquote]:my-4 [&_blockquote]:italic [&_blockquote]:text-gray-600"
+                          />
+                          {fragmentsContent && (
+                            <Box className="mt-8 pt-6 pb-4 px-4 border-t-2 border-gray-300 bg-gray-50 rounded-lg">
+                              <Box
+                                dangerouslySetInnerHTML={{ 
+                                  __html: formatTextToHTML(fragmentsContent) 
+                                }}
+                                className="[&_p]:mb-3 [&_p]:pl-4 [&_p]:border-l-[3px] [&_p]:border-gray-300 [&_p]:italic [&_p]:text-[0.7em] [&_p]:leading-relaxed [&_p]:text-gray-500 [&_p_sub]:italic [&_p_sub]:text-[0.85em] [&_p_sub]:align-sub [&_p_sub]:leading-normal [&_p.source-fragments-header]:font-semibold [&_p:first-of-type]:font-semibold [&_p.source-fragments-header]:text-[0.65em] [&_p:first-of-type]:text-[0.65em] [&_p.source-fragments-header]:uppercase [&_p:first-of-type]:uppercase [&_p.source-fragments-header]:tracking-wide [&_p:first-of-type]:tracking-wide [&_p.source-fragments-header]:text-gray-400 [&_p:first-of-type]:text-gray-400 [&_p.source-fragments-header]:mb-4 [&_p:first-of-type]:mb-4 [&_p.source-fragments-header]:border-l-0 [&_p:first-of-type]:border-l-0 [&_p.source-fragments-header]:pl-0 [&_p:first-of-type]:pl-0 [&_p.source-fragments-header]:not-italic [&_p:first-of-type]:not-italic"
+                              />
+                            </Box>
+                          )}
+                        </>
+                      );
+                    } else {
+                      // No reuse images, render normally
+                      return <FormattedText content={article.content} />;
+                    }
+                  })()}
+                </Box>
+                
+                {/* Social Sharing */}
+                <Box className="mt-6 p-4 bg-gray-50 rounded-md">
+                  <Suspense fallback={null}>
+                    <SocialShare article={article} />
+                  </Suspense>
+                </Box>
+                
+                {/* Back to Home Link */}
+                <Box className="mt-8 text-center">
+                  <Button as={Link} to="/" colorScheme="brand" variant="outline">
+                    ← Back to Home
+                  </Button>
+                </Box>
               </Box>
             </CardBody>
           </Card>

@@ -3,24 +3,9 @@
  * Handles newlines, paragraphs, markdown-style formatting, and lists
  */
 
-export const formatTextToHTML = (text) => {
-  if (!text) return '';
-
-  // First, handle line breaks and convert to HTML
-  let html = text
-    // Convert double newlines to paragraph breaks
-    .replace(/\n\s*\n/g, '</p><p>')
-    // Convert single newlines to line breaks (but not if they're already paragraph breaks)
-    .replace(/(?<!<\/p>)\n(?![<p>])/g, '<br>')
-    // Wrap the entire content in paragraph tags
-    .replace(/^(?!<p>)/, '<p>')
-    .replace(/(?<!<\/p>)$/, '</p>')
-    // Clean up empty paragraphs
-    .replace(/<p><\/p>/g, '')
-    .replace(/<p>\s*<\/p>/g, '');
-
-  // Handle markdown-style formatting
-  html = html
+// Helper function to apply markdown formatting to text
+const applyMarkdownFormatting = (text) => {
+  return text
     // Bold text: **text** or __text__
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/__(.*?)__/g, '<strong>$1</strong>')
@@ -30,7 +15,46 @@ export const formatTextToHTML = (text) => {
     // Strikethrough: ~~text~~
     .replace(/~~(.*?)~~/g, '<del>$1</del>')
     // Code: `text`
-    .replace(/`([^`]+)`/g, '<code>$1</code>');
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Links: [text](url)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+};
+
+export const formatTextToHTML = (text) => {
+  if (!text) return '';
+
+  // First, normalize the text - split into potential paragraphs
+  // Split on double newlines first, then on single newlines that look like paragraph breaks
+  let paragraphs = text
+    // Split on double newlines (definite paragraph breaks)
+    .split(/\n\s*\n/)
+    // For each section, check if it needs further splitting
+    .flatMap(section => {
+      const trimmed = section.trim();
+      if (!trimmed) return [];
+      
+      // If section is long (over 150 chars) and has single newlines, split on newlines
+      // that are followed by capital letters (likely new sentences/paragraphs)
+      if (trimmed.length > 150 && trimmed.includes('\n')) {
+        return trimmed.split(/\n(?=[A-Z])/).filter(p => p.trim().length > 0);
+      }
+      // If no newlines but text is very long, try to split on sentence boundaries
+      // (period followed by space and capital letter)
+      if (trimmed.length > 300 && !trimmed.includes('\n')) {
+        return trimmed.split(/\.\s+(?=[A-Z])/).filter(p => p.trim().length > 0)
+          .map(p => p.trim() + (p.trim().endsWith('.') ? '' : '.'));
+      }
+      return [trimmed];
+    })
+    .filter(p => p.trim().length > 0);
+
+  // Apply markdown formatting to each paragraph, then wrap in <p> tags
+  let html = paragraphs
+    .map(p => {
+      const formatted = applyMarkdownFormatting(p.trim());
+      return `<p>${formatted}</p>`;
+    })
+    .join('');
 
   // Handle lists
   html = html
@@ -62,8 +86,6 @@ export const formatTextToHTML = (text) => {
     // H3: ### Header
     .replace(/^<p>\s*###\s+(.+?)<\/p>$/gm, '<h3>$1</h3>');
 
-  // Handle links: [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
   // Wrap paragraphs in source fragments section with subscript styling
   // This handles paragraphs that start with "source fragments" or any content after that marker

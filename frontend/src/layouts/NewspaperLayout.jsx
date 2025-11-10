@@ -35,3 +35,4 @@ export const NewspaperLayout = ({ children, featuredArticle, articles, settings 
 
 export default NewspaperLayout;
 
+

@@ -18,10 +18,48 @@ class DhivehinoosAdminSite(AdminSite):
     def get_urls(self):
         """Add custom admin URLs"""
         urls = super().get_urls()
+        from settings_app import views as settings_views
+        from settings_app.admin_theme import ThemeCustomizationAdmin
+        theme_admin = ThemeCustomizationAdmin(self)
         custom_urls = [
             path('dashboard/', self.admin_view(self.dashboard_view), name='dashboard'),
+            path('theme-preview/', settings_views.theme_preview_view, name='theme-preview'),
         ]
+        # Add theme customization URLs
+        custom_urls.extend(theme_admin.get_urls())
         return custom_urls + urls
+    
+    def get_app_list(self, request):
+        """Customize app list to include Theme Customization"""
+        app_list = super().get_app_list(request)
+        
+        # Add Theme Customization as a separate app
+        theme_app = {
+            'name': 'Theme Customization',
+            'app_label': 'theme',
+            'app_url': '/admin/theme-customization/',
+            'has_module_perms': request.user.is_staff,
+            'models': [
+                {
+                    'name': 'Customize Theme',
+                    'object_name': 'customization',
+                    'admin_url': '/admin/theme-customization/',
+                    'view_only': False,
+                    'add_url': None,
+                    'perms': {
+                        'add': False,
+                        'change': True,
+                        'delete': False,
+                        'view': True,
+                    },
+                }
+            ],
+        }
+        
+        # Insert Theme Customization at the top of the app list
+        app_list.insert(0, theme_app)
+        
+        return app_list
     
     def dashboard_view(self, request):
         """Custom dashboard view with statistics"""

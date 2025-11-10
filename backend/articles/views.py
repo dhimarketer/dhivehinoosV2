@@ -506,8 +506,20 @@ def ingest_article(request):
                     article.image_source = 'generated'
                     article.save()
             
+            # Ensure article has a slug (should be auto-generated, but refresh from DB to be sure)
+            article.refresh_from_db()
+            
+            # Construct the article URL
+            article_url = f"https://dhivehinoos.net/article/{article.slug}"
+            
             return Response(
-                {'id': article.id, 'status': 'created'}, 
+                {
+                    'success': True,
+                    'url': article_url,
+                    'id': article.id,
+                    'slug': article.slug,
+                    'status': 'created'
+                }, 
                 status=status.HTTP_201_CREATED
             )
         else:

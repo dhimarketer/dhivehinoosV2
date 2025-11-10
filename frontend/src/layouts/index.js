@@ -21,3 +21,4 @@ export const getLayout = (themeName) => {
 // Default layout
 export const defaultLayout = ModernLayout;
 
+

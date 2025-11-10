@@ -12,6 +12,10 @@ class ImageGalleryWidget(forms.Widget):
     def __init__(self, attrs=None):
         super().__init__(attrs)
     
+    def value_from_datadict(self, data, files, name):
+        """Extract the value from form data"""
+        return data.get(name, '')
+    
     def render(self, name, value, attrs=None, renderer=None):
         """Render the image gallery widget"""
         
@@ -54,10 +58,7 @@ class ImageGalleryWidget(forms.Widget):
             if image.image_file and image.image_file.name:
                 html += f"""
                     <div class="image-item" data-image-id="{image.id}" data-image-type="reusable" data-image-url="{image.image_file.url}">
-                        <img src="{image.image_file.url}" alt="{image.entity_name}" />
-                        <div class="image-info">
-                            <div class="image-name">{image.entity_name}</div>
-                        </div>
+                        <img src="{image.image_file.url}" alt="{image.entity_name or 'Image'}" />
                     </div>
                 """
         
@@ -76,8 +77,8 @@ class ImageGalleryWidget(forms.Widget):
             image_source = "Unknown"
             
             if article.image_file and article.image_file.name:
-                # Local file takes priority - construct full URL
-                image_url = f"https://dhivehinoos.net{article.image_file.url}"
+                # Local file takes priority - use relative URL for admin
+                image_url = article.image_file.url
                 image_source = "Local File"
             elif article.image:
                 # External URL as fallback
@@ -92,10 +93,11 @@ class ImageGalleryWidget(forms.Widget):
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
                         <div class="image-error" style="display:none; width:100%; height:100px; background:#f8f9fa; border:1px solid #dee2e6; display:flex; align-items:center; justify-content:center; color:#6c757d; font-size:12px;">
                             Image failed to load<br/>
-                            <small>URL: {image_url}</small>
+                            <small>URL: {image_url[:50]}...</small>
                         </div>
                         <div class="image-info">
                             <div class="image-name">{article.title[:30]}...</div>
+                            <div class="image-type" style="font-size: 10px; color: #666;">{image_source}</div>
                         </div>
                     </div>
                 """
@@ -281,8 +283,11 @@ class ImageGalleryWidget(forms.Widget):
                         // Update selected text
                         const imageNameEl = this.querySelector('.image-name');
                         if (imageNameEl) {{
-                            const imageName = imageNameEl.textContent;
+                            const imageName = imageNameEl.textContent.trim();
                             selectedText.textContent = `Selected: ${{imageName}} (${{imageType}} image)`;
+                        }} else {{
+                            // Fallback if no image name element
+                            selectedText.textContent = `Selected: ${{imageType}} image (ID: ${{imageId}})`;
                         }}
                     }}
                 }});

@@ -18,6 +18,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 // Temporarily disable lazy loading for ArticlePage to fix module loading error
 import ArticlePage from './pages/ArticlePage';
 const ContactPage = lazy(() => import('./pages/ContactPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
 const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
 
 // Loading fallback component
@@ -53,6 +54,7 @@ function AppContent() {
           <Route path="/" element={<HomePage />} />
           <Route path="/category/:slug" element={<HomePage />} />
           <Route path="/article/:slug" element={<ArticlePage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           
           {/* Admin Routes - Only Settings Page Remains */}

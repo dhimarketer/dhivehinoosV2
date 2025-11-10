@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django import forms
 from .models import SiteSettings
+from .admin_widgets import ThemeCustomizationWidget
 
 
 class SiteSettingsAdminForm(forms.ModelForm):
-    """Custom form for SiteSettings admin with enhanced theme selection"""
+    """Custom form for SiteSettings admin with enhanced theme selection and customization"""
     
     class Meta:
         model = SiteSettings
@@ -15,20 +16,16 @@ class SiteSettingsAdminForm(forms.ModelForm):
                 'style': 'width: 300px; padding: 8px; font-size: 14px;',
                 'onchange': 'updateThemeDescription(this.value)'
             }),
-            'theme_config': forms.Textarea(attrs={
-                'rows': 10,
-                'cols': 80,
-                'style': 'font-family: monospace; font-size: 12px;',
-                'placeholder': '{"colors": {"brand": {"500": "#0073e6"}}, "fonts": {"heading": "Inter"}, "space": {"4": "1rem"}}'
-            }),
+            'theme_config': ThemeCustomizationWidget(),
         }
         help_texts = {
             'active_theme': 'Select the frontend theme/layout for your site. Changes take effect immediately after saving.',
-            'theme_config': 'Optional JSON configuration for custom theme overrides. Leave empty to use default theme settings.',
+            'theme_config': 'Customize your theme colors, fonts, and spacing using the interactive controls below. The JSON configuration is automatically generated.',
         }
 
 
-@admin.register(SiteSettings)
+# Note: This admin is registered with the custom admin site in dhivehinoos_backend/admin.py
+# Do not use @admin.register decorator here to avoid double registration
 class SiteSettingsAdmin(admin.ModelAdmin):
     form = SiteSettingsAdminForm
     list_display = ['site_name', 'default_article_status', 'allow_comments', 'require_comment_approval', 'enable_image_matching', 'story_cards_rows', 'story_cards_columns', 'default_pagination_size', 'active_theme', 'comment_webhook_enabled', 'updated_at']
@@ -40,7 +37,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             'fields': ('active_theme', 'theme_preview', 'theme_config'),
             'description': format_html(
                 '<div style="background: #f0f7ff; padding: 15px; border-left: 4px solid #0073e6; margin: 10px 0;">'
-                '<h3 style="margin-top: 0; color: #0073e6;">Frontend Theme Selection</h3>'
+                '<h3 style="margin-top: 0; color: #0073e6;">Frontend Theme Selection & Customization</h3>'
                 '<p><strong>Select a theme to change the entire look and layout of your website:</strong></p>'
                 '<ul style="margin: 10px 0; padding-left: 20px;">'
                 '<li><strong>Modern News:</strong> Clean, modern design with featured article and grid layout (current default)</li>'
@@ -49,7 +46,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                 '<li><strong>Newspaper Style:</strong> Traditional newspaper layout with multi-column grid, black/white/gray</li>'
                 '<li><strong>Magazine Layout:</strong> Bold, visual design with large featured images, asymmetric layouts</li>'
                 '</ul>'
-                '<p style="margin-bottom: 0;"><em>Theme changes take effect immediately after saving. You can preview by visiting the homepage.</em></p>'
+                '<p style="margin-bottom: 0;"><em>After selecting a theme, use the customization controls below to adjust colors, fonts, and spacing. Changes are previewed in real-time and take effect after saving.</em></p>'
                 '</div>'
             ),
             'classes': ('wide',),

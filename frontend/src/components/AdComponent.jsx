@@ -81,12 +81,12 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
 
   return (
     <Box
-      className={`${isHorizontalPlacement ? "text-center mx-auto" : "text-left"} ${isHorizontalPlacement ? "max-w-full md:max-w-[1800px] lg:max-w-[1920px]" : "max-w-full"} px-2 md:px-4`}
+      className={`${isHorizontalPlacement ? "text-center" : "text-left"} ${isHorizontalPlacement ? "w-full" : "max-w-full"} ${isHorizontalPlacement && placement === 'top_banner' ? "w-full" : "px-2 md:px-4"}`}
     >
       {ads.map((ad) => (
         <Box 
           key={ad.id} 
-          className="mb-4 ad-container"
+          className={`${placement === 'top_banner' ? "mb-0" : "mb-4"} ad-container`}
         >
           {ad.destination_url ? (
             <a
@@ -94,18 +94,20 @@ const AdComponent = ({ placement, maxAds = 1 }) => {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => handleAdClick(ad)}
-              className="block"
+              className="block w-full"
             >
               {ad.image_url ? (
-                <img
-                  src={getOptimizedImageUrlBySize(ad.image_url, 1600, 400)}
-                  alt={ad.title}
-                  className="max-w-full h-auto rounded-lg hover:opacity-90 mx-auto block"
-                  loading="lazy"
-                  decoding="async"
-                  width="1600"
-                  height="400"
-                />
+                <Box className="w-full" style={{ aspectRatio: '16/9', maxHeight: '500px' }}>
+                  <img
+                    src={getOptimizedImageUrlBySize(ad.image_url, 1280, 720)}
+                    alt={ad.title}
+                    className="w-full h-full hover:opacity-90 object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    width="1280"
+                    height="720"
+                  />
+                </Box>
               ) : (
                 <Box className="p-3 md:p-4 bg-gray-100 rounded-lg text-center border-2 border-dashed border-gray-300 text-sm md:text-base">
                   <Text className="font-bold text-base md:text-lg text-gray-700">

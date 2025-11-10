@@ -57,3 +57,4 @@ export const applyThemeConfig = (theme, config = {}) => {
   return mergedTheme;
 };
 
+

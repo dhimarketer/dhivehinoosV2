@@ -1,0 +1,86 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Theme Customization | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; Theme Customization
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="theme-customization-admin">
+    <h1>🎨 Theme Customization</h1>
+    
+    <div class="theme-info-box" style="background: #f0f7ff; padding: 20px; border-left: 4px solid {{ current_theme_info.color }}; margin: 20px 0; border-radius: 4px;">
+        <h2 style="margin-top: 0; color: {{ current_theme_info.color }};">
+            {{ current_theme_info.icon }} {{ current_theme_info.name }}
+        </h2>
+        <p style="color: #666; margin-bottom: 0;">{{ current_theme_info.description }}</p>
+    </div>
+    
+    <form method="post" id="theme-customization-form">
+        {% csrf_token %}
+        
+        <div class="form-section" style="background: white; padding: 20px; margin: 20px 0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h2 style="margin-top: 0;">Theme Selection</h2>
+            <div class="form-row">
+                <label for="{{ form.active_theme.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                    Active Theme:
+                </label>
+                {{ form.active_theme }}
+                <p class="help" style="margin-top: 8px; color: #666; font-size: 13px;">
+                    Select the base theme for your site. You can customize colors, fonts, and spacing below.
+                </p>
+            </div>
+        </div>
+        
+        <div class="form-section" style="background: white; padding: 20px; margin: 20px 0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h2 style="margin-top: 0;">Theme Customization</h2>
+            <div class="form-row">
+                {{ form.theme_config }}
+            </div>
+        </div>
+        
+        <div class="submit-row" style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <input type="submit" value="Save Theme Settings" class="default" style="background: #0073e6; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">
+            <p class="deletelink-box" style="margin-top: 10px;">
+                <a href="{% url 'admin:settings_app_sitesettings_changelist' %}" style="color: #ba2121;">
+                    View All Site Settings
+                </a>
+            </p>
+        </div>
+    </form>
+</div>
+
+<style>
+.theme-customization-admin {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.theme-customization-admin h1 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+}
+
+.form-section h2 {
+    color: #333;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.submit-row input[type="submit"]:hover {
+    background: #005cb3 !important;
+}
+</style>
+{% endblock %}
+

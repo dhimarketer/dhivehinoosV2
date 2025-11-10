@@ -34,3 +34,4 @@ export const ClassicLayout = ({ children, featuredArticle, articles, settings })
 
 export default ClassicLayout;
 
+

@@ -298,17 +298,20 @@ const HomePage = () => {
         selectedCategory={selectedCategory}
       />
 
+      {/* Top Banner Ad - Match content width (max-w-7xl) and increase height to match feature image prominence */}
+      <Box className="w-full bg-gray-50 py-6 md:py-8 mb-6 md:mb-8">
+        <Container className="max-w-7xl mx-auto px-4 sm:px-6">
+          <Suspense fallback={null}>
+            <AdComponent placement="top_banner" maxAds={1} />
+          </Suspense>
+        </Container>
+      </Box>
+
       <ThemeLayout
         featuredArticle={articles.length > 0 ? articles[0] : null}
         articles={articles}
         settings={settings}
       >
-        {/* Top Banner Ad */}
-        <Box className="mb-4 md:mb-6">
-          <Suspense fallback={null}>
-            <AdComponent placement="top_banner" maxAds={1} />
-          </Suspense>
-        </Box>
 
         {/* Search Results or Regular Content */}
         {loading ? (
@@ -387,14 +390,22 @@ const HomePage = () => {
                 spacing={4}
                 className="max-w-[1200px] mx-auto w-full"
               >
-                {/* Show exactly pageSize articles from paginated results (skip first one which is featured) */}
-                {/* Exclude the featured article (index 0) and show exactly pageSize items */}
-                {/* Use slice(1) to skip featured, then slice(0, pageSize) to get exactly pageSize items */}
-                {articles.length > 1 ? (
-                  articles.slice(1).slice(0, pagination.pageSize).map((article) => (
+                {/* Show articles ensuring each row has equal number of cards */}
+                {/* Exclude the featured article (index 0) and round down to nearest multiple of columns */}
+                {(() => {
+                  if (articles.length <= 1) return null;
+                  
+                  const columns = settings.story_cards_columns || 3;
+                  const availableArticles = articles.slice(1); // Skip featured article
+                  
+                  // Calculate how many cards to show (round down to nearest multiple of columns)
+                  const maxCardsToShow = Math.floor(availableArticles.length / columns) * columns;
+                  
+                  // Show cards up to the calculated limit (ensures equal rows)
+                  return availableArticles.slice(0, maxCardsToShow).map((article) => (
                     <StoryCard key={article.id} article={article} variant="default" />
-                  ))
-                ) : null}
+                  ));
+                })()}
               </SimpleGrid>
             </Box>
           </>

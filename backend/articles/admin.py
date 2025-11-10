@@ -79,7 +79,10 @@ class ArticleAdminForm(forms.ModelForm):
         disable_reuse = self.cleaned_data.get('disable_reuse_images', False)
         gallery_selection = self.cleaned_data.get('image_gallery_selection', '')
         
-        # Handle image gallery selection
+        print(f"🔍 DEBUG: gallery_selection = '{gallery_selection}'")
+        
+        # Handle image gallery selection - this takes priority
+        api_image_selected = False
         if gallery_selection:
             try:
                 image_id, image_type, image_url = gallery_selection.split('|')
@@ -99,27 +102,70 @@ class ArticleAdminForm(forms.ModelForm):
                         print(f"⚠️  Error adding reusable image: {e}")
                         
                 elif image_type == 'api':
-                    # Use API image from another article
+                    # Replace story image with API image from another article
+                    api_image_selected = True
                     try:
                         source_article = Article.objects.get(id=image_id)
                         
+                        # Mark that we need to clear reuse images (do this after instance is saved)
+                        instance.reused_image = None
+                        
                         # Prioritize local file over external URL
                         if source_article.image_file and source_article.image_file.name:
-                            # Copy the local file
-                            instance.image_file = source_article.image_file
-                            instance.image_source = 'external'
-                            # Keep the original external URL if available
-                            if source_article.image:
-                                instance.image = source_article.image
+                            # Copy the local file - need to actually copy the file content
+                            import os
+                            from django.core.files import File
+                            from django.conf import settings
+                            
+                            # Get the source file path
+                            source_path = source_article.image_file.path
+                            if os.path.exists(source_path):
+                                # Open and copy the file
+                                with open(source_path, 'rb') as f:
+                                    # Generate a new filename to avoid conflicts
+                                    filename = os.path.basename(source_article.image_file.name)
+                                    # Add timestamp to make it unique
+                                    import time
+                                    name, ext = os.path.splitext(filename)
+                                    filename = f"{name}_copy_{int(time.time())}{ext}"
+                                    
+                                    # Save the file to the instance (save=False because we'll save the instance later)
+                                    instance.image_file.save(filename, File(f), save=False)
+                                    print(f"✅ Set image_file to: {instance.image_file.name}")
+                                    instance.image_source = 'external'
+                                    
+                                    # Keep the original external URL if available as fallback
+                                    if source_article.image:
+                                        instance.image = source_article.image
+                                    else:
+                                        # Clear old image URL if source doesn't have one
+                                        instance.image = None
+                                    
+                                    print(f"✅ Copied image file from article {source_article.id} to article {instance.id or 'new'}")
+                            else:
+                                print(f"⚠️  Warning: Source file not found at {source_path}")
+                                # Fallback to external URL if available
+                                if source_article.image:
+                                    instance.image = source_article.image
+                                    instance.image_source = 'external'
+                                    instance.image_file = None
                         elif source_article.image:
-                            # Use external URL
+                            # Use external URL - this replaces the story's image
                             instance.image = source_article.image
                             instance.image_source = 'external'
-                        print(f"✅ Added API image from article: {source_article.title}")
+                            # Clear the old image_file if we're using an external URL
+                            instance.image_file = None
+                        else:
+                            # Source article has no image - this shouldn't happen but handle gracefully
+                            print(f"⚠️  Warning: Source article {source_article.id} has no image to copy")
+                        
+                        print(f"✅ Replaced story image with API image from article: {source_article.title}")
                     except Article.DoesNotExist:
                         print(f"⚠️  Warning: Article with ID {image_id} not found")
                     except Exception as e:
+                        import traceback
                         print(f"⚠️  Error adding API image: {e}")
+                        print(traceback.format_exc())
                         
             except (ValueError, IndexError) as e:
                 # Invalid gallery selection format
@@ -127,19 +173,21 @@ class ArticleAdminForm(forms.ModelForm):
             except Exception as e:
                 print(f"⚠️  Error processing gallery selection: {e}")
         
-        if disable_reuse:
-            # Clear all reuse images
-            instance.reuse_images.clear()
-            instance.reused_image = None
-            instance.image_source = 'external'
+        # Only apply these settings if no API image was selected
+        if not api_image_selected:
+            if disable_reuse:
+                # Clear all reuse images
+                instance.reuse_images.clear()
+                instance.reused_image = None
+                instance.image_source = 'external'
+            
+            if use_original_api:
+                # Ensure original API image is used as primary
+                instance.image_source = 'external'
+                # Don't replace the original API image
         
-        if use_original_api:
-            # Ensure original API image is used as primary
-            instance.image_source = 'external'
-            # Don't replace the original API image
-        
-        # Handle reusable image selection (only if not disabled)
-        if not disable_reuse and instance.reused_image and instance.reused_image.image_file:
+        # Handle reusable image selection (only if not disabled and no API image was selected)
+        if not api_image_selected and not disable_reuse and instance.reused_image and instance.reused_image.image_file:
             # Guard against missing file on disk
             try:
                 import os
@@ -170,6 +218,11 @@ class ArticleAdminForm(forms.ModelForm):
         
         if commit:
             instance.save()
+            
+            # Clear reuse images if API image was selected (must be done after instance is saved)
+            if api_image_selected:
+                instance.reuse_images.clear()
+            
             # Save many-to-many fields after the instance is saved
             self.save_m2m()
             
