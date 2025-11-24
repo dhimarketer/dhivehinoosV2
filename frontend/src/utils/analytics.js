@@ -18,9 +18,11 @@ export const trackEvent = (eventName, parameters = {}) => {
  */
 export const trackPageView = (pagePath, pageTitle) => {
   if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('config', window.gtag('config'), {
+    // Use page_view event for GA4 SPA tracking
+    window.gtag('event', 'page_view', {
       page_path: pagePath,
       page_title: pageTitle,
+      page_location: window.location.href,
     });
   }
 };

@@ -18,3 +18,4 @@ export const MinimalLayout = ({ children, featuredArticle, articles, settings })
 export default MinimalLayout;
 
 
+

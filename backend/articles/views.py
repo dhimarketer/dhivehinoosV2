@@ -9,6 +9,7 @@ from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -951,3 +952,98 @@ def get_image_display_settings(request):
         'css_classes': settings.get_css_classes(),
         'image_styles': settings.get_image_styles(),
     })
+
+
+class AgentAnalyticsView(APIView):
+    """
+    Endpoint for AI Sales Agent to query trending content analytics.
+    Returns which category is currently dominant in the last 24 hours.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Get content analytics for the last 24 hours.
+        
+        Returns:
+        {
+            "window": "24h",
+            "trending_category": "Politics",
+            "trending_category_count": 15,
+            "total_articles_published": 45,
+            "top_3_categories": [
+                {"name": "Politics", "count": 15},
+                {"name": "Sports", "count": 10},
+                {"name": "Business", "count": 8}
+            ]
+        }
+        """
+        try:
+            # Calculate time window: last 24 hours
+            now = timezone.now()
+            last_24_hours = now - timezone.timedelta(hours=24)
+            
+            # Filter published articles from last 24 hours
+            # Using created_at as proxy for published_at since Article model uses created_at
+            published_articles = Article.objects.filter(
+                status='published',
+                created_at__gte=last_24_hours
+            ).select_related('category')
+            
+            total_articles_published = published_articles.count()
+            
+            # If no articles published, return empty response
+            if total_articles_published == 0:
+                return Response({
+                    'window': '24h',
+                    'trending_category': None,
+                    'trending_category_count': 0,
+                    'total_articles_published': 0,
+                    'top_3_categories': []
+                })
+            
+            # Aggregate articles by category
+            from django.db.models import Count
+            from django.db.models.functions import Coalesce
+            
+            # Use Coalesce to handle NULL categories as 'Uncategorized'
+            category_counts = published_articles.annotate(
+                category_name=Coalesce('category__name', models.Value('Uncategorized'))
+            ).values('category_name').annotate(
+                count=Count('id')
+            ).order_by('-count')
+            
+            # Build top 3 categories list
+            top_3_categories = []
+            trending_category = None
+            trending_category_count = 0
+            
+            for idx, item in enumerate(category_counts[:3]):
+                category_name = item['category_name']
+                count = item['count']
+                top_3_categories.append({
+                    'name': category_name,
+                    'count': count
+                })
+                
+                # First item is the trending category
+                if idx == 0:
+                    trending_category = category_name
+                    trending_category_count = count
+            
+            logger.info(f"Agent analytics query: Trending={trending_category}, Count={trending_category_count}, Total={total_articles_published}")
+            
+            return Response({
+                'window': '24h',
+                'trending_category': trending_category,
+                'trending_category_count': trending_category_count,
+                'total_articles_published': total_articles_published,
+                'top_3_categories': top_3_categories
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in AgentAnalyticsView: {str(e)}")
+            return Response(
+                {'error': 'Internal server error', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

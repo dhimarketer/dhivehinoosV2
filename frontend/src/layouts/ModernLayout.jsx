@@ -16,3 +16,4 @@ export const ModernLayout = ({ children, featuredArticle, articles, settings }) 
 export default ModernLayout;
 
 
+

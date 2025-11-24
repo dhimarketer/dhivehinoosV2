@@ -25,3 +25,4 @@ export const ThemeLayout = ({ children, featuredArticle, articles, settings, ...
 export default ThemeLayout;
 
 
+

@@ -37,4 +37,5 @@ urlpatterns = [
     path('schedule-stats/', views.schedule_stats, name='schedule-stats'),
     path('process-scheduled/', views.process_scheduled_articles, name='process-scheduled-articles'),
     path('image-display-settings/', views.get_image_display_settings, name='image-display-settings'),
+    path('agent/analytics/', views.AgentAnalyticsView.as_view(), name='agent-analytics'),
 ]
