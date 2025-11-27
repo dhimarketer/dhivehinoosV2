@@ -7,7 +7,7 @@ import { Box, Container } from '@chakra-ui/react';
  */
 export const ModernLayout = ({ children, featuredArticle, articles, settings }) => {
   return (
-    <Container maxW="7xl" py={{ base: 4, md: 8 }}>
+    <Container maxW="content" py={{ base: 4, md: 8 }}>
       {children}
     </Container>
   );

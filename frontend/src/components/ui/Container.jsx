@@ -13,6 +13,9 @@ export const Container = ({
     xl: 'max-w-screen-xl',
     '2xl': 'max-w-screen-2xl',
     '7xl': 'max-w-7xl',
+    'content': 'max-w-content', // Standard.mv max width without sidebar (840px)
+    'content-sidebar': 'max-w-content-sidebar', // Standard.mv max width with sidebar (760px)
+    'newspaper': 'max-w-newspaper', // Newspaper layout max width (1240px)
     full: 'max-w-full',
   };
   

@@ -1,39 +1,26 @@
-// Newspaper Style Layout - Traditional newspaper multi-column
-import { Box, Container, Grid, GridItem, Divider } from '@chakra-ui/react';
+import React from 'react';
+import { Box, Container } from '../components/ui';
 
 /**
- * Newspaper Layout - Traditional newspaper style
- * Features: Multi-column layout, dense information, black/white/gray colors
+ * NewspaperLayout - Traditional newspaper aesthetic layout
+ * Features: 12-column grid, max-width 1240px, Main Content (8 cols) + Sidebar (4 cols)
  */
 export const NewspaperLayout = ({ children, featuredArticle, articles, settings }) => {
   return (
-    <Container maxW="7xl" py={{ base: 4, md: 6 }}>
-      <Box
-        borderWidth="2px"
-        borderColor="gray.900"
-        p={{ base: 4, md: 6 }}
-        bg="white"
-      >
-        {/* Newspaper-style header border */}
-        <Box
-          borderBottomWidth="3px"
-          borderBottomColor="gray.900"
-          pb={2}
-          mb={6}
-        />
-        
-        <Grid
-          templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }}
-          gap={6}
-        >
+    <Container maxW="newspaper" className="py-4 md:py-8">
+      <div className="grid grid-cols-12 gap-6">
+        {/* Main Content Area - 8 columns on desktop, full width on mobile */}
+        <Box className="col-span-12 lg:col-span-8">
           {children}
-        </Grid>
-      </Box>
+        </Box>
+
+        {/* Sidebar - 4 columns on desktop, full width on mobile */}
+        <Box className="col-span-12 lg:col-span-4">
+          {/* Sidebar content will be rendered by HomePage */}
+        </Box>
+      </div>
     </Container>
   );
 };
 
 export default NewspaperLayout;
-
-
-

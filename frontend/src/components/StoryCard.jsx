@@ -29,24 +29,47 @@ const StoryCard = ({ article, variant = 'default' }) => {
   
   // Get the best available image URL - fallback to reuse_images if image_url is invalid
   const getImageUrl = () => {
+    // First try the main image_url
     if (isValidImageUrl(article.image_url)) {
       return article.image_url;
     }
-    // Fallback to first reuse image if available
-    if (article.reuse_images && article.reuse_images.length > 0 && article.reuse_images[0].image_url) {
-      const reuseUrl = article.reuse_images[0].image_url;
-      if (isValidImageUrl(reuseUrl)) {
-        return reuseUrl;
+    
+    // Fallback to first reuse image if available (check all reuse_images)
+    if (article.reuse_images && Array.isArray(article.reuse_images) && article.reuse_images.length > 0) {
+      // Try each reuse image until we find a valid one
+      for (const reuseImage of article.reuse_images) {
+        if (reuseImage && reuseImage.image_url && isValidImageUrl(reuseImage.image_url)) {
+          return reuseImage.image_url;
+        }
       }
     }
+    
     // Fallback to reused_image_url if available
     if (isValidImageUrl(article.reused_image_url)) {
       return article.reused_image_url;
     }
+    
+    // Last resort: try original_image_url if available
+    if (isValidImageUrl(article.original_image_url)) {
+      return article.original_image_url;
+    }
+    
     return null;
   };
   
   const displayImageUrl = getImageUrl();
+  
+  // Debug logging in development
+  if (import.meta.env.DEV && !displayImageUrl && (article.reuse_images?.length > 0 || article.reused_image_url)) {
+    console.warn('StoryCard: No valid image URL found for article:', {
+      id: article.id,
+      title: article.title,
+      image_url: article.image_url,
+      reuse_images_count: article.reuse_images?.length || 0,
+      reused_image_url: article.reused_image_url,
+      original_image_url: article.original_image_url,
+    });
+  }
   
   // Enhanced image error handling
   const handleImageError = (e) => {
@@ -108,6 +131,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
         as={Link}
         to={`/article/${article.slug}`}
         className="news-card featured-article h-auto w-full max-w-4xl flex flex-col mb-8 mx-auto"
+        style={{ borderRadius: 0 }}
       >
         <CardHeader className="pb-3">
           <Box className="flex-1">
@@ -134,15 +158,17 @@ const StoryCard = ({ article, variant = 'default' }) => {
         <CardBody className="flex-1 flex flex-col pt-0">
           {displayImageUrl && (
             <Box 
-              className="relative mb-4 w-full rounded overflow-hidden"
+              className="relative mb-4 w-full overflow-hidden"
               style={{ 
                 aspectRatio: '16/9',
-                maxHeight: variant === 'featured' ? '500px' : 'none'
+                maxHeight: variant === 'featured' ? '500px' : 'none',
+                borderRadius: 0
               }}
             >
               {imageLoading && (
                 <Skeleton
-                  className="absolute inset-0 rounded-md z-10"
+                  className="absolute inset-0 z-10"
+                  style={{ borderRadius: 0 }}
                 />
               )}
               <img
@@ -194,8 +220,8 @@ const StoryCard = ({ article, variant = 'default' }) => {
     return (
       <Link
         to={`/article/${article.slug}`}
-        className="news-card compact-article flex overflow-hidden mb-4 border border-gray-200 bg-white w-full max-w-[400px] h-[120px] mx-auto hover:shadow-lg hover:-translate-y-0.5 transition-all rounded-lg cursor-pointer no-underline"
-        style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}
+        className="news-card compact-article flex overflow-hidden mb-4 border border-gray-200 bg-white w-full max-w-[400px] h-[120px] mx-auto hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer no-underline"
+        style={{ textDecoration: 'none', display: 'block', color: 'inherit', borderRadius: 0 }}
       >
         {displayImageUrl && (
           <img
@@ -249,7 +275,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
       as={Link}
       to={`/article/${article.slug}`}
       className="news-card h-auto w-full flex flex-col"
-      style={{ minWidth: 0 }}
+      style={{ minWidth: 0, borderRadius: 0 }}
     >
       <CardHeader className="pb-2">
         <Heading size="sm" className="mb-2 news-title line-clamp-2">
@@ -274,11 +300,13 @@ const StoryCard = ({ article, variant = 'default' }) => {
       <CardBody className="flex-1 flex flex-col pt-0">
         {displayImageUrl && (
           <Box 
-            className="relative mb-3 w-full rounded overflow-hidden aspect-video min-h-[200px]"
+            className="relative mb-3 w-full overflow-hidden aspect-video min-h-[200px]"
+            style={{ borderRadius: 0 }}
           >
             {imageLoading && (
               <Skeleton
-                className="absolute inset-0 rounded-md z-10"
+                className="absolute inset-0 z-10"
+                style={{ borderRadius: 0 }}
               />
             )}
             <img

@@ -1,7 +1,9 @@
 # Environment variables for Dhivehinoos.net production deployment
 # Copy this content to your Linode server at /opt/dhivehinoos/docker/.env
+# IMPORTANT: Replace all placeholder values with your actual production values!
 
 # Django Settings
+# SECRET_KEY: Django secret key for cryptographic signing (REQUIRED - generate a secure random string)
 SECRET_KEY=your-secret-key-here-change-this-in-production
 DEBUG=False
 ALLOWED_HOSTS=dhivehinoos.net,www.dhivehinoos.net,localhost,127.0.0.1
@@ -11,13 +13,23 @@ CSRF_COOKIE_SECURE=False
 CSRF_COOKIE_HTTPONLY=False
 
 # API Configuration
+# API_INGEST_KEY: API key for n8n webhook integration (REQUIRED - set your actual n8n API key)
 API_INGEST_KEY=your-n8n-api-key-here
 
 # Cache Configuration
 USE_MEMORY_CACHE=true
 
 # Database (using SQLite for simplicity)
+# Note: SQLite doesn't require a password, but if you switch to PostgreSQL/MySQL later, add:
+# DB_PASSWORD=your-database-password-here
 DATABASE_URL=sqlite:////app/database/db.sqlite3
 
 # Redis (if needed later)
+# Note: Redis doesn't require a password by default, but if you enable AUTH, add:
+# REDIS_PASSWORD=your-redis-password-here
 REDIS_URL=redis://127.0.0.1:6379/3
+
+# Django Admin Password
+# Note: Django admin password is stored in the database, not in .env
+# To reset admin password, run: docker-compose exec dhivehinoos_backend python manage.py changepassword admin
+# Or create new admin: docker-compose exec dhivehinoos_backend python manage.py createsuperuser

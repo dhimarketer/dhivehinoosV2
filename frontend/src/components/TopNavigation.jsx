@@ -232,14 +232,15 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
               onLinkClick(e);
             }
           }}
-          className={`inline-block px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap rounded-md ${
-            selectedCategory === null 
-              ? 'text-brand-600 font-semibold bg-brand-50' 
-              : 'text-gray-700 hover:text-brand-600 hover:bg-gray-50'
-          }`}
-          style={{ 
-            fontFamily: 'sans-serif'
-          }}
+                className={`inline-block px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                  selectedCategory === null 
+                    ? 'text-[#00AEC7] font-semibold' 
+                    : 'text-black hover:text-[#00AEC7]'
+                }`}
+                style={{ 
+                  fontFamily: 'sans-serif',
+                  borderRadius: 0
+                }}
         >
           Home
         </Link>
@@ -256,13 +257,14 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
                     onLinkClick(e);
                   }
                 }}
-                className={`inline-block px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap rounded-md ${
+                className={`inline-block px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                   selectedCategory === category.slug 
-                    ? 'text-brand-600 font-semibold bg-brand-50' 
-                    : 'text-gray-700 hover:text-brand-600 hover:bg-gray-50'
+                    ? 'text-[#00AEC7] font-semibold' 
+                    : 'text-black hover:text-[#00AEC7]'
                 }`}
                 style={{ 
-                  fontFamily: 'sans-serif'
+                  fontFamily: 'sans-serif',
+                  borderRadius: 0
                 }}
               >
                 {category.name}
@@ -294,9 +296,10 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
               onLinkClick(e);
             }
           }}
-          className="inline-block px-4 py-2 text-sm font-semibold transition-all duration-200 whitespace-nowrap rounded-md text-brand-600 hover:text-brand-700 hover:bg-brand-50 border border-brand-200 hover:border-brand-300"
+          className="inline-block px-4 py-2 text-sm font-semibold transition-all duration-200 whitespace-nowrap text-[#00AEC7] hover:text-[#00AEC7] border border-black hover:border-[#00AEC7]"
           style={{ 
-            fontFamily: 'sans-serif'
+            fontFamily: 'sans-serif',
+            borderRadius: 0
           }}
         >
           About
@@ -310,9 +313,10 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
               onLinkClick(e);
             }
           }}
-          className="inline-block px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap rounded-md text-gray-700 hover:text-brand-600 hover:bg-gray-50"
+          className="inline-block px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap text-black hover:text-[#00AEC7]"
           style={{ 
-            fontFamily: 'sans-serif'
+            fontFamily: 'sans-serif',
+            borderRadius: 0
           }}
         >
           Contact
@@ -342,137 +346,99 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
       className="site-header bg-white sticky top-0 z-[1000] shadow-sm" 
       role="navigation"
     >
-      {/* Top Bar: Date and Social Icons */}
-      {!isMobile && (
-        <Box className="border-b border-gray-200 bg-white">
-          <Container className="max-w-7xl">
-            <Flex justify="space-between" align="center" className="py-2">
-              <Text size="sm" className="text-gray-700 font-medium">
-                {formatDate()}
-              </Text>
-              <HStack spacing={4}>
-                {socialLinks.map((social) => (
-                  <a
-                    key={social.name}
-                    href={social.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-700 hover:text-brand-500 transition-colors text-sm font-medium"
-                    aria-label={social.name}
-                  >
-                    {social.icon}
-                  </a>
-                ))}
-              </HStack>
-            </Flex>
-          </Container>
-        </Box>
-      )}
-
-      <Container className="max-w-7xl">
-        {/* Main Header: Logo, Navigation, Utilities */}
-        <Flex justify="space-between" align="center" wrap="wrap" gap={4} className="py-4">
-          {/* Logo - Left */}
-          <Box className="flex-shrink-0">
-            <Heading 
-              size="xl" 
-              className="site-title cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/')}
-              style={{ 
-                color: '#3B82F6', // Light blue like standard.mv
-                fontWeight: 600,
-                letterSpacing: '-0.02em'
-              }}
-            >
-              Dhivehinoos
-            </Heading>
-            <Text 
-              size="xs" 
-              className="text-gray-900 font-semibold uppercase tracking-wide mt-0.5"
-              style={{ letterSpacing: '0.1em' }}
-            >
-              .net
+      {/* Top Bar: Date and Social Icons - Newspaper Style */}
+      <Box className="border-b border-black bg-white">
+        <Container className="max-w-newspaper">
+          <Flex justify="space-between" align="center" className="py-2">
+            <Text size="sm" className="text-black font-sans text-xs">
+              {formatDate()}
             </Text>
-          </Box>
+            <HStack spacing={4}>
+              {socialLinks.map((social) => (
+                <a
+                  key={social.name}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-black hover:text-[#00AEC7] transition-colors text-xs font-sans"
+                  aria-label={social.name}
+                >
+                  {social.icon}
+                </a>
+              ))}
+            </HStack>
+          </Flex>
+        </Container>
+      </Box>
 
-          {/* Navigation Links - Center (Desktop only) */}
-          {!isMobile && (
-            <Box className="flex-1 flex justify-center">
-              <Box 
-                className="flex flex-wrap justify-center items-center bg-gray-50 rounded-lg px-3 py-2 border border-gray-200" 
-                style={{ gap: '4px' }}
-              >
+      <Container className="max-w-newspaper">
+        {/* Logo Area - Centered, Large, Serif Font */}
+        <Box className="text-center py-6">
+          <Heading 
+            size="xl" 
+            className="site-title cursor-pointer hover:opacity-80 transition-opacity font-serif font-bold text-black"
+            onClick={() => navigate('/')}
+            style={{ 
+              fontSize: '2.5rem',
+              letterSpacing: '-0.02em'
+            }}
+          >
+            Dhivehinoos
+          </Heading>
+        </Box>
+
+        {/* Sticky Navbar - Below Logo */}
+        <Box className="border-t border-black border-b border-black">
+          <Flex justify="space-between" align="center" wrap="wrap" gap={4} className="py-3">
+            {/* Navigation Links - Center */}
+            {!isMobile && (
+              <Box className="flex-1 flex justify-center">
                 <NavigationLinks />
               </Box>
-            </Box>
-          )}
-
-          {/* Utilities - Right */}
-          <HStack spacing={2} className="flex-shrink-0">
-            {/* Search Bar - Desktop (Inline) */}
-            {!isMobile && (
-              <Box className="min-w-[200px] max-w-[300px]">
-                <form onSubmit={handleSearch}>
-                  <InputGroup size="sm">
-                    <Input
-                      placeholder="Search..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      className="rounded-md border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white text-sm"
-                    />
-                    <InputRightElement>
-                      {searchQuery && (
-                        <IconButton
-                          aria-label="Clear search"
-                          icon={<span className="text-xs">✕</span>}
-                          size="xs"
-                          variant="ghost"
-                          onClick={onClearSearch}
-                          className="mr-1"
-                        />
-                      )}
-                      <IconButton
-                        aria-label="Search"
-                        icon={MagnifyingGlassIcon}
-                        size="xs"
-                        variant="ghost"
-                        onClick={handleSearch}
-                        type="submit"
-                        className="text-gray-500"
-                      />
-                    </InputRightElement>
-                  </InputGroup>
-                </form>
-              </Box>
             )}
-            
-            {/* Mobile Menu Button */}
-            {isMobile && (
-              <IconButton
-                aria-label="Open menu"
-                aria-expanded={isOpen}
-                icon={Bars3Icon}
-                variant="ghost"
-                onClick={onOpen}
-                className="text-gray-700"
-              />
-            )}
-          </HStack>
-        </Flex>
 
-        {/* Separator Line */}
-        <Divider className="border-gray-900 border-t" />
+            {/* Utilities - Right: Search Icon and Dark Mode Toggle */}
+            <HStack spacing={2} className="flex-shrink-0">
+              {/* Search Icon - Desktop */}
+              {!isMobile && (
+                <IconButton
+                  aria-label="Search"
+                  icon={MagnifyingGlassIcon}
+                  size="sm"
+                  variant="ghost"
+                  onClick={onOpen}
+                  className="text-black hover:text-[#00AEC7]"
+                  style={{ borderRadius: 0 }}
+                />
+              )}
+              
+              {/* Mobile Menu Button */}
+              {isMobile && (
+                <IconButton
+                  aria-label="Open menu"
+                  aria-expanded={isOpen}
+                  icon={Bars3Icon}
+                  variant="ghost"
+                  onClick={onOpen}
+                  className="text-black"
+                  style={{ borderRadius: 0 }}
+                />
+              )}
+            </HStack>
+          </Flex>
+        </Box>
 
         {/* Mobile Search Bar */}
         {isMobile && (
-          <Box className="mt-4">
+          <Box className="mt-4 border-t border-black pt-4">
             <form onSubmit={handleSearch}>
               <InputGroup size="sm">
                 <Input
                   placeholder="Search articles..."
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  className="rounded-md border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  style={{ borderRadius: 0 }}
+                  className="border-black focus:border-[#00AEC7] focus:ring-1 focus:ring-[#00AEC7]"
                 />
                 <InputRightElement>
                   {searchQuery && (
@@ -483,6 +449,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
                       variant="ghost"
                       onClick={onClearSearch}
                       className="mr-1"
+                      style={{ borderRadius: 0 }}
                     />
                   )}
                   <IconButton
@@ -492,6 +459,7 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
                     variant="ghost"
                     onClick={handleSearch}
                     type="submit"
+                    style={{ borderRadius: 0 }}
                   />
                 </InputRightElement>
               </InputGroup>
@@ -500,18 +468,67 @@ const TopNavigation = ({ onSearch, onSearchInput, searchQuery, setSearchQuery, o
         )}
       </Container>
 
-      {/* Mobile Drawer */}
-      <Drawer isOpen={isOpen} onClose={onClose} placement="right">
-        <DrawerContent>
-          <DrawerCloseButton onClose={onClose} />
-          <DrawerHeader>Menu</DrawerHeader>
-          <DrawerBody>
-            <VStack spacing={4} align="stretch">
-              <NavigationLinks isVertical onLinkClick={onClose} />
-            </VStack>
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+      {/* Mobile Drawer - Menu */}
+      {isMobile && (
+        <Drawer isOpen={isOpen} onClose={onClose} placement="right">
+          <DrawerContent>
+            <DrawerCloseButton onClose={onClose} />
+            <DrawerHeader>Menu</DrawerHeader>
+            <DrawerBody>
+              <VStack spacing={4} align="stretch">
+                <NavigationLinks isVertical onLinkClick={onClose} />
+              </VStack>
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
+      )}
+
+      {/* Desktop Search Drawer */}
+      {!isMobile && (
+        <Drawer isOpen={isOpen} onClose={onClose} placement="top">
+          <DrawerContent>
+            <DrawerCloseButton onClose={onClose} />
+            <DrawerBody>
+              <Box className="py-4">
+                <form onSubmit={handleSearch}>
+                  <InputGroup size="lg">
+                    <Input
+                      placeholder="Search articles..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      style={{ borderRadius: 0 }}
+                      className="border-black focus:border-[#00AEC7] focus:ring-1 focus:ring-[#00AEC7] text-lg"
+                      autoFocus
+                    />
+                    <InputRightElement>
+                      {searchQuery && (
+                        <IconButton
+                          aria-label="Clear search"
+                          icon={<span className="text-sm">✕</span>}
+                          size="sm"
+                          variant="ghost"
+                          onClick={onClearSearch}
+                          className="mr-1"
+                          style={{ borderRadius: 0 }}
+                        />
+                      )}
+                      <IconButton
+                        aria-label="Search"
+                        icon={MagnifyingGlassIcon}
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleSearch}
+                        type="submit"
+                        style={{ borderRadius: 0 }}
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                </form>
+              </Box>
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
+      )}
     </Box>
   );
 };

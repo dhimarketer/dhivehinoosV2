@@ -23,84 +23,159 @@ class ArticleListSerializer(serializers.ModelSerializer):
     vote_score = serializers.ReadOnlyField()
     approved_comments_count = serializers.ReadOnlyField()
     image_url = serializers.SerializerMethodField()
+    reuse_images = serializers.SerializerMethodField()
+    reused_image_url = serializers.SerializerMethodField()
     category = CategorySerializer(read_only=True)
     
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'content', 'source_fragments', 'image', 'image_file', 'image_url', 'status',
+            'id', 'title', 'slug', 'content', 'source_fragments', 'image', 'image_file', 'image_url', 
+            'reuse_images', 'reused_image_url', 'status',
             'category', 'created_at', 'vote_score', 'approved_comments_count'
         ]
         read_only_fields = ['slug', 'created_at']
     
     def get_image_url(self, obj):
-        """Prioritize Docker volume images first, then fallback to external URLs - with Redis caching"""
+        """Prioritize Docker volume images first, then fallback to external URLs - optimized version with Redis caching"""
         from django.conf import settings
         from .cache_utils import get_cached_article_data, cache_article_data
         
-        # Check Redis cache first
-        cache_key = f'article:image_url:{obj.id}'
+        # Check Redis cache first - use versioned cache key to ensure cache refresh after priority change
+        cache_key = f'article:image_url:v2:{obj.id}'
         cached_url = get_cached_article_data(cache_key)
         if cached_url:
             return cached_url
+        
+        # Cache settings check
+        _is_production = not settings.DEBUG
+        _base_url = 'https://dhivehinoos.net' if _is_production else 'http://dhivehinoos.net'
         
         # Helper function to ensure HTTPS URLs in production
         def ensure_https_url(url):
             if not url:
                 return url
-            # If it's already an external HTTPS URL, return as-is
             if url.startswith('https://'):
                 return url
-            # If it's HTTP, convert to HTTPS in production
             if url.startswith('http://'):
-                return url.replace('http://', 'https://') if not settings.DEBUG else url
-            # If it's a relative URL, construct absolute URL with HTTPS in production
+                return url.replace('http://', 'https://') if _is_production else url
             if url.startswith('/'):
-                protocol = 'https' if not settings.DEBUG else 'http'
-                return f"{protocol}://dhivehinoos.net{url}"
+                return f"{_base_url}{url}"
             return url
         
         # PRIORITY 1: Docker volume image_file (served from local storage - fastest)
+        # This is for explicitly uploaded images, highest priority
         if obj.image_file and obj.image_file.name:
             try:
                 request = self.context.get('request')
                 if request:
                     url = request.build_absolute_uri(obj.image_file.url)
                 else:
-                    protocol = 'https' if not settings.DEBUG else 'http'
-                    url = f"{protocol}://dhivehinoos.net{obj.image_file.url}"
+                    url = f"{_base_url}{obj.image_file.url}"
                 final_url = ensure_https_url(url)
                 # Cache for 1 hour (3600 seconds)
                 cache_article_data(cache_key, final_url, timeout=3600)
                 return final_url
-            except Exception as e:
-                print(f"⚠️  Warning: Error accessing article image: {e}")
+            except Exception:
+                pass  # Silently fail to avoid performance impact
         
-        # PRIORITY 2: Reusable image from Docker volume
-        if obj.reused_image and obj.reused_image.image_file:
-            try:
-                if obj.reused_image.image_file.name:
-                    request = self.context.get('request')
-                    if request:
-                        url = request.build_absolute_uri(obj.reused_image.image_file.url)
-                    else:
-                        protocol = 'https' if not settings.DEBUG else 'http'
-                        url = f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
-                    final_url = ensure_https_url(url)
-                    # Cache for 1 hour
-                    cache_article_data(cache_key, final_url, timeout=3600)
+        # PRIORITY 2: External API image URL (original story image - should be shown on landing page)
+        # Prioritize API image over reusable images for landing page display
+        # But validate that the URL is not empty or just whitespace
+        if obj.image and isinstance(obj.image, str):
+            image_url_clean = obj.image.strip()
+            # Only proceed if the cleaned URL is not empty and is a valid URL format
+            if (image_url_clean and 
+                len(image_url_clean) > 0 and
+                not image_url_clean.startswith('https://via.placeholder.com') and
+                (image_url_clean.startswith('http://') or image_url_clean.startswith('https://') or image_url_clean.startswith('/'))):
+                try:
+                    final_url = ensure_https_url(image_url_clean)
+                    # Cache external URLs for shorter time (15 minutes) as they might change
+                    cache_article_data(cache_key, final_url, timeout=900)
                     return final_url
-            except Exception as e:
-                print(f"⚠️  Warning: Error accessing reusable image: {e}")
+                except Exception:
+                    # If URL processing fails, continue to fallback options
+                    pass
         
-        # PRIORITY 3: External API image URL (fallback - slower)
-        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
-            final_url = ensure_https_url(obj.image)
-            # Cache external URLs for shorter time (15 minutes) as they might change
-            cache_article_data(cache_key, final_url, timeout=900)
-            return final_url
+        # PRIORITY 3: Reusable image from Docker volume (fallback if no valid API image)
+        # Use reusable images if API image is missing or invalid
+        # First try the primary reused_image
+        if obj.reused_image and obj.reused_image.image_file and obj.reused_image.image_file.name:
+            try:
+                request = self.context.get('request')
+                if request:
+                    url = request.build_absolute_uri(obj.reused_image.image_file.url)
+                else:
+                    url = f"{_base_url}{obj.reused_image.image_file.url}"
+                final_url = ensure_https_url(url)
+                # Cache for 1 hour
+                cache_article_data(cache_key, final_url, timeout=3600)
+                return final_url
+            except Exception:
+                pass  # Silently fail to avoid performance impact
+        
+        # PRIORITY 4: Try first reuse image from reuse_images many-to-many if reused_image failed
+        # This ensures we always return an image if one exists in the library
+        if obj.reuse_images.exists():
+            for reuse_image in obj.reuse_images.all()[:1]:  # Just get the first one
+                if reuse_image.image_file and reuse_image.image_file.name:
+                    try:
+                        request = self.context.get('request')
+                        if request:
+                            url = request.build_absolute_uri(reuse_image.image_file.url)
+                        else:
+                            url = f"{_base_url}{reuse_image.image_file.url}"
+                        final_url = ensure_https_url(url)
+                        # Cache for 1 hour
+                        cache_article_data(cache_key, final_url, timeout=3600)
+                        return final_url
+                    except Exception:
+                        continue  # Try next image if this one fails
         
         return None
+    
+    def get_reused_image_url(self, obj):
+        """Return the URL of the primary reused image if available and exists"""
+        if obj.reused_image and obj.reused_image.image_file:
+            try:
+                if obj.reused_image.image_file.name and obj.reused_image.image_file.storage.exists(obj.reused_image.image_file.name):
+                    request = self.context.get('request')
+                    if request:
+                        return request.build_absolute_uri(obj.reused_image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        return f"{protocol}://dhivehinoos.net{obj.reused_image.image_file.url}"
+            except Exception as e:
+                print(f"⚠️  Warning: Error accessing reused image file: {e}")
+        return None
+    
+    def get_reuse_images(self, obj):
+        """Return all reuse images with their URLs and metadata"""
+        reuse_images = []
+        for image in obj.reuse_images.all():
+            if image.image_file and image.image_file.name and image.image_file.storage.exists(image.image_file.name):
+                try:
+                    request = self.context.get('request')
+                    if request:
+                        image_url = request.build_absolute_uri(image.image_file.url)
+                    else:
+                        from django.conf import settings
+                        protocol = 'https' if not settings.DEBUG else 'http'
+                        image_url = f"{protocol}://dhivehinoos.net{image.image_file.url}"
+                    
+                    reuse_images.append({
+                        'id': image.id,
+                        'entity_name': image.entity_name,
+                        'entity_type': image.entity_type,
+                        'image_url': image_url,
+                        'description': image.description,
+                        'usage_count': image.usage_count
+                    })
+                except Exception as e:
+                    print(f"⚠️  Warning: Error accessing reuse image {image.id}: {e}")
+        return reuse_images
 
 
 class ArticleIngestSerializer(serializers.ModelSerializer):
@@ -398,13 +473,19 @@ class ArticleSerializer(serializers.ModelSerializer):
         # But validate that the URL is not empty or just whitespace
         if obj.image and isinstance(obj.image, str):
             image_url_clean = obj.image.strip()
+            # Only proceed if the cleaned URL is not empty and is a valid URL format
             if (image_url_clean and 
+                len(image_url_clean) > 0 and
                 not image_url_clean.startswith('https://via.placeholder.com') and
                 (image_url_clean.startswith('http://') or image_url_clean.startswith('https://') or image_url_clean.startswith('/'))):
-                final_url = ensure_https_url(image_url_clean)
-                # Cache external URLs for shorter time (15 minutes) as they might change
-                cache_article_data(cache_key, final_url, timeout=900)
-                return final_url
+                try:
+                    final_url = ensure_https_url(image_url_clean)
+                    # Cache external URLs for shorter time (15 minutes) as they might change
+                    cache_article_data(cache_key, final_url, timeout=900)
+                    return final_url
+                except Exception:
+                    # If URL processing fails, continue to fallback options
+                    pass
         
         # PRIORITY 3: Reusable image from Docker volume (fallback if no valid API image)
         # Use reusable images if API image is missing or invalid

@@ -28,6 +28,9 @@ import { articlesAPI } from '../services/api';
 import StoryCard from '../components/StoryCard';
 import TopNavigation from '../components/TopNavigation';
 import ThemeLayout from '../components/ThemeLayout';
+import CategoryTag from '../components/CategoryTag';
+import SidebarWidgets from '../components/SidebarWidgets';
+import FormattedText from '../components/FormattedText';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { useTheme } from '../hooks/useTheme';
 import { getOptimizedImageUrlBySize } from '../utils/imageOptimization';
@@ -153,11 +156,11 @@ const HomePage = () => {
           hasPrevious: articlesResponse.data.previous !== null
         }));
         
-        // Preload images for better LCP
-        const articlesToPreload = searchQuery.trim() ? 
-          (articlesResponse.data.results || articlesResponse.data) : 
-          (articlesResponse.data.results || articlesResponse.data);
-        preloadImages(articlesToPreload);
+        // Preload images for better LCP (only if not searching and on first page)
+        if (!searchQuery.trim() && pagination.currentPage === 1) {
+          const articlesToPreload = articlesResponse.data.results || articlesResponse.data;
+          preloadImages(articlesToPreload);
+        }
       } catch (err) {
         setError('Failed to load articles');
         console.error('Error fetching data:', err);
@@ -205,28 +208,108 @@ const HomePage = () => {
     setSearchResults([]);
   };
 
-  // Preload images to improve LCP - use link preload for better performance
-  const preloadImages = (articles) => {
-    // Only preload the first featured image (LCP element) using link preload
-    // This is more efficient than Image() preloading and prevents duplicates
-    if (articles && articles.length > 0 && articles[0].image_url) {
-      const firstArticle = articles[0];
-      // Use link preload - matches the srcSet 800w size for optimal LCP
-      // Don't use 1200w as that might not be needed initially
-      if (firstArticle.image_url && firstArticle.image_url.includes('fal.media')) {
-        const optimizedUrl = getOptimizedImageUrlBySize(firstArticle.image_url, 800, 450);
-        // Check if already preloaded to avoid duplicates
-        const existingPreload = document.querySelector(`link[rel="preload"][href="${optimizedUrl}"]`);
-        if (!existingPreload) {
-          const link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = optimizedUrl;
-          link.fetchPriority = 'high';
-          document.head.appendChild(link);
-        }
-      }
+  // Format date helper
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        timeZone: 'Indian/Maldives',
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
     }
+  };
+
+  // Preload images to improve LCP - only preload if image will be rendered immediately
+  const preloadImages = (articles) => {
+    // Only preload the first featured image if it's actually going to be rendered
+    // Skip preloading if we're in search mode or if there are no articles
+    if (searchQuery.trim() || !articles || articles.length === 0) {
+      return;
+    }
+
+    const firstArticle = articles[0];
+    if (!firstArticle?.image_url || !firstArticle.image_url.includes('fal.media')) {
+      return;
+    }
+
+    // Use the exact same URL that will be used in the hero section
+    // Match the size used in the hero section (600x500)
+    const optimizedUrl = getOptimizedImageUrlBySize(firstArticle.image_url, 600, 500);
+    
+    // Check if already preloaded to avoid duplicates
+    const existingPreload = document.querySelector(`link[rel="preload"][as="image"][href="${optimizedUrl}"]`);
+    if (existingPreload) {
+      return;
+    }
+
+    // Only preload if we're on the first page and not searching
+    if (pagination.currentPage !== 1) {
+      return;
+    }
+
+    // Create preload link
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = optimizedUrl;
+    link.fetchPriority = 'high';
+    
+    // Add crossorigin for CORS-enabled images
+    if (optimizedUrl.includes('fal.media')) {
+      link.crossOrigin = 'anonymous';
+    }
+    
+    // Set a timeout to remove preload if image doesn't load quickly
+    const timeoutId = setTimeout(() => {
+      const preloadLink = document.querySelector(`link[rel="preload"][as="image"][href="${optimizedUrl}"]`);
+      if (preloadLink) {
+        preloadLink.remove();
+      }
+    }, 3000); // Remove after 3 seconds if not used
+
+    document.head.appendChild(link);
+
+    // Remove preload link once the actual image element loads
+    // This prevents the warning about unused preload
+    const checkImageLoad = () => {
+      const imgElements = document.querySelectorAll(`img[src*="${optimizedUrl}"], img[srcset*="${optimizedUrl}"]`);
+      if (imgElements.length > 0) {
+        clearTimeout(timeoutId);
+        // Wait for the image to actually load
+        imgElements.forEach(img => {
+          if (img.complete) {
+            const preloadLink = document.querySelector(`link[rel="preload"][as="image"][href="${optimizedUrl}"]`);
+            if (preloadLink) {
+              preloadLink.remove();
+            }
+          } else {
+            img.addEventListener('load', () => {
+              const preloadLink = document.querySelector(`link[rel="preload"][as="image"][href="${optimizedUrl}"]`);
+              if (preloadLink) {
+                preloadLink.remove();
+              }
+            }, { once: true });
+          }
+        });
+      }
+    };
+
+    // Check immediately and also after a short delay
+    checkImageLoad();
+    setTimeout(checkImageLoad, 100);
   };
 
   // Pagination handlers
@@ -315,240 +398,654 @@ const HomePage = () => {
         selectedCategory={selectedCategory}
       />
 
-      {/* Top Banner Ad - Match content width (max-w-7xl) and increase height to match feature image prominence */}
-      <Box className="w-full bg-gray-50 py-6 md:py-8 mb-6 md:mb-8">
-        <Container className="max-w-7xl mx-auto px-4 sm:px-6">
-          <Suspense fallback={null}>
-            <AdComponent placement="top_banner" maxAds={1} />
-          </Suspense>
-        </Container>
-      </Box>
-
-      <ThemeLayout
-        featuredArticle={articles.length > 0 ? articles[0] : null}
-        articles={articles}
-        settings={settings}
-      >
-
-        {/* Search Results or Regular Content */}
-        {loading ? (
-          <Box className="mb-12">
-            <VStack spacing={4} align="center">
-              <Spinner size="lg" />
-              <Text>{searchQuery.trim() ? 'Searching articles...' : 'Loading articles...'}</Text>
-            </VStack>
-          </Box>
-        ) : searchQuery.trim() ? (
-          <Box className="mb-12">
-            <Flex justify="space-between" align="center" className="mb-6 flex-wrap gap-4">
-              <Heading size="lg" className="text-gray-800">
-                Search Results for "{searchQuery}"
-              </Heading>
-              <Badge colorScheme="blue" size="sm" className="px-3 py-1">
-                {pagination.totalCount} result{pagination.totalCount !== 1 ? 's' : ''} found
-              </Badge>
-            </Flex>
-            
-            {searchResults.length > 0 ? (
-              /* Search Results Grid - Dynamic Layout - Standard.mv style */
-              <SimpleGrid 
-                columns={{ 
-                  base: 1, 
-                  sm: Math.min(settings.story_cards_columns || 3, 2), 
-                  md: settings.story_cards_columns || 3,
-                  lg: settings.story_cards_columns || 3
-                }} 
-                spacing={4}
-                className="max-w-[1200px] mx-auto w-full"
-              >
-                {searchResults.map((article) => (
-                  <StoryCard key={article.id} article={article} variant="default" />
+      {/* Newspaper Layout Container */}
+      <Container className="max-w-newspaper mx-auto px-4 sm:px-6">
+        {/* Ticker/Marquee - Breaking News */}
+        {!searchQuery.trim() && articles.length > 0 && (
+          <Box className="w-full bg-black text-white py-2 mb-4 overflow-hidden" style={{ borderRadius: 0 }}>
+            <div className="flex whitespace-nowrap">
+              <div className="flex animate-marquee">
+                <span className="font-bold mr-4 text-sm font-sans">BREAKING NEWS:</span>
+                {articles.slice(0, 5).map((article, index) => (
+                  <React.Fragment key={article.id}>
+                    <Link 
+                      to={`/article/${article.slug}`}
+                      className="text-white hover:text-[#00AEC7] transition-colors text-sm font-sans mr-8"
+                    >
+                      {article.title}
+                    </Link>
+                    {index < 4 && <span className="mr-8">•</span>}
+                  </React.Fragment>
                 ))}
-              </SimpleGrid>
+                {/* Duplicate for seamless loop */}
+                <span className="font-bold mr-4 text-sm font-sans">BREAKING NEWS:</span>
+                {articles.slice(0, 5).map((article, index) => (
+                  <React.Fragment key={`dup-${article.id}`}>
+                    <Link 
+                      to={`/article/${article.slug}`}
+                      className="text-white hover:text-[#00AEC7] transition-colors text-sm font-sans mr-8"
+                    >
+                      {article.title}
+                    </Link>
+                    {index < 4 && <span className="mr-8">•</span>}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </Box>
+        )}
+
+        {/* Main Table Layout: Main Content (66.67%) + Sidebar (33.33%) */}
+        <table className="newspaper-layout-table w-full border-collapse">
+          <tbody>
+            <tr>
+              {/* Main Content Area - Left Column */}
+              <td className="align-top" style={{ width: '66.67%', paddingRight: '24px', verticalAlign: 'top' }}>
+                <Box>
+
+            {/* Search Results or Regular Content */}
+            {loading ? (
+              <Box className="mb-12">
+                <VStack spacing={4} align="center">
+                  <Spinner size="lg" />
+                  <Text>{searchQuery.trim() ? 'Searching articles...' : 'Loading articles...'}</Text>
+                </VStack>
+              </Box>
+            ) : searchQuery.trim() ? (
+              <Box className="mb-12">
+                <Heading 
+                  size="lg" 
+                  className="mb-6 font-serif font-bold text-black"
+                  style={{ 
+                    borderTop: '4px solid #000000',
+                    borderLeft: '8px solid #000000',
+                    paddingLeft: '12px',
+                    paddingTop: '8px'
+                  }}
+                >
+                  Search Results for "{searchQuery}"
+                </Heading>
+                <Badge colorScheme="blue" size="sm" className="px-3 py-1 mb-4">
+                  {pagination.totalCount} result{pagination.totalCount !== 1 ? 's' : ''} found
+                </Badge>
+                
+                {searchResults.length > 0 ? (
+                  <SimpleGrid 
+                    columns={{ base: 1, sm: 2, md: 3 }} 
+                    spacing={4}
+                    className="w-full"
+                  >
+                    {searchResults.map((article) => (
+                      <StoryCard key={article.id} article={article} variant="default" />
+                    ))}
+                  </SimpleGrid>
+                ) : (
+                  <Box className="text-center py-8">
+                    <Text size="lg" className="text-gray-500 mb-4">
+                      No articles found matching "{searchQuery}"
+                    </Text>
+                    <Button
+                      onClick={() => setSearchQuery('')}
+                      variant="outline"
+                      colorScheme="brand"
+                      size="sm"
+                      style={{ borderRadius: 0 }}
+                    >
+                      Clear Search
+                    </Button>
+                  </Box>
+                )}
+              </Box>
             ) : (
-              <Box className="text-center py-8">
-                <Text size="lg" className="text-gray-500 mb-4">
-                  No articles found matching "{searchQuery}"
-                </Text>
-                <Button
-                  onClick={() => setSearchQuery('')}
-                  variant="outline"
-                  colorScheme="brand"
-                  size="sm"
+              <>
+                {/* Hero Section - CSS Grid Layout (2 columns, dynamic heights) */}
+                {articles.length > 0 && (
+                  <Box 
+                    className="mb-8 hero-grid-container"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '16px',
+                      width: '100%',
+                      backgroundColor: '#FFFFFF',
+                      alignItems: 'stretch'
+                    }}
+                  >
+                    {/* Left Item - Feature Article (spans full height) */}
+                    <Box
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignSelf: 'stretch',
+                        backgroundColor: 'transparent'
+                      }}
+                    >
+                      {articles[0] && (
+                        <Link 
+                          to={`/article/${articles[0].slug}`}
+                          className="block relative"
+                          style={{ 
+                            textDecoration: 'none', 
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            backgroundColor: 'transparent'
+                          }}
+                        >
+                          {articles[0].image_url && (
+                            <Box 
+                              className="relative w-full" 
+                              style={{ 
+                                flex: '1 1 auto',
+                                minHeight: '500px',
+                                backgroundColor: 'transparent',
+                                background: 'none',
+                                position: 'relative',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              <img
+                                src={getOptimizedImageUrlBySize(articles[0].image_url, 600, 500)}
+                                alt={articles[0].title}
+                                className="w-full h-full object-cover"
+                                style={{ 
+                                  borderRadius: 0, 
+                                  display: 'block', 
+                                  backgroundColor: 'transparent',
+                                  background: 'none',
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0
+                                }}
+                                loading="eager"
+                                fetchPriority="high"
+                                decoding="async"
+                                onError={(e) => {
+                                  // Hide the image
+                                  e.target.style.display = 'none';
+                                  // Hide the entire container to prevent grey/black box from showing
+                                  const container = e.target.parentElement;
+                                  if (container) {
+                                    container.style.display = 'none';
+                                  }
+                                }}
+                              />
+                              {/* Gradient overlay */}
+                              <Box 
+                                className="absolute bottom-0 left-0 right-0 p-6"
+                                style={{ 
+                                  background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+                                  paddingTop: '60%',
+                                  pointerEvents: 'none'
+                                }}
+                              >
+                                <CategoryTag category={articles[0].category} />
+                                <Heading 
+                                  size="lg" 
+                                  className="text-white font-serif font-bold mb-2"
+                                  style={{ 
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  {articles[0].title}
+                                </Heading>
+                                <Text className="text-white text-sm font-sans">
+                                  {formatDate(articles[0].created_at)}
+                                </Text>
+                              </Box>
+                            </Box>
+                          )}
+                        </Link>
+                      )}
+                    </Box>
+
+                    {/* Right Column - Two smaller articles stacked */}
+                    <Box
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px',
+                        alignSelf: 'stretch',
+                        backgroundColor: 'transparent'
+                      }}
+                    >
+                      {/* Right Top Item - First smaller article */}
+                      {articles.length > 1 && (
+                        <Box style={{ flex: '0 0 auto', backgroundColor: 'transparent' }}>
+                          <Link
+                            to={`/article/${articles[1].slug}`}
+                            style={{ textDecoration: 'none', display: 'block' }}
+                          >
+                            <Box className="bg-white border border-gray-200" style={{ borderRadius: 0 }}>
+                              {articles[1].image_url && (
+                                <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent' }}>
+                                  <img
+                                    src={getOptimizedImageUrlBySize(articles[1].image_url, 300, 169)}
+                                    alt={articles[1].title}
+                                    className="w-full h-full object-cover"
+                                    style={{ borderRadius: 0, display: 'block', backgroundColor: 'transparent' }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      const container = e.target.parentElement;
+                                      if (container) {
+                                        container.style.backgroundColor = '#f3f4f6';
+                                      }
+                                    }}
+                                  />
+                                  <CategoryTag category={articles[1].category} />
+                                </Box>
+                              )}
+                              <Box className="p-4">
+                                <Heading 
+                                  size="sm" 
+                                  className="font-serif font-bold text-black mb-2"
+                                  style={{ 
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  {articles[1].title}
+                                </Heading>
+                                <Text className="text-gray-600 text-xs font-sans">
+                                  {formatDate(articles[1].created_at)}
+                                </Text>
+                              </Box>
+                            </Box>
+                          </Link>
+                        </Box>
+                      )}
+
+                      {/* Right Bottom Item - Second smaller article */}
+                      {articles.length > 2 && (
+                        <Box style={{ flex: '0 0 auto', backgroundColor: 'transparent' }}>
+                          <Link
+                            to={`/article/${articles[2].slug}`}
+                            style={{ textDecoration: 'none', display: 'block' }}
+                          >
+                            <Box className="bg-white border border-gray-200" style={{ borderRadius: 0 }}>
+                              {articles[2].image_url && (
+                                <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent' }}>
+                                  <img
+                                    src={getOptimizedImageUrlBySize(articles[2].image_url, 300, 169)}
+                                    alt={articles[2].title}
+                                    className="w-full h-full object-cover"
+                                    style={{ borderRadius: 0, display: 'block', backgroundColor: 'transparent' }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      const container = e.target.parentElement;
+                                      if (container) {
+                                        container.style.backgroundColor = '#f3f4f6';
+                                      }
+                                    }}
+                                  />
+                                  <CategoryTag category={articles[2].category} />
+                                </Box>
+                              )}
+                              <Box className="p-4">
+                                <Heading 
+                                  size="sm" 
+                                  className="font-serif font-bold text-black mb-2"
+                                  style={{ 
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  {articles[2].title}
+                                </Heading>
+                                <Text className="text-gray-600 text-xs font-sans">
+                                  {formatDate(articles[2].created_at)}
+                                </Text>
+                              </Box>
+                            </Box>
+                          </Link>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Ad Banner - Full width */}
+                <Box 
+                  className="mb-8 bg-[#F3F4F6] py-6" 
+                  style={{ 
+                    borderRadius: 0, 
+                    position: 'relative',
+                    zIndex: 1,
+                    width: '100%',
+                    clear: 'both',
+                    overflow: 'visible'
+                  }}
                 >
-                  Clear Search
-                </Button>
-              </Box>
+                  <Suspense fallback={null}>
+                    <AdComponent placement="top_banner" maxAds={1} />
+                  </Suspense>
+                </Box>
+
+                {/* Recommended Section - 4-column table */}
+                {articles.length > 3 && (
+                  <Box 
+                    className="mb-8"
+                    style={{ 
+                      position: 'relative',
+                      zIndex: 1,
+                      clear: 'both',
+                      marginTop: '2rem'
+                    }}
+                  >
+                    <Heading 
+                      size="md" 
+                      className="mb-6 font-serif font-bold text-black"
+                      style={{ 
+                        borderTop: '4px solid #000000',
+                        borderLeft: '8px solid #000000',
+                        paddingLeft: '12px',
+                        paddingTop: '8px'
+                      }}
+                    >
+                      Recommended For You
+                    </Heading>
+                    <table className="newspaper-layout-table w-full border-collapse">
+                      <tbody>
+                        <tr>
+                          {articles.slice(3, 7).map((article) => (
+                            <td key={article.id} className="align-top" style={{ width: '25%', padding: '0 8px', verticalAlign: 'top' }}>
+                              <Link
+                                to={`/article/${article.slug}`}
+                                style={{ textDecoration: 'none', display: 'block' }}
+                              >
+                                <Box className="bg-white border border-gray-200" style={{ borderRadius: 0 }}>
+                                  {article.image_url && (
+                                    <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent' }}>
+                                      <img
+                                        src={getOptimizedImageUrlBySize(article.image_url, 250, 141)}
+                                        alt={article.title}
+                                        className="w-full h-full object-cover"
+                                        style={{ borderRadius: 0, display: 'block', backgroundColor: 'transparent' }}
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                          const container = e.target.parentElement;
+                                          if (container) {
+                                            container.style.backgroundColor = '#f3f4f6';
+                                          }
+                                        }}
+                                      />
+                                      <CategoryTag category={article.category} />
+                                    </Box>
+                                  )}
+                                  <Box className="p-3">
+                                    <Heading 
+                                      size="xs" 
+                                      className="font-serif font-bold text-black text-sm mb-1"
+                                      style={{ 
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      {article.title}
+                                    </Heading>
+                                    <Text className="text-gray-600 text-[10px] font-sans">
+                                      {formatDate(article.created_at)}
+                                    </Text>
+                                  </Box>
+                                </Box>
+                              </Link>
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </Box>
+                )}
+
+                {/* Main Feed - Table layout (Image Left, Text Right) */}
+                {articles.length > 7 && (
+                  <Box className="mb-8">
+                    <Heading 
+                      size="md" 
+                      className="mb-6 font-serif font-bold text-black"
+                      style={{ 
+                        borderTop: '4px solid #000000',
+                        borderLeft: '8px solid #000000',
+                        paddingLeft: '12px',
+                        paddingTop: '8px'
+                      }}
+                    >
+                      Latest News
+                    </Heading>
+                    <table className="newspaper-layout-table w-full border-collapse">
+                      <tbody>
+                        {articles.slice(7).map((article, index) => (
+                          <React.Fragment key={article.id}>
+                            <tr 
+                              className="hover:bg-gray-50 transition-colors"
+                              style={{ borderTop: index > 0 ? '1px solid #000000' : 'none' }}
+                            >
+                              {/* Image Column */}
+                              {article.image_url && (
+                                <td className="align-top" style={{ width: '128px', padding: '16px 16px 16px 0', verticalAlign: 'top' }}>
+                                  <Box className="relative" style={{ width: '128px', height: '96px', borderRadius: 0, backgroundColor: 'transparent' }}>
+                                    <img
+                                      src={getOptimizedImageUrlBySize(article.image_url, 128, 96)}
+                                      alt={article.title}
+                                      className="w-full h-full object-cover"
+                                      style={{ borderRadius: 0, display: 'block', backgroundColor: 'transparent' }}
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        const container = e.target.parentElement;
+                                        if (container) {
+                                          container.style.display = 'none';
+                                        }
+                                      }}
+                                    />
+                                    <CategoryTag category={article.category} />
+                                  </Box>
+                                </td>
+                              )}
+                              {/* Text Column */}
+                              <td className="align-top" style={{ padding: '16px 0', verticalAlign: 'top' }}>
+                                <Link
+                                  to={`/article/${article.slug}`}
+                                  style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                                >
+                                  <Heading 
+                                    size="sm" 
+                                    className="font-serif font-bold text-black mb-2"
+                                    style={{ 
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden'
+                                    }}
+                                  >
+                                    {article.title}
+                                  </Heading>
+                                  {article.content && (
+                                    <Text className="text-gray-600 text-sm font-sans mb-2"
+                                      style={{ 
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      <FormattedText 
+                                        content={article.content} 
+                                        preview={true} 
+                                        maxLength={100}
+                                      />
+                                    </Text>
+                                  )}
+                                  <Text className="text-gray-500 text-xs font-sans">
+                                    {formatDate(article.created_at)}
+                                  </Text>
+                                </Link>
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Box>
+                )}
+              </>
             )}
-          </Box>
-        ) : (
-          <>
-            {/* Featured Article Section - Standard.mv style */}
-            {articles.length > 0 && (
-              <Box className="mb-10">
-                <StoryCard article={articles[0]} variant="featured" />
-              </Box>
-            )}
 
-            {/* Main Articles Grid - Standard.mv style */}
-            <Box className="mt-6">
-              <Heading size="md" className="mb-6 text-gray-800">
-                More News
-              </Heading>
-              
-              {/* Dynamic Grid Layout based on settings - Standard.mv style */}
-              <SimpleGrid 
-                columns={{ 
-                  base: 1, 
-                  sm: Math.min(settings.story_cards_columns || 3, 2), 
-                  md: settings.story_cards_columns || 3,
-                  lg: settings.story_cards_columns || 3
-                }} 
-                spacing={4}
-                className="max-w-[1200px] mx-auto w-full"
-              >
-                {/* Show articles ensuring each row has equal number of cards */}
-                {/* Exclude the featured article (index 0) and round down to nearest multiple of columns */}
-                {(() => {
-                  if (articles.length <= 1) return null;
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <Box className="mt-8 p-4 md:p-6 bg-[#F3F4F6]" style={{ borderRadius: 0 }}>
+                <VStack spacing={4}>
+                  <Text size="sm" className="text-gray-600 text-center font-sans">
+                    Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
+                    {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of{' '}
+                    {pagination.totalCount} articles
+                  </Text>
                   
-                  const columns = settings.story_cards_columns || 3;
-                  const availableArticles = articles.slice(1); // Skip featured article
-                  
-                  // Calculate how many cards to show (round down to nearest multiple of columns)
-                  const maxCardsToShow = Math.floor(availableArticles.length / columns) * columns;
-                  
-                  // Show cards up to the calculated limit (ensures equal rows)
-                  return availableArticles.slice(0, maxCardsToShow).map((article) => (
-                    <StoryCard key={article.id} article={article} variant="default" />
-                  ));
-                })()}
-              </SimpleGrid>
-            </Box>
-          </>
-        )}
-
-        {/* Clear Search Button */}
-        {searchQuery.trim() && (
-          <Box className="mb-6 text-center">
-            <Button
-              onClick={clearSearch}
-              variant="outline"
-              colorScheme="gray"
-              size="sm"
-            >
-              Clear Search
-            </Button>
-          </Box>
-        )}
-
-        {/* Newsletter Subscription Section */}
-        {!searchQuery.trim() && (
-          <Box className="mb-8">
-            <Suspense fallback={null}>
-              <NewsletterSubscription variant="inline" showTitle={true} />
-            </Suspense>
-          </Box>
-        )}
-
-        {/* Pagination Controls */}
-        {pagination.totalPages > 1 && (
-          <Box className="mt-8 p-4 md:p-6 bg-gray-50 rounded-md">
-            <VStack spacing={4}>
-              {/* Pagination Info - Mobile Friendly */}
-              <Text size="sm" className="text-gray-600 text-center">
-                Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to{' '}
-                {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of{' '}
-                {pagination.totalCount} articles
-              </Text>
-              
-              {/* Pagination Buttons - Mobile Optimized */}
-              <HStack spacing={2} className="flex-wrap justify-center">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!pagination.hasPrevious}
-                  onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  className="min-w-[80px]"
-                >
-                  Previous
-                </Button>
-                
-                {/* Page Numbers - Responsive */}
-                <HStack spacing={1} className="flex-wrap justify-center">
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (pagination.totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (pagination.currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
-                      pageNum = pagination.totalPages - 4 + i;
-                    } else {
-                      pageNum = pagination.currentPage - 2 + i;
-                    }
+                  <HStack spacing={2} className="flex-wrap justify-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!pagination.hasPrevious}
+                      onClick={() => handlePageChange(pagination.currentPage - 1)}
+                      className="min-w-[80px]"
+                      style={{ borderRadius: 0 }}
+                    >
+                      Previous
+                    </Button>
                     
-                    return (
-                      <Button
-                        key={pageNum}
-                        size="sm"
-                        variant={pageNum === pagination.currentPage ? "primary" : "outline"}
-                        colorScheme={pageNum === pagination.currentPage ? "brand" : "gray"}
-                        onClick={() => handlePageChange(pageNum)}
-                        className="min-w-[40px]"
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </HStack>
+                    <HStack spacing={1} className="flex-wrap justify-center">
+                      {(() => {
+                        const totalPages = pagination.totalPages;
+                        const currentPage = pagination.currentPage;
+                        const pages = [];
+                        const maxVisiblePages = 10; // Show up to 10 page numbers
+                        
+                        if (totalPages <= maxVisiblePages) {
+                          // Show all pages if total is less than max
+                          for (let i = 1; i <= totalPages; i++) {
+                            pages.push(i);
+                          }
+                        } else {
+                          // Always show first page
+                          pages.push(1);
+                          
+                          // Calculate start and end of visible range
+                          let startPage = Math.max(2, currentPage - 2);
+                          let endPage = Math.min(totalPages - 1, currentPage + 2);
+                          
+                          // Adjust if we're near the beginning
+                          if (currentPage <= 4) {
+                            endPage = Math.min(totalPages - 1, 6);
+                          }
+                          
+                          // Adjust if we're near the end
+                          if (currentPage >= totalPages - 3) {
+                            startPage = Math.max(2, totalPages - 5);
+                          }
+                          
+                          // Add ellipsis after first page if needed
+                          if (startPage > 2) {
+                            pages.push('ellipsis-start');
+                          }
+                          
+                          // Add pages in the visible range
+                          for (let i = startPage; i <= endPage; i++) {
+                            pages.push(i);
+                          }
+                          
+                          // Add ellipsis before last page if needed
+                          if (endPage < totalPages - 1) {
+                            pages.push('ellipsis-end');
+                          }
+                          
+                          // Always show last page
+                          pages.push(totalPages);
+                        }
+                        
+                        return pages.map((page, index) => {
+                          if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                            return (
+                              <Text
+                                key={`ellipsis-${index}`}
+                                className="px-2 text-gray-500"
+                                style={{ userSelect: 'none' }}
+                              >
+                                ...
+                              </Text>
+                            );
+                          }
+                          
+                          return (
+                            <Button
+                              key={page}
+                              size="sm"
+                              variant={page === currentPage ? "solid" : "outline"}
+                              colorScheme={page === currentPage ? "brand" : "gray"}
+                              onClick={() => handlePageChange(page)}
+                              className="min-w-[40px]"
+                              style={{ borderRadius: 0 }}
+                            >
+                              {page}
+                            </Button>
+                          );
+                        });
+                      })()}
+                    </HStack>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!pagination.hasNext}
+                      onClick={() => handlePageChange(pagination.currentPage + 1)}
+                      className="min-w-[80px]"
+                      style={{ borderRadius: 0 }}
+                    >
+                      Next
+                    </Button>
+                  </HStack>
+                </VStack>
+              </Box>
+            )}
+          </Box>
+            </td>
+
+            {/* Sidebar - Right Column */}
+            <td className="align-top" style={{ width: '33.33%', verticalAlign: 'top' }}>
+              <Box>
+                <SidebarWidgets articles={articles} />
                 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!pagination.hasNext}
-                  onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  className="min-w-[80px]"
-                >
-                  Next
-                </Button>
-              </HStack>
-            </VStack>
-          </Box>
-        )}
-
-        {/* Sidebar Ad */}
-        <Box className="mt-6 md:mt-8 text-center">
-          <Suspense fallback={null}>
-            <AdComponent placement="sidebar" maxAds={2} />
-          </Suspense>
-        </Box>
-
-        {/* Sidebar-style compact articles for additional content */}
-        {articles.length > 7 && (
-          <Box className="mt-12">
-            <Heading size="md" className="mb-6 text-gray-700 text-center">
-              Recent Stories
-            </Heading>
-            <SimpleGrid 
-              columns={{ base: 1, sm: 2, md: 3 }} 
-              spacing={4}
-              className="max-w-[1200px] mx-auto"
-            >
-              {articles.slice(7, 10).map((article) => (
-                <StoryCard key={article.id} article={article} variant="compact" />
-              ))}
-            </SimpleGrid>
-          </Box>
-        )}
+                {/* Sidebar Ad */}
+                <Box className="mt-6 text-center">
+                  <Suspense fallback={null}>
+                    <AdComponent placement="sidebar" maxAds={2} />
+                  </Suspense>
+                </Box>
+              </Box>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
         {/* Bottom Banner Ad */}
-        <Box className="mt-8 md:mt-12 text-center">
+        <Box className="mt-8 md:mt-12 text-center bg-[#F3F4F6] py-6" style={{ borderRadius: 0 }}>
           <Suspense fallback={null}>
             <AdComponent placement="bottom_banner" maxAds={1} />
           </Suspense>
         </Box>
-      </ThemeLayout>
+      </Container>
     </>
   );
 };
