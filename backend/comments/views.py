@@ -7,8 +7,11 @@ from rest_framework.authentication import SessionAuthentication
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import logging
 from articles.models import Article
 from .models import Comment, Vote
+
+logger = logging.getLogger(__name__)
 
 
 class NoCSRFSessionAuthentication(SessionAuthentication):
@@ -191,11 +194,105 @@ def create_vote(request):
     if serializer.is_valid():
         try:
             vote = serializer.save()
+            article = vote.article
+            article_moved_to_draft = False
+            
+            # Check if this is a downvote and if article should be moved to draft
+            if vote.vote_type == 'down':
+                # Count total downvotes for this article
+                downvote_count = article.votes.filter(vote_type='down').count()
+                
+                # If article has 3 or more downvotes and is currently published, move to draft
+                if downvote_count >= 3 and article.status == 'published':
+                    article.status = 'draft'
+                    article.save(update_fields=['status'])
+                    article_moved_to_draft = True
+                    logger.info(
+                        f"Article '{article.title}' (ID: {article.id}) moved to draft "
+                        f"due to {downvote_count} downvotes"
+                    )
+                    
+                    # Clear all published articles cache to ensure article disappears from front page
+                    from django.core.cache import cache
+                    try:
+                        # Try to clear all cache keys that start with 'published_articles_'
+                        # This handles all pagination, category, and search variations
+                        cache_cleared = False
+                        if hasattr(cache, '_cache') and hasattr(cache._cache, 'get_client'):
+                            try:
+                                # Using Redis directly for pattern deletion
+                                redis_client = cache._cache.get_client()
+                                # Try using scan_iter for better performance (doesn't block)
+                                if hasattr(redis_client, 'scan_iter'):
+                                    keys_to_delete = list(redis_client.scan_iter(match='published_articles_*'))
+                                    if keys_to_delete:
+                                        # Delete in batches to avoid blocking
+                                        batch_size = 100
+                                        for i in range(0, len(keys_to_delete), batch_size):
+                                            batch = keys_to_delete[i:i + batch_size]
+                                            redis_client.delete(*batch)
+                                        logger.info(f"Cleared {len(keys_to_delete)} published articles cache keys using scan_iter")
+                                        cache_cleared = True
+                                # Fallback to keys() if scan_iter not available
+                                elif hasattr(redis_client, 'keys'):
+                                    pattern = 'published_articles_*'
+                                    keys_to_delete = redis_client.keys(pattern)
+                                    if keys_to_delete:
+                                        redis_client.delete(*keys_to_delete)
+                                        logger.info(f"Cleared {len(keys_to_delete)} published articles cache keys using keys()")
+                                        cache_cleared = True
+                            except Exception as redis_error:
+                                logger.warning(f"Redis pattern deletion failed: {str(redis_error)}, using fallback")
+                        
+                        # Fallback: clear common cache keys manually
+                        if not cache_cleared:
+                            from settings_app.models import SiteSettings
+                            settings = SiteSettings.get_settings()
+                            rows = settings.story_cards_rows
+                            columns = settings.story_cards_columns
+                            cleared_count = 0
+                            # Clear first 20 pages for all categories and search variations
+                            for page in range(1, 21):
+                                # Clear 'all' category
+                                key = f'published_articles_{page}_all__{rows}x{columns}'
+                                if cache.delete(key):
+                                    cleared_count += 1
+                                # Clear with empty search
+                                key = f'published_articles_{page}_all_{rows}x{columns}'
+                                if cache.delete(key):
+                                    cleared_count += 1
+                                # Clear article's category if it exists
+                                if article.category:
+                                    key = f'published_articles_{page}_{article.category.slug}__{rows}x{columns}'
+                                    if cache.delete(key):
+                                        cleared_count += 1
+                                    key = f'published_articles_{page}_{article.category.slug}_{rows}x{columns}'
+                                    if cache.delete(key):
+                                        cleared_count += 1
+                            logger.info(f"Cleared {cleared_count} published articles cache keys (fallback method)")
+                    except Exception as cache_error:
+                        logger.error(f"Failed to clear cache when article moved to draft: {str(cache_error)}")
+                    
+                    # Also invalidate article detail cache
+                    try:
+                        from articles.cache_utils import invalidate_article_cache
+                        invalidate_article_cache(article_id=article.id)
+                    except Exception as invalidation_error:
+                        logger.error(f"Failed to invalidate article cache: {str(invalidation_error)}")
+            
+            # Return response with flag indicating if article was moved to draft
+            response_data = VoteSerializer(vote).data
+            response_data['article_moved_to_draft'] = article_moved_to_draft
+            if article_moved_to_draft:
+                response_data['article_id'] = article.id
+                response_data['article_slug'] = article.slug
+            
             return Response(
-                VoteSerializer(vote).data, 
+                response_data, 
                 status=status.HTTP_201_CREATED
             )
         except Exception as e:
+            logger.error(f"Error creating vote: {str(e)}")
             return Response(
                 {'error': str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
@@ -216,12 +313,15 @@ def article_vote_status(request, article_id):
     else:
         ip_address = request.META.get('REMOTE_ADDR')
     
-    # Check if user has voted
-    vote = Vote.objects.filter(article=article, ip_address=ip_address).first()
+    # Count votes from this IP
+    votes_from_ip = Vote.objects.filter(article=article, ip_address=ip_address)
+    vote_count = votes_from_ip.count()
+    last_vote = votes_from_ip.order_by('-created_at').first()
     
     return Response({
-        'has_voted': vote is not None,
-        'vote_type': vote.vote_type if vote else None,
+        'has_voted': vote_count > 0,
+        'vote_count': vote_count,
+        'vote_type': last_vote.vote_type if last_vote else None,
         'vote_score': article.vote_score
     })
 

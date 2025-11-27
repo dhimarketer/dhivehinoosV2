@@ -61,6 +61,74 @@ img {
   height: auto;
 }
 
+/* Article content table structure for proper text and image bounding */
+.article-content-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 0;
+  padding: 0;
+}
+
+.article-content-table td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.article-image-cell {
+  width: 100% !important;
+  max-width: 100%;
+  padding: 1rem 0;
+}
+
+.article-text-cell {
+  width: 100% !important;
+  max-width: 100%;
+  padding: 0.5rem 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.article-fragments-cell {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+/* Ensure images within table cells are properly bounded */
+.article-content-table img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Responsive table behavior */
+@media (max-width: 768px) {
+  .article-content-table {
+    display: block;
+  }
+  
+  .article-content-table tbody {
+    display: block;
+  }
+  
+  .article-content-table tr {
+    display: block;
+    width: 100%;
+    margin-bottom: 0;
+  }
+  
+  .article-content-table td {
+    display: block;
+    width: 100% !important;
+    padding: 0.5rem 0;
+  }
+  
+  .article-image-cell {
+    padding: 1rem 0;
+  }
+}
+
 /* Standard.mv inspired clean card styles */
 .news-card {
   transition: all 0.2s ease;

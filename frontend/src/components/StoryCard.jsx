@@ -13,27 +13,60 @@ import {
 } from './ui';
 import { Link } from 'react-router-dom';
 import FormattedText from './FormattedText';
-import SocialShare from './SocialShare';
+import ArticleVoteButtons from './ArticleVoteButtons';
 import { generateSrcSet, generateSizes, getOptimizedImageUrlBySize } from '../utils/imageOptimization';
 
 const StoryCard = ({ article, variant = 'default' }) => {
   const [imageLoading, setImageLoading] = useState(true);
   
+  // Helper function to check if image_url is valid
+  const isValidImageUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    return trimmed !== '' && trimmed !== 'null' && trimmed !== 'undefined' && 
+           (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/'));
+  };
+  
+  // Get the best available image URL - fallback to reuse_images if image_url is invalid
+  const getImageUrl = () => {
+    if (isValidImageUrl(article.image_url)) {
+      return article.image_url;
+    }
+    // Fallback to first reuse image if available
+    if (article.reuse_images && article.reuse_images.length > 0 && article.reuse_images[0].image_url) {
+      const reuseUrl = article.reuse_images[0].image_url;
+      if (isValidImageUrl(reuseUrl)) {
+        return reuseUrl;
+      }
+    }
+    // Fallback to reused_image_url if available
+    if (isValidImageUrl(article.reused_image_url)) {
+      return article.reused_image_url;
+    }
+    return null;
+  };
+  
+  const displayImageUrl = getImageUrl();
+  
   // Enhanced image error handling
   const handleImageError = (e) => {
     setImageLoading(false);
-    // Don't set placeholder - let the image fail gracefully
-    // The image will show as broken, but we won't replace it with placeholder
-    // This prevents placeholder images from showing when real images should load
+    // Hide the image container if image fails to load to prevent blank spaces
     const target = e.target;
-    if (target.src && !target.src.includes('placeholder') && !target.dataset.retry) {
+    const container = target.closest('.relative');
+    if (container && !target.dataset.retry) {
       // Try to reload the original image once
       target.dataset.retry = 'true';
-      const originalSrc = target.getAttribute('data-original-src') || article.image_url;
-      if (originalSrc && originalSrc !== target.src) {
+      const originalSrc = target.getAttribute('data-original-src') || displayImageUrl;
+      if (originalSrc && originalSrc !== target.src && originalSrc.trim() !== '') {
         setTimeout(() => {
           target.src = originalSrc;
         }, 1000);
+      } else {
+        // If no valid original source, hide the container to prevent blank space
+        if (container) {
+          container.style.display = 'none';
+        }
       }
     }
   };
@@ -99,7 +132,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
           </Box>
         </CardHeader>
         <CardBody className="flex-1 flex flex-col pt-0">
-          {article.image_url && (
+          {displayImageUrl && (
             <Box 
               className="relative mb-4 w-full rounded overflow-hidden"
               style={{ 
@@ -113,12 +146,12 @@ const StoryCard = ({ article, variant = 'default' }) => {
                 />
               )}
               <img
-                src={article.image_url && article.image_url.includes('fal.media') 
-                  ? getOptimizedImageUrlBySize(article.image_url, 800, 450)
-                  : (article.image_url || '')}
-                data-original-src={article.image_url}
-                srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [400, 600, 800, 1200] }) : undefined}
-                sizes={article.image_url && article.image_url.includes('fal.media') ? generateSizes({ featured: true }) : undefined}
+                src={displayImageUrl.includes('fal.media') 
+                  ? getOptimizedImageUrlBySize(displayImageUrl, 800, 450)
+                  : displayImageUrl}
+                data-original-src={displayImageUrl}
+                srcSet={displayImageUrl.includes('fal.media') ? generateSrcSet(displayImageUrl, { aspectRatio: 16/9, breakpoints: [400, 600, 800, 1200] }) : undefined}
+                sizes={displayImageUrl.includes('fal.media') ? generateSizes({ featured: true }) : undefined}
                 alt={article.title}
                 className="w-full h-full object-cover object-center news-card-image"
                 loading={variant === 'featured' ? 'eager' : 'lazy'}
@@ -148,10 +181,9 @@ const StoryCard = ({ article, variant = 'default' }) => {
           )}
           <Flex align="center" justify="space-between" className="news-meta text-xs mt-auto pt-3 border-t border-gray-100">
             <Flex gap={3} align="center">
-              <Text className="news-stats">👍 {article.vote_score || 0}</Text>
+              <ArticleVoteButtons article={article} compact={true} />
               <Text className="news-stats">💬 {article.approved_comments_count || 0}</Text>
             </Flex>
-            <SocialShare article={article} variant="minimal" />
           </Flex>
         </CardBody>
       </Card>
@@ -165,18 +197,20 @@ const StoryCard = ({ article, variant = 'default' }) => {
         className="news-card compact-article flex overflow-hidden mb-4 border border-gray-200 bg-white w-full max-w-[400px] h-[120px] mx-auto hover:shadow-lg hover:-translate-y-0.5 transition-all rounded-lg cursor-pointer no-underline"
         style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}
       >
-        <img
-          src={getOptimizedImageUrlBySize(article.image_url, 120, 100)}
-          srcSet={generateSrcSet(article.image_url, { aspectRatio: 1.2, breakpoints: [120] })}
-          sizes={generateSizes({ compact: true })}
-          alt={article.title}
-          className="w-[120px] h-[100px] object-cover flex-shrink-0 news-card-image pointer-events-none"
-          width="120"
-          height="100"
-          loading="lazy"
-          decoding="async"
-          onError={handleImageError}
-        />
+        {displayImageUrl && (
+          <img
+            src={getOptimizedImageUrlBySize(displayImageUrl, 120, 100)}
+            srcSet={generateSrcSet(displayImageUrl, { aspectRatio: 1.2, breakpoints: [120] })}
+            sizes={generateSizes({ compact: true })}
+            alt={article.title}
+            className="w-[120px] h-[100px] object-cover flex-shrink-0 news-card-image pointer-events-none"
+            width="120"
+            height="100"
+            loading="lazy"
+            decoding="async"
+            onError={handleImageError}
+          />
+        )}
         <Box 
           className="p-3 flex-1 flex flex-col justify-between min-w-0 overflow-hidden pointer-events-none"
         >
@@ -238,7 +272,7 @@ const StoryCard = ({ article, variant = 'default' }) => {
         </Flex>
       </CardHeader>
       <CardBody className="flex-1 flex flex-col pt-0">
-        {article.image_url && (
+        {displayImageUrl && (
           <Box 
             className="relative mb-3 w-full rounded overflow-hidden aspect-video min-h-[200px]"
           >
@@ -248,12 +282,12 @@ const StoryCard = ({ article, variant = 'default' }) => {
               />
             )}
             <img
-              src={article.image_url && article.image_url.includes('fal.media')
-                ? getOptimizedImageUrlBySize(article.image_url, 350, 197)
-                : (article.image_url || '')}
-              data-original-src={article.image_url}
-              srcSet={article.image_url && article.image_url.includes('fal.media') ? generateSrcSet(article.image_url, { aspectRatio: 16/9, breakpoints: [350, 400, 600] }) : undefined}
-              sizes={article.image_url && article.image_url.includes('fal.media') ? "(max-width: 768px) 100vw, (max-width: 1024px) 350px, 400px" : undefined}
+              src={displayImageUrl.includes('fal.media')
+                ? getOptimizedImageUrlBySize(displayImageUrl, 350, 197)
+                : displayImageUrl}
+              data-original-src={displayImageUrl}
+              srcSet={displayImageUrl.includes('fal.media') ? generateSrcSet(displayImageUrl, { aspectRatio: 16/9, breakpoints: [350, 400, 600] }) : undefined}
+              sizes={displayImageUrl.includes('fal.media') ? "(max-width: 768px) 100vw, (max-width: 1024px) 350px, 400px" : undefined}
               alt={article.title}
               className="absolute inset-0 w-full h-full object-cover object-center news-card-image"
               loading="lazy"
@@ -282,10 +316,9 @@ const StoryCard = ({ article, variant = 'default' }) => {
         )}
         <Flex align="center" justify="space-between" className="news-meta text-xs mt-auto pt-2 border-t border-gray-100">
           <Flex gap={3} align="center">
-            <Text className="news-stats">👍 {article.vote_score || 0}</Text>
+            <ArticleVoteButtons article={article} compact={true} />
             <Text className="news-stats">💬 {article.approved_comments_count || 0}</Text>
           </Flex>
-          <SocialShare article={article} variant="minimal" />
         </Flex>
       </CardBody>
     </Card>

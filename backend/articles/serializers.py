@@ -359,7 +359,8 @@ class ArticleSerializer(serializers.ModelSerializer):
         _base_url = 'https://dhivehinoos.net' if _is_production else 'http://dhivehinoos.net'
         
         # Check Redis cache first
-        cache_key = f'article:image_url:{obj.id}'
+        # Use versioned cache key to ensure cache refresh after priority change (v2: API image prioritized over reusable)
+        cache_key = f'article:image_url:v2:{obj.id}'
         cached_url = get_cached_article_data(cache_key)
         if cached_url:
             return cached_url
@@ -377,6 +378,7 @@ class ArticleSerializer(serializers.ModelSerializer):
             return url
         
         # PRIORITY 1: Docker volume image_file (served from local storage - fastest)
+        # This is for explicitly uploaded images, highest priority
         if obj.image_file and obj.image_file.name:
             try:
                 request = self.context.get('request')
@@ -391,7 +393,22 @@ class ArticleSerializer(serializers.ModelSerializer):
             except Exception:
                 pass  # Silently fail to avoid performance impact
         
-        # PRIORITY 2: Reusable image from Docker volume
+        # PRIORITY 2: External API image URL (original story image - should be shown on landing page)
+        # Prioritize API image over reusable images for landing page display
+        # But validate that the URL is not empty or just whitespace
+        if obj.image and isinstance(obj.image, str):
+            image_url_clean = obj.image.strip()
+            if (image_url_clean and 
+                not image_url_clean.startswith('https://via.placeholder.com') and
+                (image_url_clean.startswith('http://') or image_url_clean.startswith('https://') or image_url_clean.startswith('/'))):
+                final_url = ensure_https_url(image_url_clean)
+                # Cache external URLs for shorter time (15 minutes) as they might change
+                cache_article_data(cache_key, final_url, timeout=900)
+                return final_url
+        
+        # PRIORITY 3: Reusable image from Docker volume (fallback if no valid API image)
+        # Use reusable images if API image is missing or invalid
+        # First try the primary reused_image
         if obj.reused_image and obj.reused_image.image_file and obj.reused_image.image_file.name:
             try:
                 request = self.context.get('request')
@@ -406,12 +423,23 @@ class ArticleSerializer(serializers.ModelSerializer):
             except Exception:
                 pass  # Silently fail to avoid performance impact
         
-        # PRIORITY 3: External API image URL (fallback - slower, but better than nothing)
-        if obj.image and not obj.image.startswith('https://via.placeholder.com'):
-            final_url = ensure_https_url(obj.image)
-            # Cache external URLs for shorter time (15 minutes) as they might change
-            cache_article_data(cache_key, final_url, timeout=900)
-            return final_url
+        # PRIORITY 4: Try first reuse image from reuse_images many-to-many if reused_image failed
+        # This ensures we always return an image if one exists in the library
+        if obj.reuse_images.exists():
+            for reuse_image in obj.reuse_images.all()[:1]:  # Just get the first one
+                if reuse_image.image_file and reuse_image.image_file.name:
+                    try:
+                        request = self.context.get('request')
+                        if request:
+                            url = request.build_absolute_uri(reuse_image.image_file.url)
+                        else:
+                            url = f"{_base_url}{reuse_image.image_file.url}"
+                        final_url = ensure_https_url(url)
+                        # Cache for 1 hour
+                        cache_article_data(cache_key, final_url, timeout=3600)
+                        return final_url
+                    except Exception:
+                        continue  # Try next image if this one fails
         
         return None
     

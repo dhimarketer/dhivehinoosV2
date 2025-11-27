@@ -169,6 +169,23 @@ const HomePage = () => {
     fetchData();
   }, [selectedCategory, pagination.currentPage, pagination.pageSize, searchQuery, settings.story_cards_columns]);
 
+  // Listen for article moved to draft event and refresh
+  useEffect(() => {
+    const handleArticleMovedToDraft = (event) => {
+      // Force refresh by resetting pagination to page 1 and clearing articles
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+      setArticles([]);
+      setSearchResults([]);
+      // The fetchData will be triggered by the dependency change
+    };
+
+    window.addEventListener('articleMovedToDraft', handleArticleMovedToDraft);
+    
+    return () => {
+      window.removeEventListener('articleMovedToDraft', handleArticleMovedToDraft);
+    };
+  }, []);
+
   // Search only on Enter key press
   const handleSearchSubmit = (e) => {
     e.preventDefault();

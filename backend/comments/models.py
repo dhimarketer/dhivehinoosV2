@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import ValidationError
 
 
 class Comment(models.Model):
@@ -93,23 +92,11 @@ class Vote(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        unique_together = ['article', 'ip_address']
         verbose_name = 'Vote'
         verbose_name_plural = 'Votes'
+        indexes = [
+            models.Index(fields=['article', 'ip_address'], name='vote_article_ip_idx'),
+        ]
     
     def __str__(self):
         return f"{self.vote_type} vote from {self.ip_address} on {self.article.title}"
-    
-    def clean(self):
-        # Check if user has already voted on this article
-        existing_vote = Vote.objects.filter(
-            article=self.article,
-            ip_address=self.ip_address
-        ).exclude(pk=self.pk).exists()
-        
-        if existing_vote:
-            raise ValidationError('You have already voted on this article.')
-    
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
