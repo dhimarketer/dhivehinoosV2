@@ -208,28 +208,16 @@ const HomePage = () => {
     setSearchResults([]);
   };
 
-  // Format date helper
+  // Format date helper - shows actual date format like article page
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else if (diffDays < 30) {
-      const weeks = Math.floor(diffDays / 7);
-      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        timeZone: 'Indian/Maldives',
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
-    }
+    // Always show full date format matching article page
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'Indian/Maldives',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   // Preload images to improve LCP - only preload if image will be rendered immediately
@@ -538,10 +526,10 @@ const HomePage = () => {
                               style={{ 
                                 flex: '1 1 auto',
                                 minHeight: '500px',
-                                backgroundColor: 'transparent',
-                                background: 'none',
                                 position: 'relative',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                backgroundColor: 'transparent',
+                                background: 'transparent'
                               }}
                             >
                               <img
@@ -551,8 +539,6 @@ const HomePage = () => {
                                 style={{ 
                                   borderRadius: 0, 
                                   display: 'block', 
-                                  backgroundColor: 'transparent',
-                                  background: 'none',
                                   width: '100%',
                                   height: '100%',
                                   objectFit: 'cover',
@@ -560,7 +546,8 @@ const HomePage = () => {
                                   top: 0,
                                   left: 0,
                                   right: 0,
-                                  bottom: 0
+                                  bottom: 0,
+                                  zIndex: 1
                                 }}
                                 loading="eager"
                                 fetchPriority="high"
@@ -575,34 +562,26 @@ const HomePage = () => {
                                   }
                                 }}
                               />
-                              {/* Gradient overlay */}
-                              <Box 
-                                className="absolute bottom-0 left-0 right-0 p-6"
-                                style={{ 
-                                  background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
-                                  paddingTop: '60%',
-                                  pointerEvents: 'none'
-                                }}
-                              >
-                                <CategoryTag category={articles[0].category} />
-                                <Heading 
-                                  size="lg" 
-                                  className="text-white font-serif font-bold mb-2"
-                                  style={{ 
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 3,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden'
-                                  }}
-                                >
-                                  {articles[0].title}
-                                </Heading>
-                                <Text className="text-white text-sm font-sans">
-                                  {formatDate(articles[0].created_at)}
-                                </Text>
-                              </Box>
+                              <CategoryTag category={articles[0].category} />
                             </Box>
                           )}
+                          <Box className="bg-white border border-gray-200 p-4" style={{ borderRadius: 0 }}>
+                            <Heading 
+                              size="lg" 
+                              className="font-serif font-bold text-black mb-2"
+                              style={{ 
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {articles[0].title}
+                            </Heading>
+                            <Text className="text-gray-600 text-xs font-sans">
+                              {formatDate(articles[0].created_at)}
+                            </Text>
+                          </Box>
                         </Link>
                       )}
                     </Box>
@@ -626,7 +605,7 @@ const HomePage = () => {
                           >
                             <Box className="bg-white border border-gray-200" style={{ borderRadius: 0 }}>
                               {articles[1].image_url && (
-                                <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent' }}>
+                                <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent', overflow: 'hidden' }}>
                                   <img
                                     src={getOptimizedImageUrlBySize(articles[1].image_url, 300, 169)}
                                     alt={articles[1].title}
@@ -674,7 +653,7 @@ const HomePage = () => {
                           >
                             <Box className="bg-white border border-gray-200" style={{ borderRadius: 0 }}>
                               {articles[2].image_url && (
-                                <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent' }}>
+                                <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent', overflow: 'hidden' }}>
                                   <img
                                     src={getOptimizedImageUrlBySize(articles[2].image_url, 300, 169)}
                                     alt={articles[2].title}
@@ -767,7 +746,7 @@ const HomePage = () => {
                               >
                                 <Box className="bg-white border border-gray-200" style={{ borderRadius: 0 }}>
                                   {article.image_url && (
-                                    <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent' }}>
+                                    <Box className="relative w-full" style={{ aspectRatio: '16/9', backgroundColor: 'transparent', overflow: 'hidden' }}>
                                       <img
                                         src={getOptimizedImageUrlBySize(article.image_url, 250, 141)}
                                         alt={article.title}
@@ -837,7 +816,7 @@ const HomePage = () => {
                               {/* Image Column */}
                               {article.image_url && (
                                 <td className="align-top" style={{ width: '128px', padding: '16px 16px 16px 0', verticalAlign: 'top' }}>
-                                  <Box className="relative" style={{ width: '128px', height: '96px', borderRadius: 0, backgroundColor: 'transparent' }}>
+                                  <Box className="relative" style={{ width: '128px', height: '96px', borderRadius: 0, backgroundColor: 'transparent', overflow: 'hidden' }}>
                                     <img
                                       src={getOptimizedImageUrlBySize(article.image_url, 128, 96)}
                                       alt={article.title}

@@ -20,11 +20,11 @@ RUN apt-get update \
 # Create non-root user with specific UID/GID for consistent permissions
 RUN groupadd -r -g 1000 django && useradd -r -g django -u 1000 django
 
-# Install Python dependencies
+# Install Python dependencies (cached separately - only rebuilds when requirements.txt changes)
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Copy application code (this layer rebuilds on code changes, but dependencies stay cached)
 COPY . /app/
 
 # Create necessary directories and set permissions

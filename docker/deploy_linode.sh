@@ -2,6 +2,7 @@
 
 # Deploy Dhivehinoos.net to Linode
 # This script pulls the latest Docker images and restarts the services
+# Optimized for faster deployments with parallel operations and smart health checks
 
 set -e
 
@@ -21,39 +22,28 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-# Create necessary directories if they don't exist
-echo "📁 Creating necessary directories..."
-sudo mkdir -p /opt/dhivehinoos/database
-sudo mkdir -p /opt/dhivehinoos/media/articles
-sudo mkdir -p /opt/dhivehinoos/media/ads
-sudo mkdir -p /opt/dhivehinoos/static
-sudo mkdir -p /opt/dhivehinoos/logs
-sudo mkdir -p /opt/dhivehinoos/redis
+# Create necessary directories if they don't exist (only if missing - faster)
+echo "📁 Ensuring directories exist..."
+sudo mkdir -p /opt/dhivehinoos/{database,media/{articles,ads,reusable_images},static,logs,redis}
 
-# Set proper permissions
-echo "🔐 Setting permissions..."
-sudo chown -R 1000:1000 /opt/dhivehinoos/ || echo "⚠️  Warning: Could not set ownership, continuing..."
+# Set proper permissions (only if needed - check first)
+if [ "$(stat -c '%U:%G' /opt/dhivehinoos 2>/dev/null)" != "1000:1000" ]; then
+    echo "🔐 Setting permissions..."
+    sudo chown -R 1000:1000 /opt/dhivehinoos/ || echo "⚠️  Warning: Could not set ownership, continuing..."
+fi
 
-# Pull latest images
+# Pull latest images in parallel using docker-compose (more efficient)
 echo "📥 Pulling latest Docker images..."
-if ! docker pull dhimarketer/backend:latest; then
-    echo "❌ Failed to pull backend image!"
-    exit 1
-fi
-if ! docker pull dhimarketer/frontend:latest; then
-    echo "❌ Failed to pull frontend image!"
+if ! docker-compose pull; then
+    echo "❌ Failed to pull Docker images!"
     exit 1
 fi
 
-# Stop existing containers
+# Stop existing containers (graceful shutdown)
 echo "🛑 Stopping existing containers..."
 docker-compose down || true
 
-# Remove old images to free up space
-echo "🧹 Cleaning up old images..."
-docker image prune -f || true
-
-# Start services
+# Start services with pull (ensures latest images are used)
 echo "🚀 Starting services..."
 if ! docker-compose up -d; then
     echo "❌ Failed to start services!"
@@ -62,31 +52,45 @@ if ! docker-compose up -d; then
     exit 1
 fi
 
-# Wait for services to be healthy
-echo "⏳ Waiting for services to be healthy..."
-sleep 30
-
-# Wait for Redis to be ready
+# Wait for Redis to be ready (optimized - check immediately, then with shorter intervals)
 echo "⏳ Waiting for Redis to be ready..."
-for i in {1..20}; do
+REDIS_READY=false
+for i in {1..15}; do
     if docker-compose exec -T dhivehinoos_redis redis-cli ping > /dev/null 2>&1; then
         echo "✅ Redis is ready!"
+        REDIS_READY=true
         break
     fi
-    echo "⏳ Waiting for Redis... ($i/20)"
-    sleep 3
+    if [ $i -lt 5 ]; then
+        sleep 1  # Faster initial checks
+    else
+        sleep 2  # Slightly longer after initial attempts
+    fi
 done
+if [ "$REDIS_READY" = false ]; then
+    echo "⚠️  Warning: Redis may not be fully ready, continuing..."
+fi
 
-# Wait for backend to be ready
+# Wait for backend to be ready (optimized - use healthcheck endpoint if available)
 echo "⏳ Waiting for backend to be ready..."
-for i in {1..30}; do
-    if docker-compose exec -T dhivehinoos_backend curl -f http://localhost:8000/api/v1/articles/health/ > /dev/null 2>&1; then
+BACKEND_READY=false
+for i in {1..20}; do
+    # Try health endpoint first, fallback to published articles endpoint
+    if docker-compose exec -T dhivehinoos_backend curl -f http://localhost:8000/api/v1/articles/health/ > /dev/null 2>&1 || \
+       docker-compose exec -T dhivehinoos_backend curl -f http://localhost:8000/api/v1/articles/published/ > /dev/null 2>&1; then
         echo "✅ Backend is ready!"
+        BACKEND_READY=true
         break
     fi
-    echo "⏳ Waiting for backend... ($i/30)"
-    sleep 5
+    if [ $i -lt 5 ]; then
+        sleep 2  # Faster initial checks
+    else
+        sleep 3  # Slightly longer after initial attempts
+    fi
 done
+if [ "$BACKEND_READY" = false ]; then
+    echo "⚠️  Warning: Backend may not be fully ready, continuing..."
+fi
 
 # Run database migrations
 echo "🗄️ Running database migrations..."
@@ -133,41 +137,50 @@ fi
 echo "📊 Checking service status..."
 docker-compose ps
 
-# Test backend health
+# Test backend health (optimized - shorter waits)
 echo "🔍 Testing backend health..."
+BACKEND_HEALTHY=false
 for i in {1..5}; do
-    if curl -f http://localhost:8052/api/v1/articles/health/ > /dev/null 2>&1; then
+    if curl -f http://localhost:8052/api/v1/articles/health/ > /dev/null 2>&1 || \
+       curl -f http://localhost:8052/api/v1/articles/published/ > /dev/null 2>&1; then
         echo "✅ Backend is healthy!"
+        BACKEND_HEALTHY=true
         break
+    fi
+    if [ $i -lt 3 ]; then
+        sleep 3  # Faster initial checks
     else
-        if [ $i -eq 5 ]; then
-            echo "❌ Backend health check failed after 5 attempts!"
-            echo "📋 Backend logs:"
-            docker-compose logs dhivehinoos_backend
-            exit 1
-        fi
-        echo "⏳ Backend not ready yet, retrying... ($i/5)"
-        sleep 10
+        sleep 5  # Slightly longer after initial attempts
     fi
 done
+if [ "$BACKEND_HEALTHY" = false ]; then
+    echo "❌ Backend health check failed after 5 attempts!"
+    echo "📋 Backend logs:"
+    docker-compose logs --tail=50 dhivehinoos_backend
+    exit 1
+fi
 
-# Test frontend
+# Test frontend (optimized - shorter waits)
 echo "🔍 Testing frontend..."
+FRONTEND_HEALTHY=false
 for i in {1..5}; do
     if curl -f http://localhost:8053/ > /dev/null 2>&1; then
         echo "✅ Frontend is accessible!"
+        FRONTEND_HEALTHY=true
         break
+    fi
+    if [ $i -lt 3 ]; then
+        sleep 3  # Faster initial checks
     else
-        if [ $i -eq 5 ]; then
-            echo "❌ Frontend health check failed after 5 attempts!"
-            echo "📋 Frontend logs:"
-            docker-compose logs dhivehinoos_frontend
-            exit 1
-        fi
-        echo "⏳ Frontend not ready yet, retrying... ($i/5)"
-        sleep 10
+        sleep 5  # Slightly longer after initial attempts
     fi
 done
+if [ "$FRONTEND_HEALTHY" = false ]; then
+    echo "❌ Frontend health check failed after 5 attempts!"
+    echo "📋 Frontend logs:"
+    docker-compose logs --tail=50 dhivehinoos_frontend
+    exit 1
+fi
 
 echo ""
 echo "🎉 Deployment completed!"
